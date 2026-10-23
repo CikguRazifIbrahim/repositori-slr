@@ -4,12 +4,12 @@
 window.RSLR_CONFIG = {
   // 1. Firebase: Project settings > Your apps > SDK setup and configuration (firebaseConfig).
   firebase: {
-    apiKey: "ISI_API_KEY",
-    authDomain: "ISI_PROJECT_ID.firebaseapp.com",
-    projectId: "ISI_PROJECT_ID",
-    storageBucket: "ISI_PROJECT_ID.appspot.com",
-    messagingSenderId: "ISI_SENDER_ID",
-    appId: "ISI_APP_ID"
+    apiKey: "AIzaSyDuDUS6pVbVlTOY9Z2veIodiCxnL-8pOQc",
+    authDomain: "mykajian-ebe7e.firebaseapp.com",
+    projectId: "mykajian-ebe7e",
+    storageBucket: "mykajian-ebe7e.firebasestorage.app",
+    messagingSenderId: "351646083181",
+    appId: "1:351646083181:web:cbe520f6168564a6687764"
   },
   // 2. Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client ID (Web application).
   googleClientId: "ISI_CLIENT_ID.apps.googleusercontent.com",
