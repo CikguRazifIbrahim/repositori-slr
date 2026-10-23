@@ -12,7 +12,7 @@ Semua langkah di bawah dibuat dalam pelayar pada komputer. Anggaran masa: 20 min
 
 1. Buka https://console.firebase.google.com dan pilih projek sedia ada (contoh: projek MyKajian) atau cipta projek baharu.
 2. **Authentication > Sign-in method**: pastikan **Email/Password** diaktifkan. Pada tab **Users**, pastikan akaun e-mel pemilik wujud (tambah jika belum).
-3. **Authentication > Settings > Authorized domains**: tambah domain GitHub Pages, contohnya `cikgurazif.github.io`.
+3. **Authentication > Settings > Authorized domains**: tambah domain GitHub Pages, contohnya `cikgurazifibrahim.github.io`.
 4. **Firestore Database**: jika belum ada, klik **Create database** (mod *production*, lokasi `asia-southeast1`).
 5. **Firestore Database > Rules**: tambah dua blok berikut DI DALAM blok `match /databases/{database}/documents { ... }` yang sedia ada, kemudian **Publish**. Gantikan e-mel dengan e-mel pemilik.
 
@@ -38,7 +38,7 @@ Projek Firebase ialah projek Google Cloud yang sama. Buka https://console.cloud.
    - **Data access / Scopes**: tambah skop `https://www.googleapis.com/auth/drive.file` (skop bukan sensitif, tidak memerlukan pengesahan Google).
 3. **APIs & Services > Credentials > Create credentials > OAuth client ID**:
    - Application type: **Web application**; Name: `Repositori SLR Web`.
-   - **Authorized JavaScript origins**: `https://cikgurazif.github.io` (tanpa laluan, tanpa garis miring di hujung).
+   - **Authorized JavaScript origins**: `https://cikgurazifibrahim.github.io` (tanpa laluan, tanpa garis miring di hujung).
    - Authorized redirect URIs: biarkan kosong.
    - Klik **Create** dan salin **Client ID** (berakhir dengan `.apps.googleusercontent.com`).
 
