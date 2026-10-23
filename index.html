@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Repositori SLR</title>
+<meta name="description" content="Repositori artikel SLR: 13 medan ekstrak, PDF dalam Google Drive, disegerakkan ke semua peranti.">
+<meta name="theme-color" content="#0F6D70" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141A22" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Repositori SLR">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-64.png" type="image/png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: sticky top bar; dashboard = filter rail (left; collapsible on phone) + result list;
+   record = sectioned form with sticky A to F navigation; PDF viewer = full-screen overlay,
+   or a docked right pane on wide screens so the article can be read while the fields are typed. */
+:root{
+  --bg:#F4F6F8; --surface:#FFFFFF; --surface-2:#EAEEF2; --fg:#1A2230; --muted:#5B6678;
+  --line:#D3DAE3; --line-strong:#B9C2CE;
+  --accent:#0F6D70; --accent-ink:#FFFFFF; --accent-soft:#D9EEEE; --accent-line:#8FC7C8;
+  --ok:#2C7A4B; --ok-soft:#DDF1E4; --warn:#9A6A12; --warn-soft:#FBEBC8; --bad:#B23B35; --bad-soft:#F8DCDA;
+  --info:#3A5CA8; --info-soft:#DFE6F7;
+  --kd:#3A5CA8; --ppo:#0F6D70; --kdg:#7B3E92; --lain:#5F6B7A;
+  --viewer-bg:#2A2F38; --viewer-bar:#1C2129; --viewer-fg:#E8ECF2;
+  --shadow:0 1px 2px rgba(20,30,45,.06),0 6px 20px rgba(20,30,45,.06);
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --bar-h:56px; --radius:10px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111820; --surface:#18212C; --surface-2:#202B38; --fg:#E7ECF2; --muted:#9DA9B9;
+    --line:#2B3645; --line-strong:#3C4A5C;
+    --accent:#5EC4C6; --accent-ink:#07191A; --accent-soft:#163538; --accent-line:#2E6B6D;
+    --ok:#6CC58F; --ok-soft:#173424; --warn:#E3B45B; --warn-soft:#3A2E12; --bad:#F08A84; --bad-soft:#3F1F1D;
+    --info:#8FA9E8; --info-soft:#1E2A45;
+    --kd:#8FA9E8; --ppo:#5EC4C6; --kdg:#C48AD6; --lain:#9DA9B9;
+    --viewer-bg:#0C1117; --viewer-bar:#141A22; --viewer-fg:#E7ECF2;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111820; --surface:#18212C; --surface-2:#202B38; --fg:#E7ECF2; --muted:#9DA9B9;
+  --line:#2B3645; --line-strong:#3C4A5C;
+  --accent:#5EC4C6; --accent-ink:#07191A; --accent-soft:#163538; --accent-line:#2E6B6D;
+  --ok:#6CC58F; --ok-soft:#173424; --warn:#E3B45B; --warn-soft:#3A2E12; --bad:#F08A84; --bad-soft:#3F1F1D;
+  --info:#8FA9E8; --info-soft:#1E2A45;
+  --kd:#8FA9E8; --ppo:#5EC4C6; --kdg:#C48AD6; --lain:#9DA9B9;
+  --viewer-bg:#0C1117; --viewer-bar:#141A22; --viewer-fg:#E7ECF2;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+html,body{height:100%}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+*{box-sizing:border-box}
+img{max-width:100%}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar-inner{height:var(--bar-h);display:flex;align-items:center;gap:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:9px;background:none;border:0;padding:4px 6px 4px 0;border-radius:8px;min-width:0}
+.brand svg{width:28px;height:28px;flex:none}
+.brand-name{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:-.01em;white-space:nowrap}
+.bar-status{display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden}
+.bar-actions{display:flex;align-items:center;gap:6px;flex:none}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:600;line-height:1.3;white-space:nowrap;border:1px solid var(--line);background:var(--surface-2);color:var(--muted)}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.75}
+.chip.ok{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.chip.warn{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+.chip.bad{color:var(--bad);background:var(--bad-soft);border-color:transparent}
+.chip.info{color:var(--info);background:var(--info-soft);border-color:transparent}
+.chip.busy::before{animation:pulse 1s infinite}
+button.chip{cursor:pointer}
+@keyframes pulse{0%,100%{opacity:.2}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.chip.busy::before{animation:none}}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 12px;font-weight:600;font-size:14px;line-height:1.2;white-space:nowrap;text-decoration:none}
+.btn:hover{background:var(--surface-2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn-primary:hover{filter:brightness(1.08);background:var(--accent)}
+.btn-danger{color:var(--bad);border-color:var(--bad)}
+.btn-danger:hover{background:var(--bad-soft)}
+.btn-sm{padding:4px 9px;font-size:13px}
+.btn svg{width:17px;height:17px;flex:none}
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:240px;padding:6px;z-index:30;display:flex;flex-direction:column}
+.menu button{background:none;border:0;text-align:left;padding:9px 10px;border-radius:7px;font-size:14px;color:var(--fg)}
+.menu button:hover{background:var(--surface-2)}
+.menu .menu-note{font-size:12px;color:var(--muted);padding:4px 10px 6px;word-break:break-word}
+
+.banner{margin:12px auto 0;max-width:1400px;padding:10px 14px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-weight:600;margin-left:max(16px,env(safe-area-inset-left,0px));margin-right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner.bad{background:var(--bad-soft);color:var(--bad)}
+.banner.info{background:var(--info-soft);color:var(--info)}
+.banner .btn{margin-left:auto}
+
+.view{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px;max-width:1400px;margin:0 auto}
+.narrow{max-width:560px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.card h1{font-size:22px;margin-bottom:6px}
+.card p{margin:0 0 12px;color:var(--muted)}
+.card ol{padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px}
+.card code{font-family:var(--font-mono);font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px;word-break:break-all}
+.err{color:var(--bad);font-weight:600;font-size:14px;min-height:20px}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;min-width:0}
+.tile .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.tile .v{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.1;margin-top:2px;font-variant-numeric:tabular-nums}
+.tile .sub{font-size:12.5px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.tile .bars{display:flex;height:6px;border-radius:4px;overflow:hidden;margin-top:8px;background:var(--surface-2)}
+.tile .bars span{display:block;height:100%}
+.tile .legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:0}
+
+.papan-grid{display:grid;grid-template-columns:270px minmax(0,1fr);gap:16px;align-items:start}
+.rail{position:sticky;top:calc(var(--bar-h) + env(safe-area-inset-top,0px) + 12px)}
+.rail-toggle{display:none;width:100%}
+.filters{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:10px}
+.filters h2{font-size:14px;letter-spacing:.02em;color:var(--muted);text-transform:uppercase;font-weight:700}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.field .lbl{font-size:12.5px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:7px 9px;font-size:14px;min-width:0}
+.field textarea{resize:vertical;min-height:72px;line-height:1.45}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);outline:2px solid var(--accent-line);outline-offset:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hasil-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.hasil-head .count{font-weight:600;color:var(--muted)}
+.hasil-head select{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:6px 8px;font-size:13.5px}
+.list{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;min-width:0}
+.row:hover{border-color:var(--accent-line);box-shadow:var(--shadow)}
+.row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.row-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.bil{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);background:var(--surface-2);padding:1px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
+.who{font-weight:600}
+.row-title{font-size:15px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row-chips{display:flex;flex-wrap:wrap;gap:5px;font-size:12px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-weight:600;line-height:1.3;max-width:100%}
+.tag span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag.tema{color:#fff}
+.tag.kd{background:var(--kd)} .tag.ppo{background:var(--ppo)} .tag.kdg{background:var(--kdg)} .tag.lain{background:var(--lain)}
+.tag.r-tinggi{background:var(--ok-soft);color:var(--ok)} .tag.r-sed-tinggi{background:var(--accent-soft);color:var(--accent)} .tag.r-sed{background:var(--warn-soft);color:var(--warn)} .tag.r-rendah{background:var(--surface-2);color:var(--muted)}
+.tag.s-selesai{background:var(--ok-soft);color:var(--ok)} .tag.s-sedang{background:var(--warn-soft);color:var(--warn)} .tag.s-belum{background:var(--surface-2);color:var(--muted)}
+.tag.pdf{background:var(--info-soft);color:var(--info)}
+.row-meta{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.empty{background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--radius);padding:28px 20px;text-align:center;color:var(--muted)}
+.empty h3{font-size:18px;color:var(--fg);margin-bottom:6px}
+.empty p{margin:0 auto;max-width:52ch}
+.drop-hint{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(15,109,112,.18);border:4px dashed var(--accent);font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--accent);pointer-events:none}
+
+.rekod-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.rekod-wrap.split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.rekod-form{min-width:0}
+.rekod-head{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.rekod-head .line1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rekod-head .line1 .spacer{flex:1}
+.rekod-head h1{font-size:21px;line-height:1.25;font-weight:700}
+.rekod-head .ctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rekod-head .ctl select,.rekod-head .ctl input{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:6px 8px;font-size:13.5px}
+.rekod-head .ctl input{width:84px;font-variant-numeric:tabular-nums}
+.dup{padding:8px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:13.5px;font-weight:600}
+.sec-nav{position:sticky;top:calc(var(--bar-h) + env(safe-area-inset-top,0px));z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 0;background:var(--bg);scrollbar-width:none}
+.sec-nav::-webkit-scrollbar{display:none}
+.sec-nav a{flex:none;text-decoration:none;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:13px;font-weight:600}
+.sec-nav a:hover,.sec-nav a.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.guide{background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:var(--radius);padding:8px 12px;margin:8px 0 12px;font-size:14px}
+.guide summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.guide ul{margin:6px 0 2px;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.group{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;scroll-margin-top:calc(var(--bar-h) + env(safe-area-inset-top,0px) + 52px)}
+.group h2{font-size:17px;font-weight:700;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.group h2 small{font-family:var(--font-body);font-weight:600;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.group .medan{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.group .medan:first-of-type{border-top:0;padding-top:0}
+.medan h3{font-size:14.5px;font-weight:700;font-family:var(--font-body);color:var(--accent);margin-bottom:8px}
+.medan h3 b{display:inline-block;min-width:22px;color:var(--muted);font-family:var(--font-mono);font-weight:600;font-size:12.5px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 12px}
+.fgrid .wide{grid-column:1 / -1}
+.help{font-size:12px;color:var(--muted);line-height:1.35}
+.checks{display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0}
+.checks label{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:400;color:var(--fg)}
+.checks input{width:16px;height:16px;accent-color:var(--accent)}
+.files{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.file{display:flex;align-items:center;gap:10px;background:var(--surface-2);border-radius:8px;padding:8px 10px;flex-wrap:wrap}
+.file .name{flex:1;min-width:160px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file .size{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.upload-box{margin-top:10px;border:2px dashed var(--line-strong);border-radius:10px;padding:14px;text-align:center;color:var(--muted);font-size:14px}
+.upload-box.over{border-color:var(--accent);background:var(--accent-soft)}
+.upload-box .btn{margin-top:6px}
+.danger-zone{display:flex;justify-content:flex-end;padding:6px 0 20px}
+.save-row{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.viewer{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:var(--viewer-bg);color:var(--viewer-fg);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.viewer.docked{position:sticky;inset:auto;top:calc(var(--bar-h) + env(safe-area-inset-top,0px) + 8px);height:calc(100vh - var(--bar-h) - env(safe-area-inset-top,0px) - 16px);height:calc(100dvh - var(--bar-h) - env(safe-area-inset-top,0px) - 16px);border-radius:12px;overflow:hidden;padding:0;z-index:5;border:1px solid var(--line)}
+.v-bar,.v-foot{display:flex;align-items:center;gap:6px;background:var(--viewer-bar);padding:6px 8px;flex:none;flex-wrap:wrap}
+.v-bar{padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+.viewer.docked .v-bar,.viewer.docked .v-foot{padding-left:8px;padding-right:8px}
+.v-foot{justify-content:center;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.v-title{flex:1;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v-title small{display:block;font-weight:400;color:#AEB7C4;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.vbtn{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--viewer-fg);border-radius:7px;padding:5px 9px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:34px;height:32px;text-decoration:none}
+.vbtn:hover{background:rgba(255,255,255,.1)}
+.vbtn:disabled{opacity:.4;cursor:default}
+.vbtn svg{width:16px;height:16px}
+.vbtn.on{background:rgba(255,255,255,.18)}
+.v-page{display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums;font-size:13px}
+.v-page input{width:50px;text-align:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--viewer-fg);border-radius:6px;padding:4px 2px;font-size:13px}
+.v-zoom{font-variant-numeric:tabular-nums;font-size:13px;min-width:46px;text-align:center}
+.v-stage{flex:1;min-height:0;overflow:auto;position:relative;touch-action:pan-x pan-y;overscroll-behavior:contain}
+.v-stage.grab{cursor:grab}
+.v-inner{min-width:100%;min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:12px}
+.v-inner canvas{display:block;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.45);transform-origin:center center}
+.v-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;flex-direction:column;gap:10px;background:var(--viewer-bg);font-size:14.5px}
+.v-msg .prog{width:min(360px,80%);height:6px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
+.v-msg .prog span{display:block;height:100%;background:#5EC4C6;width:0}
+.v-msg a,.v-msg .vbtn{color:#8FE0E2}
+.v-sep{width:1px;height:22px;background:rgba(255,255,255,.15);margin:0 2px}
+
+.ulog{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));width:min(420px,calc(100vw - 24px));max-height:50vh;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:45;display:flex;flex-direction:column;overflow:hidden}
+.ulog-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--line);font-weight:700;font-family:var(--font-display)}
+.ulog-rows{overflow:auto;padding:6px 10px;display:flex;flex-direction:column;gap:6px}
+.urow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:13px;padding:6px 8px;border-radius:7px;background:var(--surface-2)}
+.urow .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.urow .s{grid-column:1 / -1;color:var(--muted)}
+.urow .p{grid-column:1 / -1;height:4px;border-radius:3px;background:var(--line);overflow:hidden}
+.urow .p span{display:block;height:100%;background:var(--accent);width:0}
+.urow.ok .s{color:var(--ok)} .urow.bad .s{color:var(--bad)}
+.urow .z{color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(10,15,22,.5);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-card{background:var(--surface);border-radius:14px;padding:18px;max-width:420px;width:100%;box-shadow:var(--shadow)}
+.modal-card h3{font-size:18px;margin-bottom:6px}
+.modal-card p{margin:0 0 14px;color:var(--muted)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px}
+.toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:max(18px,env(safe-area-inset-bottom,0px));z-index:70;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(520px,calc(100vw - 32px))}
+.toast{background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:9px;font-size:14px;font-weight:600;box-shadow:var(--shadow);max-width:100%;pointer-events:auto}
+.toast.bad{background:var(--bad);color:#fff}
+.toast button{margin-left:10px;background:rgba(255,255,255,.2);border:0;color:inherit;border-radius:6px;padding:3px 8px;font-weight:700}
+
+@media (max-width:520px){
+  .brand-name{display:none}
+}
+@media (max-width:900px){
+  .papan-grid{grid-template-columns:minmax(0,1fr)}
+  .rail{position:static}
+  .rail-toggle{display:inline-flex}
+  .filters{display:none;margin-top:8px}
+  .filters.open{display:flex}
+  .row-meta{display:none}
+  .rekod-wrap.split{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .brand-name{font-size:17px}
+  .bar-status .chip{max-width:46vw;overflow:hidden;text-overflow:ellipsis;display:inline-block;line-height:1.5}
+  .bar-actions .btn-text{display:none}
+  .bar-status .chip-save{display:none}
+  .tile .v{font-size:22px}
+  .view{padding-block:12px 40px}
+  .group{padding:12px}
+  .btn{padding:7px 10px}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-inner">
+    <button id="btnHome" class="brand" title="Papan pemuka">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="4" width="26" height="24" rx="4" fill="var(--accent)"/><rect x="8" y="10" width="16" height="2.4" rx="1.2" fill="var(--accent-ink)"/><rect x="8" y="15" width="16" height="2.4" rx="1.2" fill="var(--accent-ink)" opacity=".8"/><rect x="8" y="20" width="10" height="2.4" rx="1.2" fill="var(--accent-ink)" opacity=".6"/></svg>
+      <span class="brand-name">Repositori SLR</span>
+    </button>
+    <div class="bar-status">
+      <span id="connChip" class="chip busy">Menyambung</span>
+      <button id="driveChip" class="chip warn" hidden title="Sambung Google Drive">Drive belum disambung</button>
+      <span id="saveChip" class="chip chip-save" hidden></span>
+    </div>
+    <div class="bar-actions" id="barActions" hidden>
+      <button id="btnNew" class="btn btn-primary" title="Artikel baharu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="btn-text">Artikel</span></button>
+      <label class="btn" id="lblUploadTop" title="Muat naik PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg><span class="btn-text">Muat naik PDF</span><input type="file" id="fileTop" accept=".pdf,application/pdf" multiple hidden></label>
+      <div class="menu-wrap">
+        <button id="btnMore" class="btn" title="Menu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+        <div id="moreMenu" class="menu" hidden>
+          <div class="menu-note" id="menuEmail"></div>
+          <button data-x="csv-semua">Eksport CSV semua artikel</button>
+          <button data-x="csv-tapisan">Eksport CSV hasil tapisan</button>
+          <button data-x="json-semua">Eksport JSON lengkap (sandaran)</button>
+          <button data-x="drive">Sambung semula Google Drive</button>
+          <button data-x="pasang" id="btnInstall" hidden>Pasang sebagai aplikasi</button>
+          <button data-x="keluar">Log keluar</button>
+          <div class="menu-note" id="menuVersi"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<main id="setup" class="view narrow" hidden>
+  <div class="card">
+    <h1>Persediaan belum lengkap</h1>
+    <p>Fail <code>config.js</code> masih mengandungi nilai sementara. Isi nilai berikut, kemudian muat semula halaman.</p>
+    <ol id="setupList"></ol>
+  </div>
+</main>
+
+<main id="login" class="view narrow" hidden>
+  <div class="card">
+    <h1>Log masuk</h1>
+    <p>Gunakan akaun Firebase yang sama seperti MyKajian.</p>
+    <form id="loginForm" autocomplete="on">
+      <div class="field" style="margin-bottom:10px"><label for="loginEmail">E-mel</label><input id="loginEmail" type="email" autocomplete="username" required></div>
+      <div class="field" style="margin-bottom:12px"><label for="loginPw">Kata laluan</label><input id="loginPw" type="password" autocomplete="current-password" required></div>
+      <div id="loginErr" class="err"></div>
+      <button id="loginBtn" class="btn btn-primary" type="submit" style="margin-top:8px;width:100%">Log masuk</button>
+    </form>
+  </div>
+</main>
+
+<main id="papan" class="view" hidden>
+  <section class="stats" id="stats"></section>
+  <div class="papan-grid">
+    <aside class="rail">
+      <button id="btnFilterToggle" class="btn rail-toggle">Tapisan dan carian</button>
+      <form id="filters" class="filters" autocomplete="off">
+        <h2>Tapisan</h2>
+        <div class="field"><label for="q">Carian</label><input id="q" type="search" placeholder="Penulis, tajuk, DOI, konstruk, dapatan"></div>
+        <div class="field"><label for="fTema">Tema utama</label><select id="fTema"><option value="">Semua</option><option>Kepimpinan Digital</option><option>Pengurusan Pengetahuan Organisasi</option><option>Kompetensi Digital Guru</option><option>Lain-lain / Konteks Umum</option></select></div>
+        <div class="field"><label for="fRel">Relevansi</label><select id="fRel"><option value="">Semua</option><option>Tinggi</option><option>Sederhana-Tinggi</option><option>Sederhana</option><option>Rendah</option></select></div>
+        <div class="field"><label for="fStatus">Status bacaan</label><select id="fStatus"><option value="">Semua</option><option>Belum dibaca</option><option>Sedang dibaca</option><option>Selesai</option></select></div>
+        <div class="field"><label for="fPeringkat">Peringkat pendidikan</label><select id="fPeringkat"><option value="">Semua</option><option>Sekolah Rendah</option><option>Sekolah Menengah</option><option>Pengajian Tinggi</option><option>Bukan Pendidikan</option><option>Pelbagai peringkat</option></select></div>
+        <div class="field"><label for="fJenis">Jenis sumber</label><select id="fJenis"><option value="">Semua</option><option>Empirikal</option><option>Ulasan sistematik</option><option>Ulasan skop</option><option>Meta-analisis</option><option>Konseptual</option><option>Laporan dasar</option><option>Instrumen dan pengesahan</option><option>Lain-lain</option></select></div>
+        <div class="field"><label for="fNegara">Negara</label><input id="fNegara" list="negaraList" placeholder="Semua"><datalist id="negaraList"></datalist></div>
+        <div class="field"><label for="fBab">Dipetik dalam bab</label><select id="fBab"><option value="">Semua</option><option>Bab 1</option><option>Bab 2</option><option>Bab 3</option><option>Bab 4</option><option>Bab 5</option></select></div>
+        <div class="field"><label for="fPadanan">Padanan laluan</label><select id="fPadanan"><option value="">Semua</option><option value="kd">KD ke PPO = YA</option><option value="ppo">PPO ke KDG = YA</option><option value="kedua">Kedua-dua = YA</option></select></div>
+        <div class="field"><span class="lbl">Tahun</span><div class="two"><input id="fTahunDari" type="number" inputmode="numeric" placeholder="Dari" min="1900" max="2100"><input id="fTahunHingga" type="number" inputmode="numeric" placeholder="Hingga" min="1900" max="2100"></div></div>
+        <div class="field"><label for="fPdf">Fail PDF</label><select id="fPdf"><option value="">Semua</option><option value="ada">Ada PDF</option><option value="tiada">Tiada PDF</option></select></div>
+        <button type="button" id="btnReset" class="btn">Set semula tapisan</button>
+      </form>
+    </aside>
+    <section class="hasil">
+      <div class="hasil-head">
+        <span class="count" id="hasilCount">Memuatkan</span>
+        <label>Susun <select id="sort"><option value="dikemaskini">Terkini dikemas kini</option><option value="bil">Bil. menaik</option><option value="bil-desc">Bil. menurun</option><option value="tahun">Tahun terbaharu</option><option value="penulis">Penulis A hingga Z</option><option value="relevansi">Relevansi tertinggi</option></select></label>
+      </div>
+      <div id="list" class="list"></div>
+    </section>
+  </div>
+  <div id="dropHint" class="drop-hint" hidden>Lepaskan fail PDF untuk memuat naik</div>
+</main>
+
+<main id="rekod" class="view" hidden>
+  <div id="rekodWrap" class="rekod-wrap">
+    <section class="rekod-form">
+      <div class="rekod-head">
+        <div class="line1">
+          <button id="btnBack" class="btn btn-sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Papan</button>
+          <div class="ctl">
+            <label for="f_bil" class="sr">Bil.</label><span class="bil">Bil.</span><input id="f_bil" type="number" inputmode="numeric" min="1">
+            <label for="f_status" class="sr">Status</label>
+            <select id="f_status"><option>Belum dibaca</option><option>Sedang dibaca</option><option>Selesai</option></select>
+          </div>
+          <span class="spacer"></span>
+          <button id="btnViewPdf" class="btn btn-sm btn-primary" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4zM8 18v2h8v-2"/></svg>Lihat PDF</button>
+          <button id="btnSplit" class="btn btn-sm" hidden title="Baca PDF di sebelah borang"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg>Pandangan berpecah</button>
+        </div>
+        <h1 id="rekodTitle">Artikel</h1>
+        <div class="save-row"><span id="saveLine">Perubahan disimpan secara automatik.</span></div>
+        <div id="dupLine" class="dup" hidden></div>
+      </div>
+      <nav class="sec-nav" id="secNav">
+        <a href="#secA" data-sec="secA">A Identiti</a><a href="#secB" data-sec="secB">B Isi kajian</a><a href="#secC" data-sec="secC">C Kaedah</a><a href="#secD" data-sec="secD">D Dapatan</a><a href="#secE" data-sec="secE">E Penilaian</a><a href="#secF" data-sec="secF">F Kaitan</a><a href="#secPDF" data-sec="secPDF">Fail PDF</a>
+      </nav>
+      <details class="guide">
+        <summary>Peraturan pengisian ringkas</summary>
+        <ul>
+          <li>Salin tepat tiga perkara sahaja: rujukan, angka statistik dan petikan definisi. Selebihnya tulis dalam ayat sendiri.</li>
+          <li>Tulis "Tiada" apabila artikel tidak melaporkan sesuatu butiran. Jangan isi dengan andaian.</li>
+          <li>Catat muka surat bagi setiap angka, definisi dan batasan.</li>
+          <li>Mulakan dengan abstrak dan kesimpulan. Jika relevansi Rendah, isi medan 1, 2 dan 11 hingga 13 sahaja.</li>
+        </ul>
+      </details>
+      <div id="form"></div>
+      <section id="secPDF" class="group">
+        <h2>Fail PDF <small>Disimpan dalam Google Drive</small></h2>
+        <div id="fileList" class="files"></div>
+        <div id="uploadBox" class="upload-box">
+          <div>Seret fail PDF ke sini, atau</div>
+          <label class="btn btn-sm">Pilih fail PDF<input type="file" id="fileRekod" accept=".pdf,application/pdf" multiple hidden></label>
+          <div class="help" style="margin-top:6px">Fail disimpan dalam folder "Repositori SLR" di Google Drive Prof Dr dan dibaca dari semua peranti.</div>
+        </div>
+        <div class="fgrid" style="margin-top:12px">
+          <div class="field wide"><label for="f_pautan">Pautan luar (OneDrive, laman penerbit atau pautan lain)</label><input id="f_pautan" type="url" placeholder="https://"><div class="help">Untuk fail yang disimpan di tempat lain. <a id="pautanOpen" href="#" target="_blank" rel="noopener" hidden>Buka pautan</a></div></div>
+        </div>
+      </section>
+      <div class="danger-zone"><button id="btnDelete" class="btn btn-danger">Padam artikel ini</button></div>
+    </section>
+    <aside id="viewerPane" class="viewer-pane" hidden></aside>
+  </div>
+</main>
+
+<div id="viewer" class="viewer" hidden>
+  <div class="v-bar">
+    <button id="vClose" class="vbtn" title="Tutup (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="v-title"><span id="vTitle">PDF</span><small id="vSub"></small></div>
+    <a id="vOpen" class="vbtn" href="#" target="_blank" rel="noopener" title="Buka di Google Drive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M19 14v6H4V5h6"/></svg></a>
+    <button id="vDock" class="vbtn" title="Letak di sebelah borang" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg></button>
+    <button id="vFull" class="vbtn" title="Skrin penuh (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+  <div id="stage" class="v-stage">
+    <div class="v-inner" id="stageInner"><canvas id="pdfCanvas" width="1" height="1"></canvas></div>
+    <div id="vMsg" class="v-msg" hidden></div>
+  </div>
+  <div class="v-foot">
+    <button id="vPrev" class="vbtn" title="Muka sebelumnya (kiri)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <span class="v-page"><input id="vPageInput" type="number" inputmode="numeric" min="1" value="1" aria-label="Muka surat"> / <span id="vPageTotal">0</span></span>
+    <button id="vNext" class="vbtn" title="Muka seterusnya (kanan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    <span class="v-sep"></span>
+    <button id="vZoomOut" class="vbtn" title="Zum keluar (-)">&minus;</button>
+    <span id="vZoom" class="v-zoom">100%</span>
+    <button id="vZoomIn" class="vbtn" title="Zum masuk (+)">+</button>
+    <button id="vFitW" class="vbtn" title="Muat lebar">Lebar</button>
+    <button id="vFitP" class="vbtn" title="Muat satu muka">Muka</button>
+    <button id="vRotate" class="vbtn" title="Putar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg></button>
+  </div>
+</div>
+
+<div id="uploadLog" class="ulog" hidden>
+  <div class="ulog-head"><span>Muat naik</span><button id="btnCloseLog" class="btn btn-sm">Tutup</button></div>
+  <div id="ulogRows" class="ulog-rows"></div>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle"></h3>
+    <p id="modalText"></p>
+    <div class="modal-actions"><button id="modalCancel" class="btn">Batal</button><button id="modalOk" class="btn btn-danger">Padam</button></div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script src="./config.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

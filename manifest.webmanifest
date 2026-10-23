@@ -1,0 +1,17 @@
+{
+  "name": "Repositori SLR",
+  "short_name": "Repositori SLR",
+  "description": "Repositori artikel SLR: 13 medan ekstrak, PDF dalam Google Drive, disegerakkan ke semua peranti.",
+  "lang": "ms",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F6F8",
+  "theme_color": "#0F6D70",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
