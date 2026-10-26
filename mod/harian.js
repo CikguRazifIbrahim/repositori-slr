@@ -5,9 +5,9 @@ export function initHarian(R) {
   const OA = 'https://api.openalex.org/works';
   const TEMA3 = [TEMA[0], TEMA[1], TEMA[2]];
   const VARIAN = {
-    [TEMA[0]]: ['"digital leadership" school principal', '"technology leadership" principal school', '"digital leadership" teachers school', 'principal "digital leadership" competence', '"school leadership" digital transformation teachers', '"digital leadership" headteacher primary school'],
-    [TEMA[1]]: ['"knowledge management" school teachers', '"knowledge sharing" teachers school', '"organizational knowledge" school teachers', '"knowledge management" principal leadership school', '"knowledge sharing behavior" teachers', '"knowledge management practices" schools'],
-    [TEMA[2]]: ['"digital competence" teachers primary school', '"digital competence" teachers DigCompEdu', '"digital competence" teachers school leadership', '"ICT competence" primary school teachers', '"teacher digital competence" professional development', '"digital literacy" teachers primary school']
+    [TEMA[0]]: ['"digital leadership" school principal', '"digital leadership" teachers school', '"digital leadership" education school', '"technology leadership" principal school', '"digital leadership" teachers "professional development"', '"school leadership" digital transformation teachers', 'principal "technology leadership" teachers'],
+    [TEMA[1]]: ['"knowledge management" school teachers', '"knowledge sharing" teachers school', '"knowledge management" schools leadership', '"knowledge creation" school teachers', '"knowledge sharing behavior" teachers', '"knowledge sharing" principal school', '"organizational learning" teachers school knowledge'],
+    [TEMA[2]]: ['"digital competence" teachers primary school', '"digital competence" teachers DigCompEdu', '"teacher digital competence" professional development', '"digital literacy" teachers primary school', '"digital competence" teachers school leadership', '"digital competence" teachers "self-efficacy" school', '"ICT competence" primary school teachers']
   };
   const TOLAK = /\b(TAM|UTAUT2?|technology acceptance model|unified theory of acceptance)\b/i;
   const SELECT = 'id,doi,title,display_name,publication_year,publication_date,authorships,primary_location,best_oa_location,open_access,cited_by_count,abstract_inverted_index,type,is_retracted';
@@ -56,11 +56,25 @@ export function initHarian(R) {
     return { oaId: w.id || '', doi: R.normDoi(w.doi || ''), tajuk: (w.title || w.display_name || '').trim(), penulis: authorsOf(w).slice(0, 25), tahun: String(w.publication_year || ''), tarikh: w.publication_date || '',
       jurnal: src.display_name || '', issn: src.issn_l || '', isCore: !!src.is_core, inDoaj: !!src.is_in_doaj, pdfUrl: best.pdf_url || '', oaUrl: oa.oa_url || best.landing_page_url || '', dipetik: Number(w.cited_by_count) || 0, abstrak: abs.slice(0, 1800) };
   }
-  function skor(it, idx) {
+  const EDU = /\b(schools?|teachers?|principals?|head ?teachers?|headmasters?|educat\w*|sekolah|guru|classrooms?|students?|pupils?|pedagog\w*)\b/i;
+  const HEALTH = /\b(diseases?|patients?|clinical|nurs(?:e|es|ing)|hospitals?|medical|medicine|pharmac\w*|surgery|cancer|epidemiolog\w*)\b/i;
+  function phraseRx(variant) {
+    const m = /"([^"]+)"/.exec(variant); if (!m) return null;
+    const words = m[1].trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/[sz]ation/g, '[sz]ation').replace(/i[sz]e/g, 'i[sz]e'));
+    return new RegExp('\\b' + words.join('[\\s-]+') + '(?:s|es)?\\b', 'i');
+  }
+  function skor(it, idx, variant) {
+    const tajuk = it.tajuk || ''; const teks = tajuk + ' ' + it.abstrak;
+    if (!EDU.test(teks)) return -1;
+    if (TOLAK.test(teks)) return -1;
     let s = 100 - idx * 2; if (it.isCore) s += 15; if (it.inDoaj) s += 8; if (it.pdfUrl) s += 10; s += Math.min(10, Math.log2(it.dipetik + 1) * 2);
-    const t = (it.tajuk + ' ' + it.abstrak).toLowerCase();
-    if (/\b(school|teacher|principal|headteacher|sekolah|guru)/.test(t)) s += 6; if (/malaysia/.test(t)) s += 5; if (/\b(primary|elementary)\b/.test(t)) s += 3;
-    if (TOLAK.test(it.tajuk + ' ' + it.abstrak)) s -= 100;
+    const rx = phraseRx(variant);
+    if (rx) { if (rx.test(tajuk)) s += 18; else if (rx.test(it.abstrak)) s += 4; else s -= 25; }
+    if (EDU.test(tajuk)) s += 8;
+    if (/malaysia/i.test(teks)) s += 5; if (/\b(primary|elementary)\b/i.test(teks)) s += 3;
+    if (/\bmediat/i.test(teks)) s += 4; if (/structural equation|\bSEM\b|PLS-SEM/i.test(teks)) s += 3;
+    if (HEALTH.test(teks)) s -= 30;
+    if (!it.abstrak) s -= 10;
     return s;
   }
   async function loadSeen() {
@@ -78,7 +92,7 @@ export function initHarian(R) {
   function doiKey(d) { return R.normDoi(d).replace(/[./]/g, '_'); }
   function excludedHas(set, doi) { const n = R.normDoi(doi); return set.has(n) || set.has(doiKey(n)); }
   async function oaFetch(filter, key) {
-    const p = new URLSearchParams({ filter, 'per-page': '25', select: SELECT });
+    const p = new URLSearchParams({ filter, 'per-page': '50', select: SELECT });
     if (key) p.set('api_key', key); else if (R.C.ownerEmail) p.set('mailto', R.C.ownerEmail);
     const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 25000);
     try {
@@ -99,7 +113,7 @@ export function initHarian(R) {
         const it = compact(w); if (!it.doi || !it.tajuk || ids.has(it.doi)) return; ids.add(it.doi);
         if (excludedHas(excl, it.doi) || taken.has(it.doi)) return; if (!it.pdfUrl && !it.oaUrl) return;
         const minY = new Date().getFullYear() - 5; if (Number(it.tahun) < minY) return;
-        it.skor = skor(it, i); if (it.skor < 0) return; found.push(it);
+        it.skor = skor(it, i, variant); if (it.skor < 0) return; found.push(it);
       });
       if (found.filter(x => x.pdfUrl).length >= 3) break;
     }
@@ -113,8 +127,9 @@ export function initHarian(R) {
       const meta = await R.db().getMeta(); const key = meta && meta.openalexKey ? String(meta.openalexKey).trim() : '';
       const excl = await excluded(); const taken = new Set(); const items = []; const kueri = {}; const di = dayIndex() + (force ? Math.floor(Math.random() * 6) : 0);
       for (const tema of TEMA3) {
-        const vs = VARIAN[tema]; const variant = vs[di % vs.length]; kueri[tema] = variant;
-        const found = await cariTema(tema, variant, excl, taken, key);
+        const vs = VARIAN[tema]; let variant = vs[di % vs.length]; kueri[tema] = variant;
+        let found = await cariTema(tema, variant, excl, taken, key);
+        for (let k = 1; k <= 2 && !found.length; k++) { variant = vs[(di + k) % vs.length]; kueri[tema] = variant; found = await cariTema(tema, variant, excl, taken, key); }
         if (found.length) { const pick = found[0]; taken.add(pick.doi); pick.tema = tema; pick.dibaca = false; pick.artikelId = null; pick.rujukan = apaRef(pick); pick.alt = found.slice(1, 6).map(a => Object.assign({}, a, { abstrak: a.abstrak.slice(0, 700), tema })); items.push(pick); }
         else items.push({ tema, kosong: true, kueri: variant });
       }

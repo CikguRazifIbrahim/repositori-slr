@@ -698,7 +698,7 @@ async function showDiag() {
 }
 async function showTetapan() {
   const meta = await DB.getMeta(); const cur = meta && meta.openalexKey ? String(meta.openalexKey) : '';
-  const okk = await richModal('Tetapan', `<div class="help">Kunci API OpenAlex (pilihan). Tanpa kunci, carian harian berkongsi had awam dan kadangkala ditolak apabila sibuk. Kunci percuma boleh dibuat di openalex.org (daftar e-mel). Kunci disimpan dalam Firestore dan dikongsi semua peranti.</div><label for="tetKey">Kunci API OpenAlex</label><input id="tetKey" class="modal-in" type="text" autocomplete="off" value="${esc(cur)}" placeholder="kosongkan untuk tidak menggunakan kunci">`, 'Simpan', 'Batal');
+  const okk = await richModal('Tetapan', `<div class="help">Kunci API OpenAlex (disyorkan, percuma). Tanpa kunci, carian harian berkongsi bajet awam kecil (kira-kira 100 carian sehari untuk semua pengguna pada alamat IP yang sama, contohnya rangkaian kampus) dan boleh ditolak dengan ralat 429. Dengan kunci, bajet ialah 1,000 carian sehari untuk Prof Dr sahaja.<br>Cara: buka <a href="https://openalex.org/settings/api" target="_blank" rel="noopener">openalex.org/settings/api</a>, daftar akaun percuma dengan e-mel (30 saat), salin kunci dan tampal di bawah. Kunci disimpan dalam Firestore dan dikongsi semua peranti.</div><label for="tetKey">Kunci API OpenAlex</label><input id="tetKey" class="modal-in" type="text" autocomplete="off" value="${esc(cur)}" placeholder="kosongkan untuk tidak menggunakan kunci">`, 'Simpan', 'Batal');
   if (!okk) return;
   const v = String(richModal.lastValue ?? cur).trim();
   await DB.setMeta({ openalexKey: v }); toast(v ? 'Kunci OpenAlex disimpan' : 'Kunci OpenAlex dibuang');
