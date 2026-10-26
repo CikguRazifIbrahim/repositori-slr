@@ -10,7 +10,8 @@ export function initHarian(R) {
     [TEMA[2]]: ['"digital competence" teachers primary school', '"digital competence" teachers DigCompEdu', '"teacher digital competence" professional development', '"digital literacy" teachers primary school', '"digital competence" teachers school leadership', '"digital competence" teachers "self-efficacy" school', '"ICT competence" primary school teachers']
   };
   const TOLAK = /\b(TAM|UTAUT2?|technology acceptance model|unified theory of acceptance)\b/i;
-  const SELECT = 'id,doi,title,display_name,publication_year,publication_date,authorships,primary_location,best_oa_location,open_access,cited_by_count,abstract_inverted_index,type,is_retracted';
+  const SELECT = 'id,doi,title,display_name,publication_year,publication_date,authorships,primary_location,best_oa_location,open_access,cited_by_count,abstract_inverted_index,type,is_retracted,has_content';
+  const CONTENT = 'https://content.openalex.org/works/';
   const H = { date: todayStr(), doc: null, seen: null, busy: false };
 
   const LKEY = d => 'rslr_cadangan_' + d;
@@ -53,7 +54,7 @@ export function initHarian(R) {
     const src = (w.primary_location && w.primary_location.source) || {};
     const best = w.best_oa_location || {}; const oa = w.open_access || {};
     const abs = abstractOf(w.abstract_inverted_index);
-    return { oaId: w.id || '', doi: R.normDoi(w.doi || ''), tajuk: (w.title || w.display_name || '').trim(), penulis: authorsOf(w).slice(0, 25), tahun: String(w.publication_year || ''), tarikh: w.publication_date || '',
+    return { oaId: String(w.id || '').replace(/^https?:\/\/openalex\.org\//, ''), hasContent: !!(w.has_content && w.has_content.pdf), doi: R.normDoi(w.doi || ''), tajuk: (w.title || w.display_name || '').trim(), penulis: authorsOf(w).slice(0, 25), tahun: String(w.publication_year || ''), tarikh: w.publication_date || '',
       jurnal: src.display_name || '', issn: src.issn_l || '', isCore: !!src.is_core, inDoaj: !!src.is_in_doaj, pdfUrl: best.pdf_url || '', oaUrl: oa.oa_url || best.landing_page_url || '', dipetik: Number(w.cited_by_count) || 0, abstrak: abs.slice(0, 1800) };
   }
   const EDU = /\b(schools?|teachers?|principals?|head ?teachers?|headmasters?|educat\w*|sekolah|guru|classrooms?|students?|pupils?|pedagog\w*)\b/i;
@@ -67,7 +68,7 @@ export function initHarian(R) {
     const tajuk = it.tajuk || ''; const teks = tajuk + ' ' + it.abstrak;
     if (!EDU.test(teks)) return -1;
     if (TOLAK.test(teks)) return -1;
-    let s = 100 - idx * 2; if (it.isCore) s += 15; if (it.inDoaj) s += 8; if (it.pdfUrl) s += 10; s += Math.min(10, Math.log2(it.dipetik + 1) * 2);
+    let s = 100 - idx * 2; if (it.isCore) s += 15; if (it.inDoaj) s += 8; if (it.pdfUrl) s += 10; if (it.hasContent) s += 8; s += Math.min(10, Math.log2(it.dipetik + 1) * 2);
     const rx = phraseRx(variant);
     if (rx) { if (rx.test(tajuk)) s += 18; else if (rx.test(it.abstrak)) s += 4; else s -= 25; }
     if (EDU.test(tajuk)) s += 8;
@@ -171,35 +172,114 @@ export function initHarian(R) {
         <div class="top"><span class="tag tema ${temaClass(it.tema)}"><span>${esc(it.tema)}</span></span><label><input type="checkbox" data-baca="${i}"${it.dibaca ? ' checked' : ''}> Sudah dibaca</label></div>
         <h3>${esc(it.tajuk)}</h3>
         <div class="meta">${esc(penulisRingkas(it.penulis))} (${esc(it.tahun)}). <i>${esc(it.jurnal || 'Jurnal tidak dinyatakan')}</i>${it.issn ? ', ISSN ' + esc(it.issn) : ''}</div>
-        <div class="badges">${it.isCore ? '<span class="tag ok"><span>Jurnal teras (berwasit)</span></span>' : ''}${it.inDoaj ? '<span class="tag"><span>DOAJ</span></span>' : ''}<span class="tag pdf"><span>${it.pdfUrl ? 'PDF terbuka' : 'Akses terbuka'}</span></span><span class="tag"><span>Dipetik ${it.dipetik}</span></span>${it.artikelId ? '<span class="tag s-selesai"><span>Dalam repositori</span></span>' : ''}</div>
+        <div class="badges">${it.isCore ? '<span class="tag ok"><span>Jurnal teras (berwasit)</span></span>' : ''}${it.inDoaj ? '<span class="tag"><span>DOAJ</span></span>' : ''}<span class="tag pdf"><span>${it.pdfUrl ? 'PDF terbuka' : 'Akses terbuka'}</span></span><span class="tag"><span>Dipetik ${it.dipetik}</span></span>${pdfDalamDrive(it) ? '<span class="tag s-selesai"><span>PDF dalam Drive</span></span>' : it.artikelId && R.S.docs.has(it.artikelId) ? '<span class="tag s-selesai"><span>Dalam repositori</span></span>' : ''}${it.hasContent ? '<span class="tag"><span>Salinan OpenAlex</span></span>' : ''}</div>
         <div class="abs" data-abs="${i}">${esc(it.abstrak || 'Abstrak tidak tersedia dalam OpenAlex.')}</div>
         <div class="why">Rujukan: ${esc(it.rujukan || apaRef(it))}</div>
+        ${it.manual ? `<div class="manual"><b>Langkah manual.</b> ${esc(it.manual)}. Klik <b>Buka PDF</b>, simpan fail itu, kemudian pilih fail yang dimuat turun di sini (atau seret ke kad ini; di Android, buka fail dan Kongsi ke aplikasi Repositori SLR). Fail terus disimpan dalam Google Drive dan dipautkan ke rekod.<div class="acts" style="margin-top:6px">${it.pdfUrl ? `<a class="btn btn-sm btn-primary" href="${esc(it.pdfUrl)}" target="_blank" rel="noopener">Buka PDF</a>` : `<a class="btn btn-sm btn-primary" href="${esc(it.oaUrl)}" target="_blank" rel="noopener">Buka versi terbuka</a>`}<label class="btn btn-sm">Pilih fail PDF<input type="file" accept=".pdf,application/pdf" hidden data-pickfile="${i}"></label></div></div>` : ''}
         <div class="acts">
-          ${it.pdfUrl ? `<button class="btn btn-sm btn-primary" data-dl="${i}">Muat turun PDF</button><button class="btn btn-sm" data-baca-sini="${i}">Baca di sini</button>` : `<a class="btn btn-sm btn-primary" href="${esc(it.oaUrl)}" target="_blank" rel="noopener">Buka versi terbuka</a>`}
+          ${pdfDalamDrive(it) ? `<button class="btn btn-sm btn-primary" data-baca-drive="${i}">Baca</button><button class="btn btn-sm" data-dl-drive="${i}">Muat turun</button>` : `<button class="btn btn-sm btn-primary" data-simpan="${i}" title="Simpan PDF ke Google Drive dan pautkan ke rekod">Simpan ke Drive</button>${it.pdfUrl ? `<button class="btn btn-sm" data-dl="${i}" title="Salinan ke peranti ini sahaja">Muat turun PDF</button><button class="btn btn-sm" data-baca-sini="${i}">Baca di sini</button>` : `<a class="btn btn-sm" href="${esc(it.oaUrl)}" target="_blank" rel="noopener">Buka versi terbuka</a>`}`}
           <a class="btn btn-sm" href="https://doi.org/${esc(it.doi)}" target="_blank" rel="noopener">DOI</a>
           <a class="btn btn-sm" href="${esc(sjr)}" target="_blank" rel="noopener" title="Semak pengindeksan Scopus dan kuartil SJR">Semak SJR</a>
-          ${it.artikelId ? `<button class="btn btn-sm" data-buka="${i}">Buka rekod</button>` : `<button class="btn btn-sm" data-tambah="${i}">Tambah ke repositori</button>`}
+          ${it.artikelId && R.S.docs.has(it.artikelId) ? `<button class="btn btn-sm" data-buka="${i}">Buka rekod</button>` : `<button class="btn btn-sm" data-tambah="${i}">Tambah ke repositori</button>`}
           ${(it.alt || []).length ? `<button class="btn btn-sm" data-tukar="${i}" title="Ganti dengan calon seterusnya">Tukar</button>` : ''}
         </div></article>`;
     }).join('');
     badge();
   }
   async function simpan() { try { await saveDoc(H.doc, true); } catch (e) { toast('Perubahan tidak dapat disimpan: ' + (e.message || e.code || ''), true); } }
-  async function dlPdf(it) {
-    const name = ((it.penulis[0] || 'artikel').split(' ').pop() + '_' + it.tahun + '_' + it.tajuk.slice(0, 50)).replace(/[^\wÀ-ɏ-]+/g, '_') + '.pdf';
-    toast('Memuat turun PDF daripada penerbit');
-    try { const r = await fetch(it.pdfUrl, { mode: 'cors', credentials: 'omit' }); if (!r.ok) throw 0; const b = await r.blob(); if (b.size < 1000) throw 0; R.saveFile(name, b, 'application/pdf'); toast('PDF dimuat turun: ' + name); }
-    catch (e) { window.open(it.pdfUrl, '_blank', 'noopener'); toast('Penerbit tidak membenarkan muat turun terus; PDF dibuka dalam tab baharu.'); }
+  async function apiKey() { try { const m = await R.db().getMeta(); return m && m.openalexKey ? String(m.openalexKey).trim() : ''; } catch (e) { return ''; } }
+  function namaFail(it) { return (((it.penulis || [])[0] || 'artikel').split(' ').pop() + '_' + (it.tahun || '') + '_' + (it.tajuk || '').slice(0, 60)).replace(/[^\wÀ-ɏ-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') + '.pdf'; }
+  // Rantaian satu sumber: salinan OpenAlex (CORS dibenarkan) -> URL penerbit -> manual (Buka PDF, pilih fail, seret, atau kongsi dari Android)
+  async function ambilPdf(it, onStatus) {
+    const key = await apiKey(); const tries = [];
+    if (it.hasContent && it.oaId) tries.push({ url: CONTENT + it.oaId + '.pdf' + (key ? '?api_key=' + encodeURIComponent(key) : ''), sumber: 'OpenAlex' });
+    if (it.pdfUrl) tries.push({ url: it.pdfUrl, sumber: 'penerbit' });
+    let last = { code: 'tiada' };
+    for (const t of tries) {
+      if (onStatus) onStatus('Mengambil PDF daripada ' + t.sumber);
+      try {
+        const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 60000);
+        let r; try { r = await fetch(t.url, { mode: 'cors', credentials: 'omit', signal: ctl.signal }); } finally { clearTimeout(tm); }
+        if (r.status === 429) { last = { code: 'kuota', sumber: t.sumber }; continue; }
+        if (!r.ok) { last = { code: 'http', status: r.status, sumber: t.sumber }; continue; }
+        const buf = await r.arrayBuffer();
+        const head = new TextDecoder('latin1').decode(new Uint8Array(buf.slice(0, 1024)));
+        if (!head.includes('%PDF')) { last = { code: 'not_pdf', sumber: t.sumber }; continue; }
+        return { buf, sumber: t.sumber };
+      } catch (e) { last = { code: e && e.name === 'AbortError' ? 'masa' : 'cors', sumber: t.sumber }; }
+    }
+    throw last;
+  }
+  function ambilMsg(e) {
+    const c = e && e.code;
+    if (c === 'kuota') return 'bajet OpenAlex hari ini habis (tetapkan kunci API dalam Tetapan)';
+    if (c === 'cors') return 'penerbit menyekat muat turun automatik dari aplikasi';
+    if (c === 'not_pdf') return 'pautan penerbit memulangkan halaman web, bukan fail PDF';
+    if (c === 'http') return 'pelayan menolak permintaan (' + e.status + ')';
+    if (c === 'masa') return 'tamat masa menunggu penerbit';
+    return 'tiada pautan PDF';
+  }
+  async function dlPdf(it, i) {
+    setBusy(i, 'Mengambil PDF');
+    try { const { buf, sumber } = await ambilPdf(it, t => setBusy(i, t)); R.saveFile(namaFail(it), buf, 'application/pdf'); toast('PDF dimuat turun ke peranti ini (sumber: ' + sumber + ')'); }
+    catch (e) { if (it.pdfUrl) window.open(it.pdfUrl, '_blank', 'noopener'); toast('Muat turun automatik gagal: ' + ambilMsg(e) + (it.pdfUrl ? '. PDF dibuka dalam tab baharu.' : ''), true); }
+    finally { setBusy(i, null); }
+  }
+  function setBusy(i, text) { const el = $(`#picks .pick[data-i="${i}"] [data-simpan]`); if (!el) return; if (text) { el.disabled = true; el.textContent = text; } else { el.disabled = false; el.textContent = 'Simpan ke Drive'; } }
+  function pdfDalamDrive(it) { const d = it.artikelId ? R.S.docs.get(it.artikelId) : null; return !!(d && (d.fail || []).length); }
+  // Simpan ke Drive: PDF dimasukkan ke folder Google Drive dan dipautkan ke rekod repositori, lalu tersedia di semua peranti.
+  async function simpanKeDrive(i) {
+    const it = H.doc.items[i]; if (!it || it.kosong) return;
+    if (!R.drive().hasToken()) { const ok = await R.ensureDrive(true); if (!ok) return; }
+    setBusy(i, 'Mengambil PDF');
+    try {
+      const { buf, sumber } = await ambilPdf(it, t => setBusy(i, t));
+      await intakeFile(it, new File([buf], namaFail(it), { type: 'application/pdf' }), sumber);
+    } catch (e) {
+      it.manual = ambilMsg(e); setBusy(i, null); render();
+      toast('Muat turun automatik gagal: ' + ambilMsg(e) + '. Gunakan langkah manual pada kad.', true);
+    }
+  }
+  async function intakeFile(it, file, sumber) {
+    if (!it.artikelId || !R.S.docs.has(it.artikelId)) it.artikelId = tambah(it);
+    await R.uploadFiles([file], it.artikelId);
+    const ok = pdfDalamDrive(it);
+    if (ok) { it.manual = null; it.pdfDrive = true; }
+    await simpan(); render();
+    if (ok) toast(`PDF disimpan dalam Google Drive dan dipautkan ke rekod Bil. ${(R.S.docs.get(it.artikelId) || {}).bil || ''}${sumber ? ' (sumber: ' + sumber + ')' : ''}`, false, { label: 'Buka rekod', fn: () => R.openRecord(it.artikelId) });
+    return ok;
+  }
+  async function intake(i, files) {
+    const it = H.doc && H.doc.items[i]; if (!it || it.kosong) return false;
+    const f = Array.from(files || []).find(x => /\.pdf$/i.test(x.name) || x.type === 'application/pdf'); if (!f) { toast('Pilih fail PDF', true); return false; }
+    return intakeFile(it, f, 'fail yang dipilih');
+  }
+  // Padankan fail yang dimuat naik (DOI dikesan daripada PDF) dengan cadangan hari ini.
+  async function linkByDoi(articleId, doi) {
+    const n = R.normDoi(doi); if (!n || !H.doc) return false;
+    const it = H.doc.items.find(x => !x.kosong && x.doi === n); if (!it) return false;
+    it.artikelId = articleId; it.manual = null;
+    const d = R.S.docs.get(articleId) || {}; const patch = {};
+    const want = { tajuk: it.tajuk, penulis: penulisRingkas(it.penulis), tahun: it.tahun, rujukan: it.rujukan || apaRef(it), jenis: 'Artikel jurnal', tema: it.tema, pautan: it.pdfUrl || it.oaUrl, indeks: it.isCore ? 'Jurnal teras CWTS (semak Scopus/WoS melalui SJR)' : it.inDoaj ? 'DOAJ (semak Scopus/WoS)' : '' };
+    Object.keys(want).forEach(k => { if (want[k] && !(d[k] && String(d[k]).trim())) patch[k] = want[k]; });
+    if (!d.catatan) patch.catatan = 'Dicadangkan oleh Cadangan Harian pada ' + H.date + '.' + (it.jurnal ? ' Jurnal: ' + it.jurnal + '.' : '');
+    if (Object.keys(patch).length) { try { await R.writeNow(articleId, patch); } catch (e) {} }
+    await simpan(); render(); toast('PDF dipadankan dengan cadangan hari ini: ' + it.tema);
+    return true;
   }
   function tambah(it) {
     const extra = { tajuk: it.tajuk, penulis: penulisRingkas(it.penulis), tahun: it.tahun, doi: it.doi, rujukan: it.rujukan || apaRef(it), jenis: 'Artikel jurnal', indeks: it.isCore ? 'Jurnal teras CWTS (semak Scopus/WoS melalui SJR)' : it.inDoaj ? 'DOAJ (semak Scopus/WoS)' : '', tema: it.tema, pautan: it.pdfUrl || it.oaUrl, status: 'Belum dibaca', catatan: 'Dicadangkan oleh Cadangan Harian pada ' + H.date + '.' + (it.jurnal ? ' Jurnal: ' + it.jurnal + '.' : '') };
     const id = R.createArticle(extra); R.renderList(); return id;
   }
   $('#picks').addEventListener('click', async e => {
-    const b = e.target.closest('[data-dl],[data-baca-sini],[data-tambah],[data-buka],[data-tukar],[data-abs]'); if (!b || !H.doc) return;
-    const it = H.doc.items[+(b.dataset.dl ?? b.dataset.bacaSini ?? b.dataset.tambah ?? b.dataset.buka ?? b.dataset.tukar ?? b.dataset.abs)]; if (!it) return;
+    const b = e.target.closest('[data-dl],[data-baca-sini],[data-tambah],[data-buka],[data-tukar],[data-abs],[data-simpan],[data-baca-drive],[data-dl-drive]'); if (!b || !H.doc) return;
+    const i = +(b.dataset.dl ?? b.dataset.bacaSini ?? b.dataset.tambah ?? b.dataset.buka ?? b.dataset.tukar ?? b.dataset.abs ?? b.dataset.simpan ?? b.dataset.bacaDrive ?? b.dataset.dlDrive);
+    const it = H.doc.items[i]; if (!it) return;
     if (b.dataset.abs !== undefined) { b.classList.toggle('open'); return; }
-    if (b.dataset.dl !== undefined) dlPdf(it);
+    if (b.dataset.simpan !== undefined) simpanKeDrive(i);
+    else if (b.dataset.bacaDrive !== undefined) R.openFlip(it.artikelId, 0);
+    else if (b.dataset.dlDrive !== undefined) R.downloadPdf(it.artikelId, 0);
+    else if (b.dataset.dl !== undefined) dlPdf(it, i);
     else if (b.dataset.bacaSini !== undefined) R.Flip.open({ title: penulisRingkas(it.penulis) + ' (' + it.tahun + ')', sub: it.tajuk, source: { kind: 'url', url: it.pdfUrl }, dl: it.pdfUrl, note: 'Dibaca terus daripada penerbit. Tambah ke repositori dan muat naik PDF untuk simpanan kekal.' });
     else if (b.dataset.tambah !== undefined) { it.artikelId = tambah(it); await simpan(); render(); toast('Rekod Bil. ' + ((R.S.docs.get(it.artikelId) || {}).bil || '') + ' dicipta', false, { label: 'Buka', fn: () => R.openRecord(it.artikelId) }); }
     else if (b.dataset.buka !== undefined) R.openRecord(it.artikelId);
@@ -210,9 +290,11 @@ export function initHarian(R) {
       render();
     }
   });
-  $('#picks').addEventListener('change', async e => { const c = e.target.closest('[data-baca]'); if (!c || !H.doc) return; const it = H.doc.items[+c.dataset.baca]; if (!it) return; it.dibaca = c.checked; await simpan(); render(); });
+  $('#picks').addEventListener('change', async e => {
+    const pf = e.target.closest('[data-pickfile]'); if (pf) { const files = Array.from(pf.files || []); pf.value = ''; intake(+pf.dataset.pickfile, files); return; }
+    const c = e.target.closest('[data-baca]'); if (!c || !H.doc) return; const it = H.doc.items[+c.dataset.baca]; if (!it) return; it.dibaca = c.checked; await simpan(); render(); });
   $('#btnHarianCari').addEventListener('click', () => { H.date = todayStr(); cari(true); });
   $('#harianTarikh').addEventListener('change', e => load(e.target.value, false));
 
-  return { load, cari, loadDates, badge, todayStr, state: H };
+  return { load, cari, loadDates, badge, todayStr, intake, linkByDoi, render, state: H };
 }

@@ -1,6 +1,6 @@
 /* Service worker Repositori SLR: cache cangkerang aplikasi supaya ia boleh dipasang dan dibuka pantas.
    Permintaan ke Google (Firestore, Drive, GIS) tidak pernah dicache. */
-const VERSION = 'rslr-v1.1.0';
+const VERSION = 'rslr-v1.2.0';
 const CACHE = 'rslr-' + VERSION;
 const SHELL = [
   './', './index.html', './app.js', './config.js', './manifest.webmanifest',
@@ -30,6 +30,19 @@ self.addEventListener('message', event => {
 
 self.addEventListener('fetch', event => {
   const req = event.request;
+  // Web Share Target: fail PDF yang dikongsi ke aplikasi diletakkan dalam cache, kemudian aplikasi memuat naiknya ke Google Drive.
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/kongsi')) {
+    event.respondWith((async () => {
+      try {
+        const fd = await req.formData(); const files = fd.getAll('fail').filter(f => f && typeof f === 'object' && f.size);
+        const cache = await caches.open('rslr-kongsi');
+        let n = 0;
+        for (const f of files) { await cache.put(new Request('./kongsi/' + Date.now() + '_' + (n++) + '.pdf'), new Response(f, { headers: { 'content-type': 'application/pdf', 'x-nama': encodeURIComponent(f.name || 'kongsi.pdf') } })); }
+      } catch (e) {}
+      return Response.redirect(new URL('./?kongsi=1', self.registration.scope).href, 303);
+    })());
+    return;
+  }
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;

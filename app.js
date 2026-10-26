@@ -4,7 +4,7 @@
 import { initFlip } from './mod/flip.js';
 import { initHarian } from './mod/harian.js';
 import { initPeta } from './mod/peta.js';
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -744,9 +744,10 @@ async function uploadOne(file, articleId) {
       const extra = { fail: [entry], status: 'Belum dibaca' };
       if (meta) { extra.tajuk = meta.title || stripExt(file.name); if (meta.doi) extra.doi = meta.doi; if (meta.year) extra.tahun = meta.year; } else extra.tajuk = stripExt(file.name);
       articleId = createArticle(extra);
+      if (meta && meta.doi) { try { await Harian.linkByDoi(articleId, meta.doi); } catch (e) {} }
     }
     row.ok('Selesai' + (meta && meta.doi ? ', DOI dikesan' : '') + '. Bil. ' + ((S.docs.get(articleId) || {}).bil || ''));
-    renderList();
+    renderList(); if (S.view === 'harian') Harian.render();
   } catch (e) {
     row.fail('Fail dimuat naik ke Drive tetapi rekod gagal disimpan (' + dbMsg(e) + ').');
   }
@@ -1010,15 +1011,19 @@ $('#filters').addEventListener('submit', e => e.preventDefault());
 $('#btnReset').addEventListener('click', resetFilters);
 $('#sort').addEventListener('change', readFilters);
 let dragDepth = 0;
-document.addEventListener('dragenter', e => { if (!hasFiles(e) || !S.user) return; dragDepth++; if (S.view === 'papan') $('#dropHint').hidden = false; else $('#uploadBox').classList.add('over'); });
-document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) { $('#dropHint').hidden = true; $('#uploadBox').classList.remove('over'); } });
+document.addEventListener('dragenter', e => { if (!hasFiles(e) || !S.user) return; dragDepth++; if (S.view === 'papan') $('#dropHint').hidden = false; else if (S.view === 'rekod') $('#uploadBox').classList.add('over'); });
+document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) { $('#dropHint').hidden = true; $('#uploadBox').classList.remove('over'); $$('#picks .pick.over').forEach(p => p.classList.remove('over')); } });
 document.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
 document.addEventListener('drop', e => {
   if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $('#dropHint').hidden = true; $('#uploadBox').classList.remove('over');
   if (!S.user) return;
   const files = Array.from(e.dataTransfer.files || []);
+  const pick = S.view === 'harian' ? e.target.closest('.pick[data-i]') : null;
+  if (pick) { Harian.intake(+pick.dataset.i, files); return; }
   if (S.view === 'rekod' && S.currentId) uploadFiles(files, S.currentId); else uploadFiles(files, null);
 });
+document.addEventListener('dragover', e => { if (!hasFiles(e) || S.view !== 'harian') return; $$('#picks .pick').forEach(p => p.classList.toggle('over', p.contains(e.target))); });
+document.addEventListener('drop', () => $$('#picks .pick.over').forEach(p => p.classList.remove('over')));
 function hasFiles(e) { return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files'); }
 
 /* ---------- events: record ---------- */
@@ -1091,6 +1096,22 @@ window.addEventListener('online', () => { S.online = true; setConn('ok'); flushA
 window.addEventListener('offline', () => { S.online = false; setConn('luar'); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) flushAll(); });
 
+/* ---------- fail yang dikongsi ke aplikasi (Web Share Target, Android dan Windows) ---------- */
+async function intakeShared() {
+  if (!('caches' in window)) return;
+  let files = [];
+  try {
+    const cache = await caches.open('rslr-kongsi'); const keys = await cache.keys();
+    for (const req of keys) { const res = await cache.match(req); if (!res) continue; const name = decodeURIComponent(res.headers.get('x-nama') || 'kongsi.pdf'); const blob = await res.blob(); files.push(new File([blob], name, { type: 'application/pdf' })); await cache.delete(req); }
+  } catch (e) { return; }
+  if (/[?&]kongsi=1/.test(location.search)) history.replaceState(null, '', location.pathname);
+  if (!files.length) return;
+  toast(files.length + ' fail diterima daripada Kongsi. Menyimpan ke Google Drive.');
+  const d = S.view === 'rekod' && S.currentId ? S.currentId : null;
+  await uploadFiles(files, d);
+}
+if (TEST) window.__RSLR_intakeShared = intakeShared;
+
 /* ---------- PWA: service worker and install prompt ---------- */
 function registerSW() {
   if (!('serviceWorker' in navigator) || TEST) return;
@@ -1143,14 +1164,15 @@ async function start() {
     if (wantView !== 'papan') goView(wantView);
     if (wantId) { const iv = setInterval(() => { if (S.docs.has(wantId)) { clearInterval(iv); if (S.view === 'papan') openRecord(wantId); } else if (S.gotDefinitive) clearInterval(iv); }, 300); setTimeout(() => clearInterval(iv), 15000); }
     // Cadangan Harian: muat (dan cari sekali sehari secara automatik) selepas rekod repositori tiba.
-    const hv = setInterval(() => { if (S.gotDefinitive || !navigator.onLine) { clearInterval(hv); Harian.load(Harian.todayStr(), true).then(() => Harian.loadDates()); } }, 400); setTimeout(() => clearInterval(hv), 20000);
+    const hv = setInterval(() => { if (S.gotDefinitive || !navigator.onLine) { clearInterval(hv); Harian.load(Harian.todayStr(), true).then(() => Harian.loadDates()).then(() => intakeShared()); } }, 400); setTimeout(() => clearInterval(hv), 20000);
   });
 }
 
 /* ---------- modul: flipbook, cadangan harian, peta ayat ---------- */
 const R = {
   $, $$, esc, toast, confirmBox, fmtTime, fmtBytes, lsGet, lsSet, saveFile, normDoi, TEMA, C, S, V,
-  db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList
+  db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList,
+  uploadFiles, openFlip, downloadPdf
 };
 const Flip = initFlip(R); R.Flip = Flip;
 const Harian = initHarian(R); R.Harian = Harian;

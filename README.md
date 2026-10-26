@@ -72,15 +72,16 @@ Jika tetingkap kebenaran tidak muncul dalam aplikasi yang dipasang (biasa berlak
 
 - **Papan**: senarai artikel dengan tapisan, statistik, muat naik PDF (seret dan lepas), butang **Baca** (flipbook terapung) dan **Muat turun** bagi artikel yang belum selesai dibaca.
 - **Rekod**: 13 medan ekstrak, pemapar PDF skrin penuh atau bersebelahan borang, flipbook, muat turun, dan **Indeks ayat** untuk Peta Ayat.
-- **Hari ini**: tiga artikel sehari daripada OpenAlex, satu bagi setiap pemboleh ubah (Kepimpinan Digital, Pengurusan Pengetahuan Organisasi, Kompetensi Digital Guru). Tapisan: lima tahun terkini, artikel jurnal teras CWTS atau DOAJ, akses terbuka dengan PDF, bukan TAM atau UTAUT, belum ada dalam repositori dan belum pernah dicadangkan (termasuk 497 DOI daripada log tugas harian lama dalam `data/seen_dois.json`). Carian berjalan automatik sekali sehari apabila aplikasi dibuka. Setiap kad: Muat turun PDF, Baca di sini, DOI, Semak SJR (Scopus dan kuartil), Tambah ke repositori, Sudah dibaca, Tukar.
+- **Hari ini**: tiga artikel sehari daripada OpenAlex, satu bagi setiap pemboleh ubah (Kepimpinan Digital, Pengurusan Pengetahuan Organisasi, Kompetensi Digital Guru). Tapisan: lima tahun terkini, artikel jurnal teras CWTS atau DOAJ, akses terbuka dengan PDF, berkonteks pendidikan, bukan TAM atau UTAUT, belum ada dalam repositori dan belum pernah dicadangkan (termasuk 497 DOI daripada log tugas harian lama dalam `data/seen_dois.json`). Carian berjalan automatik sekali sehari apabila aplikasi dibuka. Setiap kad: **Simpan ke Drive** (PDF dimasukkan ke folder Google Drive dan dipautkan ke rekod, jadi tersedia di semua peranti), Muat turun PDF (salinan ke peranti ini), Baca di sini, DOI, Semak SJR (Scopus dan kuartil), Tambah ke repositori, Sudah dibaca, Tukar.
+- **Satu sumber untuk semua peranti**: setiap PDF, sama ada dimuat naik di Windows, Android atau pelayar, disimpan dalam folder "Repositori SLR" di Google Drive dan rekodnya dalam Firestore; peranti lain membacanya terus dari situ. "Simpan ke Drive" mencuba tiga laluan mengikut urutan: salinan OpenAlex (`content.openalex.org`, kira-kira 100 fail sehari dengan kunci API percuma), pautan penerbit (jika penerbit membenarkan), dan akhirnya langkah manual (Buka PDF, simpan, kemudian Pilih fail PDF atau seret ke kad). Di Android, fail PDF juga boleh dikongsi terus ke aplikasi (Kongsi > Repositori SLR); fail yang dikongsi dimuat naik ke Drive dan, jika DOI dalam PDF sepadan dengan cadangan hari ini, dipautkan ke kad itu secara automatik.
 - **Peta Ayat**: taip istilah; semua ayat yang mengandunginya daripada semua PDF yang diindeks dikumpulkan, dikelompokkan mengikut pola istilah yang sama, dengan sumber (Bil., penulis, tahun, muka surat), butang Buka (flipbook pada muka surat itu), Salin dengan sitasi dan Eksport CSV. "Frasa tepat" mencari urutan perkataan yang sama.
-- **Tetapan**: kunci API OpenAlex (pilihan, percuma) jika had awam sering dicapai.
+- **Tetapan**: kunci API OpenAlex (percuma, disyorkan). Tanpa kunci, bajet awam ialah kira-kira 100 carian atau 10 muat turun sehari yang dikongsi semua pengguna pada alamat IP yang sama; dengan kunci, 1,000 carian atau 100 muat turun sehari.
 
 ## Fail dalam repo
 
 - `index.html`, `app.js`, `config.js`: aplikasi; `mod/flip.js` (flipbook), `mod/harian.js` (cadangan harian), `mod/peta.js` (peta ayat)
 - `data/seen_dois.json`: DOI yang pernah dicadangkan oleh tugas harian lama (dikecualikan daripada cadangan baharu)
-- `sw.js`, `manifest.webmanifest`, `icons/`: sokongan pemasangan dan luar talian
+- `sw.js`, `manifest.webmanifest`, `icons/`: sokongan pemasangan, luar talian dan sasaran Kongsi (Web Share Target)
 - `vendor/firebase.bundle.js`: Firebase SDK (app, auth, firestore) versi 10.14.1, dibungkus dengan esbuild
 - `vendor/pdf.min.mjs`, `vendor/pdf.worker.min.mjs`, `vendor/standard_fonts/`: pdf.js 4.10.38 (lesen Apache 2.0, lihat `vendor/LICENSE-pdfjs.txt`)
 
