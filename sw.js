@@ -1,9 +1,10 @@
 /* Service worker Repositori SLR: cache cangkerang aplikasi supaya ia boleh dipasang dan dibuka pantas.
    Permintaan ke Google (Firestore, Drive, GIS) tidak pernah dicache. */
-const VERSION = 'rslr-v1.0.0';
+const VERSION = 'rslr-v1.1.0';
 const CACHE = 'rslr-' + VERSION;
 const SHELL = [
   './', './index.html', './app.js', './config.js', './manifest.webmanifest',
+  './mod/flip.js', './mod/harian.js', './mod/peta.js', './data/seen_dois.json',
   './vendor/firebase.bundle.js', './vendor/pdf.min.mjs', './vendor/pdf.worker.min.mjs',
   './icons/icon-64.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'
 ];
@@ -46,7 +47,7 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     try {
       const res = await fetch(req);
-      if (res && res.ok && (req.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.webmanifest') || url.pathname.endsWith('.html'))) {
+      if (res && res.ok && (req.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.webmanifest') || url.pathname.endsWith('.html') || url.pathname.endsWith('.json'))) {
         const c = await caches.open(CACHE); c.put(req, res.clone());
       }
       return res;

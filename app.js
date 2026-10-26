@@ -1,7 +1,10 @@
 /* Repositori SLR: aplikasi web boleh pasang (PWA).
    Rekod disimpan dalam Firestore (segerak masa nyata, luar talian disokong), PDF dalam Google Drive. */
 'use strict';
-const VERSION = '1.0.0';
+import { initFlip } from './mod/flip.js';
+import { initHarian } from './mod/harian.js';
+import { initPeta } from './mod/peta.js';
+const VERSION = '1.1.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -169,8 +172,17 @@ function showBanner(text, kind, action) {
   if (text && action) { const btn = document.createElement('button'); btn.className = 'btn btn-sm'; btn.textContent = action.label; btn.addEventListener('click', action.fn); b.appendChild(btn); }
 }
 function showView(name) {
-  ['setup', 'login', 'papan', 'rekod'].forEach(v => { $('#' + v).hidden = v !== name; });
-  $('#barActions').hidden = !(name === 'papan' || name === 'rekod');
+  ['setup', 'login', 'papan', 'harian', 'peta', 'rekod'].forEach(v => { $('#' + v).hidden = v !== name; });
+  const inApp = name === 'papan' || name === 'harian' || name === 'peta' || name === 'rekod';
+  $('#barActions').hidden = !inApp;
+  $('#nav').hidden = !inApp;
+  $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.view === (name === 'rekod' ? 'papan' : name)));
+}
+function goView(name) {
+  if (name === 'papan') { goPapan(); return; }
+  S.view = name; showView(name); savePrefs(); window.scrollTo(0, 0);
+  if (name === 'harian') Harian.load(Harian.state.date, false);
+  if (name === 'peta') { Peta.show(); setTimeout(() => $('#petaQ').focus(), 50); }
 }
 
 /* ---------- local persistence (per device conveniences) ---------- */
@@ -197,14 +209,26 @@ function makeTestAdapters() {
     async login(email) { this.user = { email, uid: 'u_test' }; this.cb && this.cb(this.user); },
     async logout() { this.user = null; this.cb && this.cb(null); } };
   if (window.__RSLR_TEST_USER) Auth.user = { email: window.__RSLR_TEST_USER, uid: 'u_test' };
+  const other = new Map(); // dokumen lain: 'cadangan/2026-01-01', 'meta/x', 'teks/id_1'
+  const clone = x => JSON.parse(JSON.stringify(x));
+  const deepMerge = (a, b) => { Object.keys(b).forEach(k => { if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && a[k] && typeof a[k] === 'object' && !Array.isArray(a[k])) deepMerge(a[k], b[k]); else a[k] = clone(b[k]); }); return a; };
   DB = { subscribe(onSnap) { listeners.add(onSnap); setTimeout(fire, 40); return () => listeners.delete(onSnap); },
-    create(data) { const id = 'd' + (++n); docs.set(id, JSON.parse(JSON.stringify(data))); window.__creates = (window.__creates || 0) + 1; setTimeout(fire, 10); return id; },
-    async update(id, patch) { if (!docs.has(id)) throw { code: 'not-found' }; docs.set(id, Object.assign({}, docs.get(id), JSON.parse(JSON.stringify(patch)))); window.__updates = (window.__updates || 0) + 1; setTimeout(fire, 10); },
+    create(data) { const id = 'd' + (++n); docs.set(id, clone(data)); window.__creates = (window.__creates || 0) + 1; setTimeout(fire, 10); return id; },
+    async update(id, patch) { if (!docs.has(id)) throw { code: 'not-found' }; docs.set(id, Object.assign({}, docs.get(id), clone(patch))); window.__updates = (window.__updates || 0) + 1; setTimeout(fire, 10); },
     async remove(id) { docs.delete(id); setTimeout(fire, 10); },
-    async getMeta() { return meta; }, async setMeta(p) { Object.assign(meta, p); } };
+    async getMeta() { return meta; }, async setMeta(p) { Object.assign(meta, p); },
+    async get(path) { if (path === 'meta/tetapan') return meta; return other.has(path) ? clone(other.get(path)) : null; },
+    async set(path, data, merge) { if (path === 'meta/tetapan') { Object.assign(meta, data); return; } other.set(path, merge && other.has(path) ? deepMerge(other.get(path), data) : clone(data)); window.__sets = (window.__sets || 0) + 1; },
+    async list(coll, limit) { return Array.from(other.keys()).filter(k => k.startsWith(coll + '/')).sort().reverse().slice(0, limit || 50).map(k => ({ id: k.slice(coll.length + 1), data: clone(other.get(k)) })); },
+    async batchSet(items) { items.forEach(it => other.set(it.path, clone(it.data))); window.__batch = (window.__batch || 0) + items.length; },
+    async batchDelete(paths) { paths.forEach(p => other.delete(p)); },
+    async teksSince(t) { return Array.from(other.entries()).filter(([k, v]) => k.startsWith('teks/') && (v.t || 0) > t).map(([k, v]) => ({ path: k, data: clone(v) })); },
+    async teksOf(art) { return Array.from(other.entries()).filter(([k, v]) => k.startsWith('teks/') && v.art === art).map(([k, v]) => ({ path: k, data: clone(v) })); } };
   const files = new Map(); let fn2 = 0; let token = null;
-  Drive = { ready: () => true, hasToken: () => !!token,
+  Drive = { ready: () => true, hasToken: () => !!token, lastError: null, justRedirected: false, redirectUri: new URL('./', location.href).href, tokenExpiry: () => Date.now() + 3600000, forget() { token = null; },
     async connect() { token = 't'; setDriveChip('ok'); return token; },
+    connectRedirect() { token = 't'; setDriveChip('ok'); window.__redirected = true; },
+    async about() { return { user: { emailAddress: 'ujian@contoh.my' }, storageQuota: { usage: '1048576', limit: '16106127360' } }; },
     async upload(file, onProgress) { if (!token) throw { code: 'no_token' }; const buf = await file.arrayBuffer(); const id = 'f' + (++fn2); files.set(id, buf); onProgress && onProgress(1); return { id, name: file.name, size: buf.byteLength, webViewLink: 'https://drive.google.com/file/d/' + id + '/view' }; },
     async download(id, onProgress) { if (!token) throw { code: 'no_token' }; const b = files.get(id); if (!b) throw { code: 'download', status: 404 }; onProgress && onProgress(1); return b.slice(0); },
     async remove(id) { files.delete(id); },
@@ -234,7 +258,22 @@ async function makeRealAdapters() {
     update(id, patch) { return FB.updateDoc(FB.doc(db, COLL, id), patch); },
     remove(id) { return FB.deleteDoc(FB.doc(db, COLL, id)); },
     async getMeta() { try { const s = await FB.getDoc(FB.doc(db, 'meta', 'tetapan')); return s.exists() ? s.data() : {}; } catch (e) { return {}; } },
-    async setMeta(p) { try { await FB.setDoc(FB.doc(db, 'meta', 'tetapan'), p, { merge: true }); } catch (e) {} }
+    async setMeta(p) { try { await FB.setDoc(FB.doc(db, 'meta', 'tetapan'), p, { merge: true }); } catch (e) {} },
+    async get(path) { const s = await FB.getDoc(FB.doc(db, path)); return s.exists() ? s.data() : null; },
+    set(path, data, merge) { return FB.setDoc(FB.doc(db, path), data, merge ? { merge: true } : {}); },
+    async list(coll, limit) { const q = FB.query(FB.collection(db, coll), FB.orderBy('tarikh', 'desc'), FB.limit(limit || 50)); const s = await FB.getDocs(q); return s.docs.map(d => ({ id: d.id, data: d.data() })); },
+    async batchSet(items) { for (let i = 0; i < items.length; i += 400) { const b = FB.writeBatch(db); items.slice(i, i + 400).forEach(it => b.set(FB.doc(db, it.path), it.data)); await b.commit(); } },
+    async batchDelete(paths) { for (let i = 0; i < paths.length; i += 400) { const b = FB.writeBatch(db); paths.slice(i, i + 400).forEach(p => b.delete(FB.doc(db, p))); await b.commit(); } },
+    async teksSince(t) {
+      const out = []; let since = t || 0;
+      for (let round = 0; round < 20; round++) {
+        const q = FB.query(FB.collection(db, 'teks'), FB.where('t', '>', since), FB.orderBy('t', 'asc'), FB.limit(500));
+        const s = await FB.getDocs(q); s.docs.forEach(d => { out.push({ path: 'teks/' + d.id, data: d.data() }); since = Math.max(since, d.data().t || 0); });
+        if (s.size < 500) break;
+      }
+      return out;
+    },
+    async teksOf(art) { const s = await FB.getDocs(FB.query(FB.collection(db, 'teks'), FB.where('art', '==', art))); return s.docs.map(d => ({ path: 'teks/' + d.id, data: d.data() })); }
   };
   Drive = makeDriveAdapter();
 }
@@ -252,23 +291,44 @@ function makeDriveAdapter() {
   const SCOPE = 'https://www.googleapis.com/auth/drive.file';
   const API = 'https://www.googleapis.com/drive/v3/';
   let token = null, exp = 0, client = null, folderId = null;
-  try { const s = JSON.parse(sessionStorage.getItem('rslr_drive') || 'null'); if (s && s.token && s.exp > now() + 60000) { token = s.token; exp = s.exp; } } catch (e) {}
+  const self = { lastError: null, redirectUri: new URL('./', location.href).href.split('#')[0].split('?')[0] };
+  function keep(t, e) { token = t; exp = e; try { localStorage.setItem('rslr_drive', JSON.stringify({ token, exp })); sessionStorage.removeItem('rslr_drive'); } catch (er) {} lsSet('rslr_drive_ok', true); }
+  try { const s = JSON.parse(localStorage.getItem('rslr_drive') || sessionStorage.getItem('rslr_drive') || 'null'); if (s && s.token && s.exp > now() + 60000) { token = s.token; exp = s.exp; } } catch (e) {}
+  // Token yang kembali melalui lencongan (response_type=token) berada dalam #hash.
+  try {
+    if (location.hash && location.hash.includes('access_token=')) {
+      const h = new URLSearchParams(location.hash.slice(1));
+      if (h.get('state') === 'rslr_drive' && h.get('access_token')) { keep(h.get('access_token'), now() + (Number(h.get('expires_in')) || 3600) * 1000); lsSet('rslr_drive_redirect_ok', true); self.justRedirected = true; }
+      else if (h.get('error')) self.lastError = { code: h.get('error'), message: h.get('error_description') || '' };
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+  } catch (e) {}
   const gisReady = () => !!(window.google && window.google.accounts && window.google.accounts.oauth2);
   function hasToken() { return !!token && now() < exp - 30000; }
   function connect(interactive) {
     if (hasToken() && !interactive) return Promise.resolve(token);
-    if (!gisReady()) return Promise.reject({ code: 'gis_missing' });
+    if (!gisReady()) { self.lastError = { code: 'gis_missing' }; return Promise.reject({ code: 'gis_missing' }); }
     return new Promise((res, rej) => {
+      const fail = e => { self.lastError = e; rej(e); };
       if (!client) client = window.google.accounts.oauth2.initTokenClient({ client_id: C.googleClientId, scope: SCOPE, callback: () => {} });
       client.callback = r => {
-        if (!r || r.error) { rej({ code: r && r.error ? r.error : 'token_error', message: r && r.error_description }); return; }
-        token = r.access_token; exp = now() + (Number(r.expires_in) || 3600) * 1000;
-        try { sessionStorage.setItem('rslr_drive', JSON.stringify({ token, exp })); } catch (e) {}
-        lsSet('rslr_drive_ok', true); setDriveChip('ok'); res(token);
+        if (!r || r.error) { fail({ code: r && r.error ? r.error : 'token_error', message: r && r.error_description }); return; }
+        keep(r.access_token, now() + (Number(r.expires_in) || 3600) * 1000); self.lastError = null; setDriveChip('ok'); res(token);
       };
-      client.error_callback = e => rej({ code: e && e.type ? e.type : 'popup', message: e && e.message });
-      try { client.requestAccessToken({ prompt: interactive ? 'consent' : '', login_hint: C.ownerEmail || undefined }); } catch (e) { rej({ code: 'request_failed', message: String(e) }); }
+      client.error_callback = e => fail({ code: e && e.type ? e.type : 'popup', message: e && e.message });
+      try { client.requestAccessToken({ prompt: interactive ? 'consent' : '', login_hint: C.ownerEmail || undefined }); } catch (e) { fail({ code: 'request_failed', message: String(e) }); }
     });
+  }
+  function connectRedirect() {
+    const p = new URLSearchParams({ client_id: C.googleClientId, redirect_uri: self.redirectUri, response_type: 'token', scope: SCOPE, include_granted_scopes: 'true', state: 'rslr_drive', prompt: 'consent' });
+    if (C.ownerEmail) p.set('login_hint', C.ownerEmail);
+    flushAll(); savePrefs();
+    location.assign('https://accounts.google.com/o/oauth2/v2/auth?' + p.toString());
+  }
+  async function about() {
+    const r = await authed('about?fields=user(emailAddress),storageQuota(usage,limit)');
+    if (!r.ok) throw { code: 'about', status: r.status, message: await safeText(r) };
+    return r.json();
   }
   async function authed(path, opts = {}, retry = true) {
     const t = await connect(false);
@@ -330,7 +390,8 @@ function makeDriveAdapter() {
   }
   async function remove(id) { const r = await authed(`files/${encodeURIComponent(id)}`, { method: 'DELETE' }); if (!r.ok && r.status !== 404) throw { code: 'delete', status: r.status }; }
   async function safeText(r) { try { return (await r.text()).slice(0, 300); } catch (e) { return ''; } }
-  return { ready: gisReady, hasToken, connect, upload, download, remove, link: id => `https://drive.google.com/file/d/${id}/view` };
+  return { ready: gisReady, hasToken, connect, connectRedirect, about, upload, download, remove, link: id => `https://drive.google.com/file/d/${id}/view`,
+    get lastError() { return self.lastError; }, get justRedirected() { return !!self.justRedirected; }, redirectUri: self.redirectUri, tokenExpiry: () => exp, forget() { token = null; exp = 0; try { localStorage.removeItem('rslr_drive'); sessionStorage.removeItem('rslr_drive'); } catch (e) {} } };
 }
 function driveMsg(e) {
   const c = e && e.code; const st = e && e.status;
@@ -339,6 +400,11 @@ function driveMsg(e) {
   if (c === 'popup_closed') return 'tetingkap kebenaran Google ditutup sebelum selesai.';
   if (c === 'popup_failed_to_open') return 'tetingkap kebenaran Google disekat. Benarkan pop-up untuk laman ini.';
   if (c === 'access_denied') return 'kebenaran Google Drive ditolak.';
+  if (c === 'popup') return 'tetingkap kebenaran Google tidak dapat dibuka dalam mod aplikasi.';
+  if (c === 'invalid_client' || c === 'unauthorized_client') return 'Client ID tidak sah atau belum diterbitkan (semak Google Auth Platform).';
+  if (c === 'redirect_uri_mismatch') return 'URI lencongan belum didaftar pada OAuth client.';
+  if (c === 'invalid_request') return 'permintaan ditolak Google: ' + (e.message || 'semak asal (origin) yang didaftar.');
+  if (c === 'immediate_failed' || c === 'interaction_required' || c === 'consent_required' || c === 'login_required') return 'Google memerlukan log masuk atau kebenaran semula.';
   if (c === 'network') return 'talian terputus semasa pemindahan.';
   if (st === 401) return 'sesi Google tamat. Sambung semula Drive.';
   if (st === 403) return 'Google menolak permintaan (semak Drive API diaktifkan dan kuota storan Drive). ' + (e.message || '');
@@ -445,16 +511,29 @@ function renderList() {
   $('#hasilCount').textContent = arr.length === total ? `${total} artikel` : `${arr.length} daripada ${total} artikel`;
   if (!arr.length) { list.innerHTML = `<div class="empty"><h3>Tiada padanan</h3><p>Tiada artikel memenuhi tapisan semasa.</p><button class="btn" data-act="reset" style="margin-top:12px">Set semula tapisan</button></div>`; return; }
   list.innerHTML = arr.map(([id, d]) => {
-    const nF = (d.fail || []).length;
-    return `<button class="row" data-id="${esc(id)}">
+    const nF = (d.fail || []).length; const unread = (d.status || 'Belum dibaca') !== 'Selesai';
+    const acts = nF && unread ? `<div class="row-acts"><button class="btn btn-sm" data-flip="${esc(id)}" title="Baca dalam flipbook terapung">Baca</button><button class="btn btn-sm" data-dl="${esc(id)}" title="Muat turun PDF ke peranti ini">Muat turun</button></div>` : '';
+    return `<div class="row" role="button" tabindex="0" data-id="${esc(id)}">
       <div class="row-main">
         <div class="row-top"><span class="bil">Bil. ${esc(d.bil || '?')}</span><span class="who">${esc(d.penulis || 'Penulis belum diisi')}${d.tahun ? ' (' + esc(d.tahun) + ')' : ''}</span><span class="tag ${statusClass(d.status)}"><span>${esc(d.status || 'Belum dibaca')}</span></span></div>
         <div class="row-title">${esc(d.tajuk || 'Tajuk belum diisi')}</div>
-        <div class="row-chips">${d.tema ? `<span class="tag tema ${temaClass(d.tema)}"><span>${esc(d.tema)}</span></span>` : ''}${d.relevansi ? `<span class="tag ${relClass(d.relevansi)}"><span>${esc(d.relevansi)}</span></span>` : ''}${d.peringkat ? `<span class="tag"><span>${esc(d.peringkat)}</span></span>` : ''}${d.negara ? `<span class="tag"><span>${esc(d.negara)}</span></span>` : ''}${(d.bab || []).length ? `<span class="tag"><span>${esc(d.bab.join(', '))}</span></span>` : ''}${nF ? `<span class="tag pdf"><span>PDF ${nF > 1 ? nF : ''}</span></span>` : ''}</div>
+        <div class="row-chips">${d.tema ? `<span class="tag tema ${temaClass(d.tema)}"><span>${esc(d.tema)}</span></span>` : ''}${d.relevansi ? `<span class="tag ${relClass(d.relevansi)}"><span>${esc(d.relevansi)}</span></span>` : ''}${d.peringkat ? `<span class="tag"><span>${esc(d.peringkat)}</span></span>` : ''}${d.negara ? `<span class="tag"><span>${esc(d.negara)}</span></span>` : ''}${(d.bab || []).length ? `<span class="tag"><span>${esc(d.bab.join(', '))}</span></span>` : ''}${nF ? `<span class="tag pdf"><span>PDF ${nF > 1 ? nF : ''}</span></span>` : ''}${d.indeks && nF && d.indeks.fail === d.fail[0].id ? `<span class="tag"><span>Diindeks</span></span>` : ''}</div>
+        ${acts}
       </div>
       <div class="row-meta">${esc(fmtTime(d.dikemaskini))}</div>
-    </button>`;
+    </div>`;
   }).join('');
+}
+async function downloadPdf(id, idx) {
+  const d = S.docs.get(id); const entry = (d && d.fail || [])[idx || 0]; if (!entry) { toast('Tiada fail PDF', true); return; }
+  if (!Drive.hasToken() && !V.cache.has(entry.id)) { const ok = await ensureDrive(true); if (!ok) return; }
+  toast('Memuat turun ' + (entry.nama || 'PDF'));
+  try { const buf = V.cache.has(entry.id) ? V.cache.get(entry.id).slice(0) : await Drive.download(entry.id); keepCache(entry.id, buf); saveFile(entry.nama || 'artikel.pdf', buf, 'application/pdf'); }
+  catch (e) { toast('Muat turun gagal: ' + driveMsg(e), true, { label: 'Buka di Drive', fn: () => window.open(entry.link || Drive.link(entry.id), '_blank', 'noopener') }); }
+}
+function openFlip(id, idx, page) {
+  const d = S.docs.get(id); const entry = (d && d.fail || [])[idx || 0]; if (!entry) { toast('Tiada fail PDF', true); return; }
+  Flip.open({ title: `Bil. ${d.bil || '?'} ${d.penulis || ''}${d.tahun ? ' (' + d.tahun + ')' : ''}`, sub: d.tajuk || entry.nama, source: { kind: 'drive', id: entry.id }, page: page || 1, dl: entry.link || Drive.link(entry.id), articleId: id, fileIdx: idx || 0 });
 }
 
 /* ---------- rendering: record form ---------- */
@@ -506,7 +585,8 @@ function renderRecordHead(d) {
 }
 function renderFiles(d) {
   const fl = $('#fileList'); const files = d.fail || [];
-  fl.innerHTML = files.length ? files.map((f, i) => `<div class="file"><span class="name" title="${esc(f.nama)}">${esc(f.nama || 'fail.pdf')}</span><span class="size">${esc(fmtBytes(f.saiz))}${f.masa ? ' · ' + esc(fmtTime(f.masa)) : ''}</span><button class="btn btn-sm btn-primary" data-view="${i}">Lihat</button><a class="btn btn-sm" href="${esc(f.link || Drive.link(f.id))}" target="_blank" rel="noopener">Buka di Drive</a><button class="btn btn-sm btn-danger" data-delfile="${i}">Padam</button></div>`).join('') : `<div class="help">Tiada fail PDF dimuat naik untuk artikel ini.</div>`;
+  const idxOk = d.indeks && files.length && d.indeks.fail === files[0].id;
+  fl.innerHTML = files.length ? files.map((f, i) => `<div class="file"><span class="name" title="${esc(f.nama)}">${esc(f.nama || 'fail.pdf')}</span><span class="size">${esc(fmtBytes(f.saiz))}${f.masa ? ' · ' + esc(fmtTime(f.masa)) : ''}</span><button class="btn btn-sm btn-primary" data-view="${i}">Lihat</button><button class="btn btn-sm" data-flip="${i}" title="Baca dalam panel terapung sambil mengisi borang">Flipbook</button><button class="btn btn-sm" data-dl="${i}">Muat turun</button>${i === 0 ? `<button class="btn btn-sm" data-idx="${i}" title="Ekstrak ayat untuk Peta Ayat">${idxOk ? 'Indeks semula' : 'Indeks ayat'}</button>` : ''}<a class="btn btn-sm" href="${esc(f.link || Drive.link(f.id))}" target="_blank" rel="noopener">Buka di Drive</a><button class="btn btn-sm btn-danger" data-delfile="${i}">Padam</button></div>`).join('') + (idxOk ? `<div class="help">Diindeks untuk Peta Ayat: ${esc(d.indeks.ayat)} ayat daripada ${esc(d.indeks.n)} muka surat, ${esc(fmtTime(d.indeks.t))}.</div>` : '') : `<div class="help">Tiada fail PDF dimuat naik untuk artikel ini.</div>`;
 }
 
 /* ---------- navigation ---------- */
@@ -559,8 +639,10 @@ async function deleteArticle(id) {
   try {
     for (const f of (d.fail || [])) { try { await Drive.remove(f.id); } catch (e) {} }
     delete S.pending[id]; delete S.dirty[id]; clearTimeout(S.timers[id]);
+    if (Flip.state.articleId === id) Flip.close();
     S.docs.delete(id); goPapan(); renderList();
     await DB.remove(id); toast('Artikel dipadam');
+    Peta.removeArticleText(id);
   } catch (e) { toast('Gagal memadam: ' + dbMsg(e), true); }
 }
 
@@ -571,15 +653,55 @@ const ulog = { open() { $('#uploadLog').hidden = false; }, row(name, size) {
   const bar = el.querySelector('.p'); const fill = bar.querySelector('span');
   return { status(t) { el.className = 'urow'; el.querySelector('.s').textContent = t; }, progress(p) { bar.hidden = false; fill.style.width = Math.round(p * 100) + '%'; }, ok(t) { el.className = 'urow ok'; bar.hidden = true; el.querySelector('.s').textContent = t; }, fail(t) { el.className = 'urow bad'; bar.hidden = true; el.querySelector('.s').textContent = t; } };
 } };
+const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+const POPUP_CODES = ['popup_failed_to_open', 'popup_closed', 'popup', 'interaction_required', 'consent_required', 'login_required', 'gis_missing', 'request_failed', 'token_error'];
+async function offerRedirect(e) {
+  if (TEST && !window.__RSLR_TEST_REDIRECT) return false;
+  const okk = await confirmBox('Guna cara lencongan?', `Tetingkap kebenaran Google tidak berjaya (${driveMsg(e)}). Aplikasi boleh beralih ke halaman kebenaran Google dan kembali ke sini selepas Prof Dr membenarkan akses.`, 'Teruskan', false);
+  if (okk) { Drive.connectRedirect(); return true; }
+  return false;
+}
 async function ensureDrive(interactive) {
   if (Drive.hasToken()) return true;
   try { await Drive.connect(!!interactive); return true; }
   catch (e) {
-    if (!interactive && (e.code === 'popup_failed_to_open' || e.code === 'popup_closed' || e.code === 'interaction_required' || e.code === 'access_denied' || e.code === 'consent_required' || e.code === 'login_required')) {
-      try { await Drive.connect(true); return true; } catch (e2) { toast('Google Drive tidak dapat disambung: ' + driveMsg(e2), true); return false; }
+    if (!interactive && (POPUP_CODES.includes(e.code) || e.code === 'access_denied')) {
+      try { await Drive.connect(true); return true; }
+      catch (e2) { if (POPUP_CODES.includes(e2.code) && (isStandalone() || lsGet('rslr_drive_redirect_ok', false))) { await offerRedirect(e2); return false; } toast('Google Drive tidak dapat disambung: ' + driveMsg(e2), true); return false; }
     }
-    toast('Google Drive tidak dapat disambung: ' + driveMsg(e), true); return false;
+    if (POPUP_CODES.includes(e.code) && (isStandalone() || lsGet('rslr_drive_redirect_ok', false))) { await offerRedirect(e); return false; }
+    toast('Google Drive tidak dapat disambung: ' + driveMsg(e), true, { label: 'Cara lencongan', fn: () => Drive.connectRedirect() }); return false;
   }
+}
+function richModal(title, html, okLabel, cancelLabel) {
+  $('#modalTitle').textContent = title; const p = $('#modalText'); p.className = 'modal-rich'; p.innerHTML = html;
+  const ok = $('#modalOk'); ok.textContent = okLabel || 'Tutup'; ok.className = 'btn btn-primary'; $('#modalCancel').hidden = !cancelLabel; if (cancelLabel) $('#modalCancel').textContent = cancelLabel;
+  $('#modal').hidden = false;
+  return new Promise(res => { modalResolve = v => { const inp = p.querySelector('input'); richModal.lastValue = inp ? inp.value : null; p.className = ''; p.innerHTML = ''; $('#modalCancel').hidden = false; $('#modalCancel').textContent = 'Batal'; res(v); }; });
+}
+async function showDiag() {
+  const li = (k, v, cls) => `<li class="${cls || ''}"><b>${esc(k)}</b><span>${esc(v)}</span></li>`;
+  const rows = [];
+  rows.push(li('Mod paparan', isStandalone() ? 'Aplikasi dipasang (standalone)' : 'Pelayar'));
+  rows.push(li('Talian', navigator.onLine ? 'Dalam talian' : 'Luar talian', navigator.onLine ? 'ok' : 'bad'));
+  rows.push(li('Skrip Google (GIS)', Drive.ready() ? 'Dimuatkan' : 'Tidak dimuatkan', Drive.ready() ? 'ok' : 'bad'));
+  rows.push(li('Token Drive', Drive.hasToken() ? 'Ada, tamat ' + fmtTime(Drive.tokenExpiry()) : 'Tiada', Drive.hasToken() ? 'ok' : 'bad'));
+  rows.push(li('Client ID', String(C.googleClientId || '').slice(0, 14) + '…'));
+  rows.push(li('Asal (origin) yang mesti didaftar', location.origin));
+  rows.push(li('URI lencongan yang mesti didaftar', Drive.redirectUri || ''));
+  const le = Drive.lastError; rows.push(li('Ralat terakhir', le ? (le.code || '') + (le.message ? ': ' + le.message : '') : 'Tiada', le ? 'bad' : 'ok'));
+  let test = 'Token tiada, ujian dilangkau';
+  if (Drive.hasToken()) { try { const a = await Drive.about(); test = `${a.user && a.user.emailAddress ? a.user.emailAddress + ', ' : ''}storan ${fmtBytes(a.storageQuota && a.storageQuota.usage)} daripada ${fmtBytes(a.storageQuota && a.storageQuota.limit)}`; } catch (e) { test = 'Gagal: ' + driveMsg(e); } }
+  rows.push(li('Ujian panggilan Drive', test, /^Gagal|dilangkau/.test(test) ? 'bad' : 'ok'));
+  const tips = `<div class="help">Jika tetingkap kebenaran tidak muncul dalam aplikasi yang dipasang, guna menu "Sambung Drive (cara lencongan)". URI lencongan di atas mesti ada dalam senarai Authorized redirect URIs pada OAuth client "Repositori SLR Web" di Google Cloud Console.</div>`;
+  await richModal('Diagnostik Google Drive', `<ul class="diag">${rows.join('')}</ul>${tips}`, 'Tutup');
+}
+async function showTetapan() {
+  const meta = await DB.getMeta(); const cur = meta && meta.openalexKey ? String(meta.openalexKey) : '';
+  const okk = await richModal('Tetapan', `<div class="help">Kunci API OpenAlex (pilihan). Tanpa kunci, carian harian berkongsi had awam dan kadangkala ditolak apabila sibuk. Kunci percuma boleh dibuat di openalex.org (daftar e-mel). Kunci disimpan dalam Firestore dan dikongsi semua peranti.</div><label for="tetKey">Kunci API OpenAlex</label><input id="tetKey" class="modal-in" type="text" autocomplete="off" value="${esc(cur)}" placeholder="kosongkan untuk tidak menggunakan kunci">`, 'Simpan', 'Batal');
+  if (!okk) return;
+  const v = String(richModal.lastValue ?? cur).trim();
+  await DB.setMeta({ openalexKey: v }); toast(v ? 'Kunci OpenAlex disimpan' : 'Kunci OpenAlex dibuang');
 }
 async function uploadFiles(files, articleId) {
   files = Array.from(files || []); if (!files.length) return;
@@ -852,9 +974,13 @@ $('#btnHome').addEventListener('click', () => { if (S.user) goPapan(); });
 $('#btnBack').addEventListener('click', goPapan);
 $('#btnNew').addEventListener('click', () => { const id = createArticle({}); renderList(); openRecord(id); $('#f_penulis').focus(); });
 $('#list').addEventListener('click', e => {
+  const fl = e.target.closest('[data-flip]'); if (fl) { e.stopPropagation(); openFlip(fl.dataset.flip, 0); return; }
+  const dl = e.target.closest('[data-dl]'); if (dl) { e.stopPropagation(); downloadPdf(dl.dataset.dl, 0); return; }
   const row = e.target.closest('.row'); if (row) { openRecord(row.dataset.id); return; }
   const act = e.target.closest('[data-act]'); if (act) { if (act.dataset.act === 'baharu') $('#btnNew').click(); if (act.dataset.act === 'reset') resetFilters(); }
 });
+$('#list').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('row')) { e.preventDefault(); openRecord(e.target.dataset.id); } });
+$('#nav').addEventListener('click', e => { const b = e.target.closest('button[data-view]'); if (b && S.user) goView(b.dataset.view); });
 $('#list').addEventListener('change', e => { if (e.target.matches('input[data-upload]')) { const files = Array.from(e.target.files); e.target.value = ''; uploadFiles(files, null); } });
 $('#fileTop').addEventListener('change', e => { const files = Array.from(e.target.files); e.target.value = ''; uploadFiles(files, null); });
 $('#fileRekod').addEventListener('change', e => { const files = Array.from(e.target.files); e.target.value = ''; if (S.currentId) uploadFiles(files, S.currentId); });
@@ -864,6 +990,9 @@ $('#moreMenu').addEventListener('click', async e => {
   const x = b.dataset.x;
   if (x === 'keluar') { const okk = await confirmBox('Log keluar?', 'Rekod yang belum dihantar akan dihantar apabila log masuk semula.', 'Log keluar', false); if (okk) { flushAll(); await Auth.logout(); } }
   else if (x === 'drive') { await ensureDrive(true); }
+  else if (x === 'drive-redirect') { const okk = await confirmBox('Sambung Drive melalui lencongan', 'Aplikasi akan beralih ke halaman kebenaran Google dan kembali ke sini selepas akses dibenarkan. Perubahan yang belum dihantar disimpan dahulu.', 'Teruskan', false); if (okk) Drive.connectRedirect(); }
+  else if (x === 'diag') { await showDiag(); }
+  else if (x === 'tetapan') { await showTetapan(); }
   else if (x === 'pasang') { if (S.installPrompt) { S.installPrompt.prompt(); try { await S.installPrompt.userChoice; } catch (er) {} S.installPrompt = null; $('#btnInstall').hidden = true; } }
   else exportData(x);
 });
@@ -908,6 +1037,15 @@ $('#btnViewPdf').addEventListener('click', () => openViewer(S.currentId, 0));
 $('#btnSplit').addEventListener('click', () => { S.split = !S.split; savePrefs(); if ($('#viewer').hidden) openViewer(S.currentId, 0); else dockViewer(S.split); });
 $('#fileList').addEventListener('click', async e => {
   const v = e.target.closest('[data-view]'); if (v) { openViewer(S.currentId, +v.dataset.view); return; }
+  const fl = e.target.closest('[data-flip]'); if (fl) { openFlip(S.currentId, +fl.dataset.flip); return; }
+  const dl = e.target.closest('[data-dl]'); if (dl) { downloadPdf(S.currentId, +dl.dataset.dl); return; }
+  const ix = e.target.closest('[data-idx]');
+  if (ix) {
+    const id = S.currentId; ix.disabled = true; ix.textContent = 'Mengindeks';
+    try { const r = await Peta.indexArticle(id, p => { ix.textContent = 'Mengindeks ' + Math.round(p * 100) + '%'; }); toast(`Diindeks: ${r.ayat} ayat daripada ${r.pages} muka surat`); const nd = S.docs.get(id); if (nd && S.currentId === id) { renderFiles(nd); } }
+    catch (er) { toast('Pengindeksan gagal: ' + (er && (er.message || driveMsg(er)) || ''), true); const nd = S.docs.get(id); if (nd && S.currentId === id) renderFiles(nd); }
+    return;
+  }
   const del = e.target.closest('[data-delfile]');
   if (del) {
     const d = S.docs.get(S.currentId); const i = +del.dataset.delfile; const f = (d.fail || [])[i]; if (!f) return;
@@ -996,10 +1134,26 @@ async function start() {
     $('#menuEmail').textContent = user.email || '';
     setDriveChip(Drive.ready() ? (Drive.hasToken() ? 'ok' : 'sambung') : 'tiada');
     if (!Drive.ready()) { let tries = 0; const iv = setInterval(() => { tries++; if (Drive.ready()) { clearInterval(iv); setDriveChip(Drive.hasToken() ? 'ok' : 'sambung'); } else if (tries > 40) clearInterval(iv); }, 500); }
+    if (Drive.lastError && Drive.lastError.code && !Drive.hasToken()) toast('Google menolak lencongan: ' + driveMsg(Drive.lastError), true);
+    if (Drive.justRedirected && Drive.hasToken()) toast('Google Drive disambung melalui lencongan');
     setConn('cache'); S.gotDefinitive = false;
     const wantId = prefs.view === 'rekod' ? prefs.currentId : null;
+    const wantView = prefs.view === 'harian' || prefs.view === 'peta' ? prefs.view : 'papan';
     showView('papan'); renderList(); subscribe();
+    if (wantView !== 'papan') goView(wantView);
     if (wantId) { const iv = setInterval(() => { if (S.docs.has(wantId)) { clearInterval(iv); if (S.view === 'papan') openRecord(wantId); } else if (S.gotDefinitive) clearInterval(iv); }, 300); setTimeout(() => clearInterval(iv), 15000); }
+    // Cadangan Harian: muat (dan cari sekali sehari secara automatik) selepas rekod repositori tiba.
+    const hv = setInterval(() => { if (S.gotDefinitive || !navigator.onLine) { clearInterval(hv); Harian.load(Harian.todayStr(), true).then(() => Harian.loadDates()); } }, 400); setTimeout(() => clearInterval(hv), 20000);
   });
 }
+
+/* ---------- modul: flipbook, cadangan harian, peta ayat ---------- */
+const R = {
+  $, $$, esc, toast, confirmBox, fmtTime, fmtBytes, lsGet, lsSet, saveFile, normDoi, TEMA, C, S, V,
+  db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList
+};
+const Flip = initFlip(R); R.Flip = Flip;
+const Harian = initHarian(R); R.Harian = Harian;
+const Peta = initPeta(R); R.Peta = Peta;
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, S };
 start();
