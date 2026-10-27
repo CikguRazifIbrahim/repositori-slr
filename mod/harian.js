@@ -81,7 +81,8 @@ export function initHarian(R) {
   }
   function scopusOf(it) {
     const m = H.scopus && H.scopus.q; if (!m) return null;
-    let best = null; (it.issns || []).forEach(i => { if (i in m) { const q = Number(m[i]) || 0; if (best === null || (q && (!best.q || q < best.q))) best = { q }; } });
+    let best = null; const list = it.issns && it.issns.length ? it.issns : [issn8(it.issn)].filter(Boolean);
+    list.forEach(i => { if (i in m) { const q = Number(m[i]) || 0; if (best === null || (q && (!best.q || q < best.q))) best = { q }; } });
     return best;
   }
   // Kelas keutamaan: 1-4 Scopus Q1-Q4, 5 Scopus tanpa kuartil, 6 jurnal teras CWTS, 7 DOAJ, 99 ditolak (tidak dapat disahkan diindeks dan berwasit).
@@ -238,7 +239,8 @@ export function initHarian(R) {
       if (!steps.length) return `<div class="rantai-col"><h3><span class="tag tema ${temaClass(tema)}"><span>${esc(tema)}</span></span></h3><div class="help">Belum ada cadangan.</div></div>`;
       return `<div class="rantai-col"><h3><span class="tag tema ${temaClass(tema)}"><span>${esc(tema)}</span></span></h3><ol>${steps.map(({ d, it }, k) => {
         const r = it.rantai || {}; const sambung = k > 0 && r.panjang > 1 && !r.baharu;
-        return `<li class="${sambung ? 'sambung' : 'mula'}" title="${esc(sambung ? 'Disenaraikan dalam Rujukan artikel sebelumnya' : 'Rantaian baharu (carian baharu)')}"><span class="d">${esc(d)}</span> <span class="k">${esc(kelasLabel(it.kelas || kelasOf(it)) || '')}</span> ${esc(penulisRingkas(it.penulis || []))} (${esc(it.tahun)}). ${esc((it.tajuk || '').slice(0, 90))}${(it.tajuk || '').length > 90 ? '…' : ''}${it.artikelId && R.S.docs.has(it.artikelId) ? ` <button class="btn btn-sm" data-rek="${esc(it.artikelId)}">Rekod</button>` : ''}</li>`;
+        const ruj = it.rujukan || apaRef(it);
+        return `<li class="${sambung ? 'sambung' : 'mula'}" title="${esc(sambung ? 'Disenaraikan dalam Rujukan artikel sebelumnya' : 'Rantaian baharu (carian baharu)')}"><div class="hd"><span class="d">${esc(d)}</span> <span class="k">${esc(kelasLabel(it.kelas || kelasOf(it)) || '')}</span>${sambung ? ' <span class="s">daripada Rujukan artikel ' + esc(it.rantai.dari && it.rantai.dari.tarikh || '') + '</span>' : ''}</div><div class="ruj">${esc(ruj)}</div><div class="acts">${it.doi ? `<a class="btn btn-sm" href="https://doi.org/${esc(it.doi)}" target="_blank" rel="noopener">DOI</a>` : ''}<button class="btn btn-sm" data-salin="${esc(ruj)}">Salin rujukan</button>${it.artikelId && R.S.docs.has(it.artikelId) ? `<button class="btn btn-sm" data-rek="${esc(it.artikelId)}">Rekod</button>` : ''}</div></li>`;
       }).join('')}</ol></div>`;
     });
     box.innerHTML = `<h2>Rantaian artikel <small>Setiap anak panah bermakna artikel di bawahnya diambil daripada senarai Rujukan artikel di atasnya; garis putus bermakna rantaian baharu.</small></h2><div class="rantai-grid">${cols.join('')}</div>`;
@@ -387,7 +389,10 @@ export function initHarian(R) {
       render();
     }
   });
-  $('#harian').addEventListener('click', e => { const b = e.target.closest('[data-rek]'); if (b) R.openRecord(b.dataset.rek); });
+  $('#harian').addEventListener('click', async e => {
+    const b = e.target.closest('[data-rek]'); if (b) { R.openRecord(b.dataset.rek); return; }
+    const c = e.target.closest('[data-salin]'); if (c) { try { await navigator.clipboard.writeText(c.dataset.salin); toast('Rujukan APA 7 disalin'); } catch (er) { toast('Papan keratan tidak tersedia', true); } }
+  });
   $('#picks').addEventListener('change', async e => {
     const pf = e.target.closest('[data-pickfile]'); if (pf) { const files = Array.from(pf.files || []); pf.value = ''; intake(+pf.dataset.pickfile, files); return; }
     const c = e.target.closest('[data-baca]'); if (!c || !H.doc) return; const it = H.doc.items[+c.dataset.baca]; if (!it) return; it.dibaca = c.checked; await simpan(); render(); });

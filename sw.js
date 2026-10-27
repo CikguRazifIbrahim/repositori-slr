@@ -1,6 +1,6 @@
 /* Service worker Repositori SLR: cache cangkerang aplikasi supaya ia boleh dipasang dan dibuka pantas.
    Permintaan ke Google (Firestore, Drive, GIS) tidak pernah dicache. */
-const VERSION = 'rslr-v1.3.0';
+const VERSION = 'rslr-v1.3.1';
 const CACHE = 'rslr-' + VERSION;
 const SHELL = [
   './', './index.html', './app.js', './config.js', './manifest.webmanifest',

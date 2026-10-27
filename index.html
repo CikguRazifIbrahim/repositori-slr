@@ -349,12 +349,16 @@ button.chip{cursor:pointer}
 .rantai-col h3{margin-bottom:8px;font-size:14px}
 .rantai-col h3 .tag{font-size:12.5px}
 .rantai-col ol{list-style:none;padding:0;margin:0}
-.rantai-col li{position:relative;padding:6px 0 6px 22px;font-size:13px;line-height:1.4;border-left:2px solid var(--line);margin-left:7px}
+.rantai-col li{position:relative;padding:6px 0 8px 22px;font-size:13px;line-height:1.45;border-left:2px solid var(--line);margin-left:7px;display:flex;flex-direction:column;gap:4px}
+.rantai-col li .hd{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rantai-col li .s{font-size:11.5px;color:var(--accent)}
+.rantai-col li .ruj{overflow-wrap:anywhere}
+.rantai-col li .acts{display:flex;flex-wrap:wrap;gap:4px}
 .rantai-col li.sambung::before{content:"↓";position:absolute;left:-9px;top:-9px;background:var(--surface);color:var(--accent);font-weight:700;padding:0 2px}
 .rantai-col li.mula{border-left-style:dashed}
 .rantai-col li .d{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
 .rantai-col li .k{background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:0 6px;font-size:11px;font-weight:600}
-.rantai-col li .btn{padding:0 6px;font-size:11px;margin-left:4px}
+.rantai-col li .btn{padding:1px 7px;font-size:11px}
 .pick .manual{font-size:13px;line-height:1.45;background:var(--warn-soft);color:var(--fg);border-radius:8px;padding:8px 10px}
 .pick.over{outline:2px dashed var(--accent);outline-offset:3px;background:var(--accent-soft)}
 
