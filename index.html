@@ -339,6 +339,22 @@ button.chip{cursor:pointer}
 .modal-card input.modal-in{width:100%;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-size:14px;margin:6px 0 12px;background:var(--surface)}
 .modal-card .help{font-size:12.5px;color:var(--muted);margin-bottom:10px}
 .pick .tag.ok{background:var(--ok-soft,#E3F5EC);color:var(--ok)}
+.pick .rantai-line{font-size:12.5px;line-height:1.45;color:var(--fg);background:var(--info-soft);border-left:3px solid var(--info);border-radius:0 8px 8px 0;padding:6px 9px}
+.pick .rantai-line .btn{padding:1px 7px;font-size:11.5px;margin-left:4px}
+.rantaian{margin-top:22px}
+.rantaian h2{font-size:18px;margin-bottom:10px}
+.rantaian h2 small{display:block;font-size:12.5px;color:var(--muted);font-weight:400;margin-top:2px}
+.rantai-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.rantai-col{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;min-width:0}
+.rantai-col h3{margin-bottom:8px;font-size:14px}
+.rantai-col h3 .tag{font-size:12.5px}
+.rantai-col ol{list-style:none;padding:0;margin:0}
+.rantai-col li{position:relative;padding:6px 0 6px 22px;font-size:13px;line-height:1.4;border-left:2px solid var(--line);margin-left:7px}
+.rantai-col li.sambung::before{content:"↓";position:absolute;left:-9px;top:-9px;background:var(--surface);color:var(--accent);font-weight:700;padding:0 2px}
+.rantai-col li.mula{border-left-style:dashed}
+.rantai-col li .d{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+.rantai-col li .k{background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:0 6px;font-size:11px;font-weight:600}
+.rantai-col li .btn{padding:0 6px;font-size:11px;margin-left:4px}
 .pick .manual{font-size:13px;line-height:1.45;background:var(--warn-soft);color:var(--fg);border-radius:8px;padding:8px 10px}
 .pick.over{outline:2px dashed var(--accent);outline-offset:3px;background:var(--accent-soft)}
 
@@ -471,7 +487,8 @@ button.chip{cursor:pointer}
     <button id="btnHarianCari" class="btn btn-primary">Cari semula</button>
   </div>
   <div id="picks" class="picks"></div>
-  <div class="harian-note">Sumber carian: pangkalan data terbuka OpenAlex. Tapisan: lima tahun terkini, artikel jurnal berwasit teras (CWTS core atau DOAJ), akses terbuka dengan PDF, bukan TAM atau UTAUT, belum ada dalam repositori dan belum pernah dicadangkan. Pengindeksan Scopus atau WoS dan kuartil disemak melalui pautan SJR pada setiap kad.</div>
+  <div class="harian-note">Sumber carian: pangkalan data terbuka OpenAlex. Keutamaan: jurnal Scopus (Q1 hingga Q4 mengikut anggaran SJR, kemudian Scopus tanpa kuartil), diikuti jurnal teras CWTS dan DOAJ; artikel yang tidak dapat disahkan diindeks dan berwasit ditolak. Tapisan lain: tahun penerbitan lima tahun terkini, artikel jurnal, akses terbuka, berkonteks pendidikan, bukan TAM atau UTAUT, belum ada dalam repositori dan belum pernah dicadangkan. Rantaian: calon hari ini diambil daripada senarai Rujukan artikel sebelumnya bagi konstruk yang sama selagi ada penerbitan dalam julat tahun itu; jika tiada, carian baharu dimulakan. Senarai Scopus: Scopus Source Title List November 2024; pengesahan terkini dan kuartil rasmi melalui pautan Semak SJR.</div>
+  <section id="rantaian" class="rantaian"></section>
 </main>
 
 <main id="peta" class="view" hidden>
