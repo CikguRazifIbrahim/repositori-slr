@@ -5,7 +5,7 @@ import { initFlip } from './mod/flip.js';
 import { initHarian } from './mod/harian.js';
 import { initPeta } from './mod/peta.js';
 import { initWeb } from './mod/web.js';
-const VERSION = '1.4.0';
+const VERSION = '1.4.1';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -513,7 +513,7 @@ function renderList() {
   if (!arr.length) { list.innerHTML = `<div class="empty"><h3>Tiada padanan</h3><p>Tiada artikel memenuhi tapisan semasa.</p><button class="btn" data-act="reset" style="margin-top:12px">Set semula tapisan</button></div>`; return; }
   list.innerHTML = arr.map(([id, d]) => {
     const nF = (d.fail || []).length; const unread = (d.status || 'Belum dibaca') !== 'Selesai';
-    const acts = nF && unread ? `<div class="row-acts"><button class="btn btn-sm" data-flip="${esc(id)}" title="Baca dalam flipbook terapung">Baca</button><button class="btn btn-sm" data-dl="${esc(id)}" title="Muat turun PDF ke peranti ini">Muat turun</button></div>` : '';
+    const acts = `<div class="row-acts">${nF && unread ? `<button class="btn btn-sm" data-flip="${esc(id)}" title="Baca dalam flipbook terapung">Baca</button><button class="btn btn-sm" data-dl="${esc(id)}" title="Muat turun PDF ke peranti ini">Muat turun</button>` : ''}<button class="btn btn-sm" data-webrow="${esc(id)}" title="Web artikel: jaringan hubungan dengan artikel lain">Web</button></div>`;
     return `<div class="row" role="button" tabindex="0" data-id="${esc(id)}">
       <div class="row-main">
         <div class="row-top"><span class="bil">Bil. ${esc(d.bil || '?')}</span><span class="who">${esc(d.penulis || 'Penulis belum diisi')}${d.tahun ? ' (' + esc(d.tahun) + ')' : ''}</span><span class="tag ${statusClass(d.status)}"><span>${esc(d.status || 'Belum dibaca')}</span></span></div>
@@ -745,7 +745,7 @@ async function uploadOne(file, articleId) {
       const extra = { fail: [entry], status: 'Belum dibaca' };
       if (meta) { extra.tajuk = meta.title || stripExt(file.name); if (meta.doi) extra.doi = meta.doi; if (meta.year) extra.tahun = meta.year; } else extra.tajuk = stripExt(file.name);
       articleId = createArticle(extra);
-      if (meta && meta.doi) { try { await Harian.linkByDoi(articleId, meta.doi); } catch (e) {} }
+      if (meta && meta.doi) { try { await Harian.linkByDoi(articleId, meta.doi, true); } catch (e) {} }
     }
     row.ok('Selesai' + (meta && meta.doi ? ', DOI dikesan' : '') + '. Bil. ' + ((S.docs.get(articleId) || {}).bil || ''));
     renderList(); if (S.view === 'harian') Harian.render();
@@ -976,6 +976,7 @@ $('#btnHome').addEventListener('click', () => { if (S.user) goPapan(); });
 $('#btnBack').addEventListener('click', goPapan);
 $('#btnNew').addEventListener('click', () => { const id = createArticle({}); renderList(); openRecord(id); $('#f_penulis').focus(); });
 $('#list').addEventListener('click', e => {
+  const wb = e.target.closest('[data-webrow]'); if (wb) { e.stopPropagation(); Web.open('r:' + wb.dataset.webrow); return; }
   const fl = e.target.closest('[data-flip]'); if (fl) { e.stopPropagation(); openFlip(fl.dataset.flip, 0); return; }
   const dl = e.target.closest('[data-dl]'); if (dl) { e.stopPropagation(); downloadPdf(dl.dataset.dl, 0); return; }
   const row = e.target.closest('.row'); if (row) { openRecord(row.dataset.id); return; }

@@ -354,19 +354,25 @@ export function initHarian(R) {
     return intakeFile(it, f, 'fail yang dipilih');
   }
   // Padankan fail yang dimuat naik (DOI dikesan daripada PDF) dengan cadangan hari ini.
-  async function linkByDoi(articleId, doi) {
+  async function linkByDoi(articleId, doi, baru) {
     const n = R.normDoi(doi); if (!n || !H.doc) return false;
     const it = H.doc.items.find(x => !x.kosong && x.doi === n); if (!it) return false;
     it.artikelId = articleId; it.manual = null;
     const d = R.S.docs.get(articleId) || {}; const patch = {};
     const want = { tajuk: it.tajuk, penulis: penulisRingkas(it.penulis), tahun: it.tahun, rujukan: it.rujukan || apaRef(it), jenis: 'Artikel jurnal', tema: it.tema, pautan: it.pdfUrl || it.oaUrl, indeks: it.isCore ? 'Jurnal teras CWTS (semak Scopus/WoS melalui SJR)' : it.inDoaj ? 'DOAJ (semak Scopus/WoS)' : '' };
-    Object.keys(want).forEach(k => { if (want[k] && !(d[k] && String(d[k]).trim())) patch[k] = want[k]; });
+    // Rekod yang baru dicipta daripada PDF: metadata OpenAlex (tajuk, penulis, tahun) lebih dipercayai daripada tekaan daripada teks PDF.
+    const utama = baru ? ['tajuk', 'penulis', 'tahun', 'rujukan'] : [];
+    Object.keys(want).forEach(k => { if (want[k] && (utama.includes(k) || !(d[k] && String(d[k]).trim()))) patch[k] = want[k]; });
     if (!d.catatan) patch.catatan = 'Dicadangkan oleh Cadangan Harian pada ' + H.date + '.' + (it.jurnal ? ' Jurnal: ' + it.jurnal + '.' : '');
     if (Object.keys(patch).length) { try { await R.writeNow(articleId, patch); } catch (e) {} }
     await simpan(); render(); toast('PDF dipadankan dengan cadangan hari ini: ' + it.tema);
     return true;
   }
   function tambah(it) {
+    // Elak pendua: jika rekod dengan DOI yang sama sudah ada (mungkin dicipta di peranti lain), guna rekod itu.
+    const n = R.normDoi(it.doi); let ada = null;
+    if (n) R.S.docs.forEach((d, id) => { if (!ada && R.normDoi(d.doi) === n) ada = id; });
+    H.reused = !!ada; if (ada) return ada;
     const extra = { tajuk: it.tajuk, penulis: penulisRingkas(it.penulis), tahun: it.tahun, doi: it.doi, rujukan: it.rujukan || apaRef(it), jenis: 'Artikel jurnal', indeks: it.isCore ? 'Jurnal teras CWTS (semak Scopus/WoS melalui SJR)' : it.inDoaj ? 'DOAJ (semak Scopus/WoS)' : '', tema: it.tema, pautan: it.pdfUrl || it.oaUrl, status: 'Belum dibaca', catatan: 'Dicadangkan oleh Cadangan Harian pada ' + H.date + '.' + (it.jurnal ? ' Jurnal: ' + it.jurnal + '.' : '') };
     const id = R.createArticle(extra); R.renderList(); return id;
   }
@@ -380,7 +386,7 @@ export function initHarian(R) {
     else if (b.dataset.dlDrive !== undefined) R.downloadPdf(it.artikelId, 0);
     else if (b.dataset.dl !== undefined) dlPdf(it, i);
     else if (b.dataset.bacaSini !== undefined) R.Flip.open({ title: penulisRingkas(it.penulis) + ' (' + it.tahun + ')', sub: it.tajuk, source: { kind: 'url', url: it.pdfUrl }, dl: it.pdfUrl, note: 'Dibaca terus daripada penerbit. Tambah ke repositori dan muat naik PDF untuk simpanan kekal.' });
-    else if (b.dataset.tambah !== undefined) { it.artikelId = tambah(it); await simpan(); render(); toast('Rekod Bil. ' + ((R.S.docs.get(it.artikelId) || {}).bil || '') + ' dicipta', false, { label: 'Buka', fn: () => R.openRecord(it.artikelId) }); }
+    else if (b.dataset.tambah !== undefined) { it.artikelId = tambah(it); await simpan(); render(); toast((H.reused ? 'Rekod sedia ada (DOI sama) digunakan: Bil. ' : 'Rekod Bil. ') + ((R.S.docs.get(it.artikelId) || {}).bil || '') + (H.reused ? '' : ' dicipta'), false, { label: 'Buka', fn: () => R.openRecord(it.artikelId) }); }
     else if (b.dataset.buka !== undefined) R.openRecord(it.artikelId);
     else if (b.dataset.tukar !== undefined) {
       const alt = (it.alt || []).shift(); if (!alt) return;
