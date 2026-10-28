@@ -4,7 +4,8 @@
 import { initFlip } from './mod/flip.js';
 import { initHarian } from './mod/harian.js';
 import { initPeta } from './mod/peta.js';
-const VERSION = '1.3.1';
+import { initWeb } from './mod/web.js';
+const VERSION = '1.4.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -1177,5 +1178,6 @@ const R = {
 const Flip = initFlip(R); R.Flip = Flip;
 const Harian = initHarian(R); R.Harian = Harian;
 const Peta = initPeta(R); R.Peta = Peta;
-if (TEST) window.__RSLR = { R, Flip, Harian, Peta, S };
+const Web = initWeb(R); R.Web = Web;
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, S };
 start();

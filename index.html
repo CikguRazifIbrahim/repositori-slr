@@ -359,6 +359,41 @@ button.chip{cursor:pointer}
 .rantai-col li .d{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
 .rantai-col li .k{background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:0 6px;font-size:11px;font-weight:600}
 .rantai-col li .btn{padding:1px 7px;font-size:11px}
+.web{position:fixed;inset:0;z-index:55;background:rgba(10,15,22,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.web-card{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);width:min(1400px,100%);height:min(900px,100%);display:flex;flex-direction:column;overflow:hidden}
+.web-head{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.web-title{flex:1;min-width:200px;font-size:15px;line-height:1.3}
+.web-title small{display:block;color:var(--muted);font-size:12.5px;font-weight:400;margin-top:2px}
+.web-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px}
+.web-svg{width:100%;height:100%;display:block;background:var(--bg);cursor:grab;touch-action:none}
+.web-svg.grab{cursor:grabbing}
+.web-svg .node{cursor:pointer}
+.web-svg .node:focus{outline:none}
+.web-svg .node:hover circle,.web-svg .node:focus circle{filter:brightness(1.08);stroke:var(--fg)}
+.web-svg .lbl{font-size:12px;fill:var(--fg);font-family:var(--font-body);paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round}
+.web-svg .lbl.big{font-size:14px;font-weight:700}
+.web-svg .pct{font-size:11px;font-weight:700;font-family:var(--font-body);pointer-events:none}
+.web-svg .edge.hi{stroke:var(--bad);stroke-opacity:1}
+.web-side{border-left:1px solid var(--line);overflow:auto;padding:12px;font-size:13px}
+.web-side h3{font-size:14px;margin:10px 0 6px}
+.web-centre{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.web-centre .acts,.web-item .acts{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;width:100%}
+.web-item{border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px}
+.web-item.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.web-item .w{display:flex;align-items:center;gap:8px;font-size:12px}
+.web-item .bar{flex:1;height:6px;border-radius:4px;background:var(--line);overflow:hidden}
+.web-item .bar span{display:block;height:100%;background:var(--accent)}
+.web-item .t{margin-top:4px;line-height:1.4;overflow-wrap:anywhere}
+.web-item .j{color:var(--muted);font-size:12px;margin-top:3px}
+.web-legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:8px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);align-items:center}
+.web-legend span{display:inline-flex;align-items:center;gap:5px}
+.web-legend .sw{display:inline-block;width:22px;height:0;border-top:4px solid var(--accent);border-radius:2px}
+.web-legend .sw.ring{border-top:2px dashed var(--line-strong)}
+.web-legend .dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid var(--accent);background:var(--accent)}
+.web-legend .dot.hollow{background:transparent}
+.web-legend .dot.dash{background:transparent;border-style:dashed}
+body.web-open{overflow:hidden}
+@media (max-width:900px){.web{padding:0}.web-card{border-radius:0}.web-body{grid-template-columns:minmax(0,1fr)}.web-side{border-left:0;border-top:1px solid var(--line);max-height:38%}.web-body{display:flex;flex-direction:column}.web-svg{flex:1;min-height:0}}
 .pick .manual{font-size:13px;line-height:1.45;background:var(--warn-soft);color:var(--fg);border-radius:8px;padding:8px 10px}
 .pick.over{outline:2px dashed var(--accent);outline-offset:3px;background:var(--accent-soft)}
 
@@ -606,6 +641,24 @@ button.chip{cursor:pointer}
     <button class="vbtn" id="flipNext" title="Muka seterusnya"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
     <span class="v-sep"></span>
     <a class="vbtn" id="flipDl" href="#" target="_blank" rel="noopener" title="Muat turun PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg></a>
+  </div>
+</div>
+
+<div id="web" class="web" hidden>
+  <div class="web-card" role="dialog" aria-modal="true" aria-labelledby="webTitle">
+    <div class="web-head">
+      <div class="web-title" id="webTitle"></div>
+      <button class="btn btn-sm" id="webZoomOut" title="Zum keluar">&minus;</button>
+      <button class="btn btn-sm" id="webZoomIn" title="Zum masuk">+</button>
+      <button class="btn btn-sm" id="webFit" title="Muat skrin">Muat</button>
+      <button class="btn btn-sm" id="webPng" title="Simpan rajah sebagai PNG">PNG</button>
+      <button class="btn btn-sm" id="webClose" title="Tutup (Esc)">Tutup</button>
+    </div>
+    <div class="web-body">
+      <svg id="webSvg" class="web-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <aside id="webSide" class="web-side"></aside>
+    </div>
+    <div class="web-legend" id="webLegend"></div>
   </div>
 </div>
 

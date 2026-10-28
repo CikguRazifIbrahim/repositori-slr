@@ -240,10 +240,10 @@ export function initHarian(R) {
       return `<div class="rantai-col"><h3><span class="tag tema ${temaClass(tema)}"><span>${esc(tema)}</span></span></h3><ol>${steps.map(({ d, it }, k) => {
         const r = it.rantai || {}; const sambung = k > 0 && r.panjang > 1 && !r.baharu;
         const ruj = it.rujukan || apaRef(it);
-        return `<li class="${sambung ? 'sambung' : 'mula'}" title="${esc(sambung ? 'Disenaraikan dalam Rujukan artikel sebelumnya' : 'Rantaian baharu (carian baharu)')}"><div class="hd"><span class="d">${esc(d)}</span> <span class="k">${esc(kelasLabel(it.kelas || kelasOf(it)) || '')}</span>${sambung ? ' <span class="s">daripada Rujukan artikel ' + esc(it.rantai.dari && it.rantai.dari.tarikh || '') + '</span>' : ''}</div><div class="ruj">${esc(ruj)}</div><div class="acts">${it.doi ? `<a class="btn btn-sm" href="https://doi.org/${esc(it.doi)}" target="_blank" rel="noopener">DOI</a>` : ''}<button class="btn btn-sm" data-salin="${esc(ruj)}">Salin rujukan</button>${it.artikelId && R.S.docs.has(it.artikelId) ? `<button class="btn btn-sm" data-rek="${esc(it.artikelId)}">Rekod</button>` : ''}</div></li>`;
+        return `<li class="${sambung ? 'sambung' : 'mula'}" title="${esc(sambung ? 'Disenaraikan dalam Rujukan artikel sebelumnya' : 'Rantaian baharu (carian baharu)')}"><div class="hd"><span class="d">${esc(d)}</span> <span class="k">${esc(kelasLabel(it.kelas || kelasOf(it)) || '')}</span>${sambung ? ' <span class="s">daripada Rujukan artikel ' + esc(it.rantai.dari && it.rantai.dari.tarikh || '') + '</span>' : ''}</div><div class="ruj" data-web="p:${esc(R.normDoi(it.doi))}" title="Klik untuk membuka Web Artikel">${esc(ruj)}</div><div class="acts"><button class="btn btn-sm btn-primary" data-web="p:${esc(R.normDoi(it.doi))}">Web artikel</button>${it.doi ? `<a class="btn btn-sm" href="https://doi.org/${esc(it.doi)}" target="_blank" rel="noopener">DOI</a>` : ''}<button class="btn btn-sm" data-salin="${esc(ruj)}">Salin rujukan</button>${it.artikelId && R.S.docs.has(it.artikelId) ? `<button class="btn btn-sm" data-rek="${esc(it.artikelId)}">Rekod</button>` : ''}</div></li>`;
       }).join('')}</ol></div>`;
     });
-    box.innerHTML = `<h2>Rantaian artikel <small>Setiap anak panah bermakna artikel di bawahnya diambil daripada senarai Rujukan artikel di atasnya; garis putus bermakna rantaian baharu.</small></h2><div class="rantai-grid">${cols.join('')}</div>`;
+    box.innerHTML = `<h2>Rantaian artikel <small>Setiap anak panah bermakna artikel di bawahnya diambil daripada senarai Rujukan artikel di atasnya; garis putus bermakna rantaian baharu. Klik mana-mana rujukan untuk membuka Web Artikel (jaringan hubungan dengan artikel lain dalam repositori dan cadangan harian).</small></h2><div class="rantai-grid">${cols.join('')}</div>`;
   }
   async function load(date, auto) {
     H.date = date || todayStr();
@@ -391,6 +391,7 @@ export function initHarian(R) {
   });
   $('#harian').addEventListener('click', async e => {
     const b = e.target.closest('[data-rek]'); if (b) { R.openRecord(b.dataset.rek); return; }
+    const w = e.target.closest('[data-web]'); if (w) { R.Web.open(w.dataset.web); return; }
     const c = e.target.closest('[data-salin]'); if (c) { try { await navigator.clipboard.writeText(c.dataset.salin); toast('Rujukan APA 7 disalin'); } catch (er) { toast('Papan keratan tidak tersedia', true); } }
   });
   $('#picks').addEventListener('change', async e => {

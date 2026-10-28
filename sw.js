@@ -1,10 +1,10 @@
 /* Service worker Repositori SLR: cache cangkerang aplikasi supaya ia boleh dipasang dan dibuka pantas.
    Permintaan ke Google (Firestore, Drive, GIS) tidak pernah dicache. */
-const VERSION = 'rslr-v1.3.1';
+const VERSION = 'rslr-v1.4.0';
 const CACHE = 'rslr-' + VERSION;
 const SHELL = [
   './', './index.html', './app.js', './config.js', './manifest.webmanifest',
-  './mod/flip.js', './mod/harian.js', './mod/peta.js', './data/seen_dois.json',
+  './mod/flip.js', './mod/harian.js', './mod/peta.js', './mod/web.js', './data/seen_dois.json',
   './vendor/firebase.bundle.js', './vendor/pdf.min.mjs', './vendor/pdf.worker.min.mjs',
   './icons/icon-64.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'
 ];

@@ -197,5 +197,5 @@ export function initPeta(R) {
     R.Flip.open({ title: `Bil. ${d.bil || '?'} ${d.penulis || ''} (${d.tahun || ''})`, sub: d.tajuk || entry.nama, source: { kind: 'drive', id: entry.id }, page: h.m, dl: entry.link || R.drive().link(entry.id), articleId: h.art, fileIdx: 0 });
   });
 
-  return { show, sync, status, indexArticle, indexAll, removeArticleText, render, state: P };
+  return { show, sync, status, indexArticle, indexAll, removeArticleText, render, ensureLoaded, tokens, state: P };
 }
