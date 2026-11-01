@@ -6,7 +6,7 @@ import { initHarian } from './mod/harian.js';
 import { initPeta } from './mod/peta.js';
 import { initWeb } from './mod/web.js';
 import { initIsi } from './mod/isi.js';
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';

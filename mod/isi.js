@@ -48,7 +48,7 @@ Bab tesis: Bab 1 Pengenalan dan pernyataan masalah; Bab 2 Sorotan literatur (kon
     A: 'Ambil butiran daripada kepala artikel (jurnal, jilid, isu, halaman, DOI, tahun terbit sebenar). "rujukan": susun rujukan APA 7 lengkap daripada maklumat yang ada dalam PDF; jika jilid atau halaman tiada, tinggalkan bahagian itu dan jangan mereka. "penulis": nama keluarga penulis pertama diikuti "et al." jika tiga penulis atau lebih, atau "A dan B" jika dua. "jenis": ikut reka bentuk sebenar artikel. "indeks" dan "kuartil": hanya jika artikel sendiri menyatakannya, jika tidak "Tidak pasti". "negara": negara lokasi kutipan data. "peringkat" dan "lokasi": ikut sampel kajian. "tema": tema utama yang paling hampir dengan konstruk teras artikel.',
     B: '"objektif": perkara yang hendak dibuktikan, satu hingga dua ayat. "konstruk": senaraikan setiap konstruk dengan peranannya (bebas, perantara, penyederhana, bersandar, kawalan) dan dimensinya; gunakan titik koma antara konstruk. "definisi": takrif setiap konstruk teras dalam ayat sendiri, disertai petikan asal pendek dalam tanda petik dan muka surat. "teori": nama teori atau model yang dijadikan asas serta sumber primernya seperti yang disitasi artikel (penulis dan tahun). "asasTeori": Tingkah laku bagi teori kepimpinan, organisasi atau kognitif sosial; Teknologi bagi TAM, UTAUT, TPB penerimaan teknologi; Kedua-dua jika digabung.',
     C: '"rekaBentuk": ikut artikel. "penilai": siapa menilai siapa, misalnya guru menilai guru besar bermakna guru menjadi responden yang menilai pemimpin. "sampel": siapa, berapa ramai, cara dipilih, kadar respons, dengan muka surat. "instrumen": sumber adaptasi setiap skala, bilangan item, jenis skala, alfa Cronbach, CR dan AVE jika dilaporkan, dengan muka surat. "teknik": teknik analisis utama (contoh CB-SEM, PLS-SEM, regresi berganda, analisis tematik). "perisian": perisian dan prosedur (contoh AMOS, SmartPLS, bootstrapping 5,000).',
-    D: '"dapatan": laporkan setiap laluan atau hipotesis dengan pekali (beta), nilai p atau t, R kuasa dua, kesan tidak langsung dan jenis perantaraan jika ada; masukkan juga laluan yang tidak signifikan; setiap angka dengan muka surat; gunakan titik koma antara dapatan. "cabaran": halangan atau cabaran yang dilaporkan berkaitan kepimpinan digital, perkongsian pengetahuan atau kompetensi digital guru. "implikasi": kesimpulan artikel serta implikasi teori dan implikasi amalan atau dasar seperti yang dinyatakan pengarang.',
+    D: '"dapatan": laporkan setiap laluan atau hipotesis dengan pekali (beta), nilai p atau t, R kuasa dua, kesan tidak langsung dan jenis perantaraan jika ada; masukkan juga laluan yang tidak signifikan; setiap angka dengan muka surat; gunakan titik koma antara dapatan; padatkan kepada kira-kira 1,500 aksara (dapatan paling penting dahulu). "cabaran": halangan atau cabaran yang dilaporkan berkaitan kepimpinan digital, perkongsian pengetahuan atau kompetensi digital guru. "implikasi": kesimpulan artikel serta implikasi teori dan implikasi amalan atau dasar seperti yang dinyatakan pengarang.',
     E: '"batasan": batasan dan cadangan kajian lanjutan yang diakui pengarang sendiri, dengan muka surat. "jurang": jurang yang terserlah daripada artikel ini dan cara kajian Prof Dr (lihat profil) boleh mengisinya; nyatakan secara spesifik (konteks, populasi, teori, kaedah atau empirikal). "jenisJurang": pilih jenis jurang yang berkaitan. "kekuatan": kekuatan metodologi dan sumbangan artikel. "kelemahan": kritikan kritis, misalnya bias kaedah sepunya, sampel kecil atau bukan rawak, dakwaan sebab akibat daripada data keratan rentas, kesahan instrumen tidak dilaporkan. "mmat": nilai lima kriteria MMAT 2018 bagi kategori reka bentuk berkenaan (contoh kuantitatif deskriptif: persampelan relevan, sampel mewakili, pengukuran sesuai, risiko bias bukan respons rendah, analisis statistik sesuai); tulis setiap kriteria sebagai Ya, Tidak atau Tidak pasti dengan sebab ringkas.',
     F: '"relevansi": Tinggi jika artikel mengkaji sekurang-kurangnya dua daripada tiga konstruk kajian Prof Dr (kepimpinan digital atau kepimpinan sekolah, pengurusan atau perkongsian pengetahuan, kompetensi digital guru) dalam konteks sekolah dengan kaedah kuantitatif; Sederhana-Tinggi jika satu konstruk teras dengan kaedah yang serupa atau dua konstruk dengan kaedah berbeza; Sederhana jika satu konstruk; Rendah jika hanya konteks umum. "jenisKesan": kesan yang diuji artikel (Langsung, Perantaraan, Kedua-dua, Tiada). "alasanRelevansi": satu ayat. "padananKdPpo": YA jika artikel memberi bukti empirikal atau hujah teori bagi hubungan kepimpinan (digital) dengan pengurusan atau perkongsian pengetahuan; "padananPpoKdg": YA jika bagi hubungan pengurusan pengetahuan dengan kompetensi digital guru; TIDAK jika hubungan itu tidak disentuh; Tidak pasti jika hanya tersirat. "bandingan": bandingkan dengan artikel lain dalam repositori Prof Dr yang disenaraikan (selari, bercanggah atau melanjutkan), rujuk sebagai Penulis (Tahun); jika senarai kosong, tulis "Tiada artikel lain untuk dibandingkan buat masa ini". "bab": bab tesis yang paling sesuai memetik artikel ini. "subtopik": cadangan subtopik Bab 2 secara umum, contohnya 2.x Kepimpinan digital dan pengurusan pengetahuan. "jejak": rujukan dalam artikel yang perlu dibaca daripada teks asal, terutamanya teori atau instrumen yang dipetik secara sekunder, dalam bentuk Penulis (Tahun) dan nama karya.'
   };
@@ -105,25 +105,71 @@ Pulangkan JSON sekarang.`;
   }
 
   /* ---- panggilan API ---- */
-  async function panggil(t, system, artikel, task) {
+  /* Output berstruktur: satu alat "isi_medan" dengan skema SEMUA medan (sama bagi setiap bahagian supaya cache prompt kekal sah);
+     model dipaksa memanggil alat itu, maka jawapan tiba sebagai objek JSON yang sudah disahkan API, bukan teks bebas. */
+  function skemaAlat() {
+    const props = {};
+    GROUPS.forEach(g => g.medan.forEach(m => m.fields.forEach(f => {
+      if (SKIP.has(f.k)) return; const desc = `${g.letter}${m.n}. ${f.label}${f.help ? '. ' + f.help : ''}`;
+      if (f.type === 'select') props[f.k] = { type: 'string', enum: f.opts, description: desc + ' (pilih hanya jika jelas daripada artikel; jika tidak, tinggalkan kunci ini)' };
+      else if (f.type === 'multi') props[f.k] = { type: 'array', items: { type: 'string', enum: f.opts }, description: desc };
+      else props[f.k] = { type: 'string', description: desc };
+    })));
+    return { name: 'isi_medan', description: 'Isi medan ekstrak Jadual SLR yang diminta dalam arahan bahagian. Sertakan hanya kunci yang diminta dalam arahan; tinggalkan kunci lain. Nilai teks dalam Bahasa Melayu Malaysia akademik, dengan muka surat (m.s. N) bagi angka dan petikan.', input_schema: { type: 'object', properties: props, additionalProperties: false } };
+  }
+  const HAD_TOKEN = 8192, HAD_TOKEN_ULANG = 16384;
+  async function panggil(t, system, artikel, task, hadToken) {
     const artBlock = artikel.pdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: artikel.pdf }, cache_control: { type: 'ephemeral' } }
       : { type: 'text', text: 'TEKS PENUH ARTIKEL (fail ' + artikel.nama + ', ' + artikel.pages + ' muka surat):\n\n' + artikel.text, cache_control: { type: 'ephemeral' } };
-    const body = { model: t.model, max_tokens: 4096, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: [artBlock, { type: 'text', text: task }] }] };
-    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 180000);
+    const body = { model: t.model, max_tokens: hadToken || HAD_TOKEN, tools: [skemaAlat()], tool_choice: { type: 'tool', name: 'isi_medan' }, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: [artBlock, { type: 'text', text: task }] }] };
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 240000);
     let r;
     try { r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': t.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body), signal: ctl.signal }); }
     catch (e) { throw { code: e && e.name === 'AbortError' ? 'masa' : 'rangkaian', message: String(e && e.message || e) }; }
     finally { clearTimeout(tm); }
     let j = null; try { j = await r.json(); } catch (e) {}
     if (!r.ok) throw { code: 'http', status: r.status, message: (j && j.error && j.error.message) || '' };
-    const text = ((j && j.content) || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+    const blocks = (j && j.content) || [];
+    const tool = blocks.find(b => b.type === 'tool_use' && b.input && typeof b.input === 'object');
+    const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n');
     const u = (j && j.usage) || {};
-    return { text, usage: { masuk: u.input_tokens || 0, keluar: u.output_tokens || 0, cacheTulis: u.cache_creation_input_tokens || 0, cacheBaca: u.cache_read_input_tokens || 0 }, stop: j && j.stop_reason };
+    I.lastRaw = { text, tool: tool ? tool.input : null, stop: j && j.stop_reason };
+    return { input: tool ? tool.input : null, text, usage: { masuk: u.input_tokens || 0, keluar: u.output_tokens || 0, cacheTulis: u.cache_creation_input_tokens || 0, cacheBaca: u.cache_read_input_tokens || 0 }, stop: j && j.stop_reason };
   }
-  function parseJson(text) {
+  /* Sandaran: jika model membalas teks (bukan alat), baiki JSON yang lazim rosak: pagar kod, tanda petik tidak dilepaskan di dalam
+     rentetan, baris baharu mentah, koma hujung dan kurungan yang terpotong. */
+  function baikiJson(src) {
+    let out = ''; let inStr = false; let esc = false;
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (inStr) {
+        if (esc) { out += c; esc = false; continue; }
+        if (c === '\\') { out += c; esc = true; continue; }
+        if (c === '"') {
+          const after = src.slice(i + 1, i + 80); const m = /^\s*([,}\]:])/.exec(after); let end = i === src.length - 1;
+          if (m) { if (m[1] !== ',') end = true; else { const rest = after.slice(m[0].length); end = /^\s*["}\]]/.test(rest) || /^\s*$/.test(rest); } }
+          if (end) { inStr = false; out += c; } else out += '\\"'; continue;
+        }
+        if (c === '\n') { out += '\\n'; continue; } if (c === '\r') continue; if (c === '\t') { out += '\\t'; continue; }
+        if (c.charCodeAt(0) < 32) continue;
+        out += c; continue;
+      }
+      if (c === '"') { inStr = true; out += c; continue; }
+      out += c;
+    }
+    if (inStr) out += '"';
+    out = out.replace(/,\s*$/, '');
+    let depth = 0; inStr = false; esc = false; const stack = [];
+    for (const c of out) { if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; } if (c === '"') inStr = true; else if (c === '{' || c === '[') stack.push(c); else if (c === '}' || c === ']') stack.pop(); }
+    while (stack.length) out += stack.pop() === '{' ? '}' : ']';
+    return out.replace(/,(\s*[}\]])/g, '$1');
+  }
+  function parseJson(text, stop) {
     let s = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-    const a = s.indexOf('{'), b = s.lastIndexOf('}'); if (a < 0 || b <= a) throw { code: 'json' };
-    try { return JSON.parse(s.slice(a, b + 1)); } catch (e) { throw { code: 'json', message: e.message }; }
+    const a = s.indexOf('{'); if (a < 0) throw { code: 'json', stop };
+    const b = s.lastIndexOf('}'); const raw = s.slice(a, b > a ? b + 1 : undefined);
+    try { return JSON.parse(raw); } catch (e) {}
+    try { return JSON.parse(baikiJson(raw)); } catch (e) { throw { code: 'json', message: e.message, stop }; }
   }
   function msg(e) {
     const c = e && e.code; const st = e && e.status;
@@ -131,7 +177,7 @@ Pulangkan JSON sekarang.`;
     if (c === 'no_key') return 'kunci API Anthropic belum ditetapkan (menu Tetapan).';
     if (c === 'no_token') return 'Google Drive belum disambung.';
     if (c === 'scan_besar') return `PDF ini imbasan tanpa teks dan melebihi 100 muka surat (${e.pages}); tidak dapat dihantar.`;
-    if (c === 'json') return 'jawapan model bukan JSON yang sah; cuba sekali lagi.';
+    if (c === 'json') return e && e.stop === 'max_tokens' ? 'jawapan model terpotong kerana mencapai had token; cuba sekali lagi (medan yang panjang boleh diisi berasingan).' : 'jawapan model tidak dapat dibaca sebagai JSON walaupun selepas pembaikan; cuba sekali lagi.';
     if (c === 'masa') return 'tamat masa menunggu jawapan (3 minit).';
     if (c === 'rangkaian') return 'permintaan ke api.anthropic.com gagal (talian terputus atau disekat pelayar).';
     if (st === 401) return 'kunci API Anthropic tidak sah (semak Tetapan).';
@@ -163,8 +209,21 @@ Pulangkan JSON sekarang.`;
       const artikel = await bacaArtikel(id, s => setBtn(letter, s, true));
       setBtn(letter, 'Claude sedang membaca ' + artikel.pages + ' muka surat', true);
       const lain = letter === 'F' ? digestLain(id, d0.tema) : '';
-      const res = await panggil(t, systemPrompt(t.profil), artikel, taskPrompt(letter, sp, d0, lain));
-      const j = parseJson(res.text);
+      const tugas = taskPrompt(letter, sp, d0, lain);
+      let res = await panggil(t, systemPrompt(t.profil), artikel, tugas);
+      if (res.stop === 'max_tokens') {
+        /* Jawapan terpotong: ulang sekali dengan had token dua kali ganda dan arahan meringkaskan. Awalan (alat, sistem, artikel)
+           sudah berada dalam cache, maka ulangan ini murah; token keluaran sahaja dijana semula. */
+        console.warn('isi: jawapan mencapai had token bagi bahagian', letter, '; mengulang dengan had', HAD_TOKEN_ULANG);
+        setBtn(letter, 'Jawapan terpotong; Claude mengulang dengan lebih ringkas', true);
+        const u0 = res.usage;
+        const res2 = await panggil(t, systemPrompt(t.profil), artikel, tugas + '\n\nPERHATIAN: jawapan sebelum ini terpotong kerana terlalu panjang. Ringkaskan setiap medan (tidak melebihi kira-kira 1,200 aksara setiap satu) sambil mengekalkan angka, petikan dan jejak muka surat yang paling penting.', HAD_TOKEN_ULANG);
+        res2.usage = { masuk: u0.masuk + res2.usage.masuk, keluar: u0.keluar + res2.usage.keluar, cacheTulis: u0.cacheTulis + res2.usage.cacheTulis, cacheBaca: u0.cacheBaca + res2.usage.cacheBaca };
+        /* Jika ulangan masih terpotong tetapi ada medan separa, gunakan mana yang lebih lengkap. */
+        const n1 = res.input ? Object.keys(res.input).length : 0, n2 = res2.input ? Object.keys(res2.input).length : 0;
+        res = (res2.input || res2.text) && (n2 >= n1 || !res.input) ? res2 : Object.assign({}, res, { usage: res2.usage });
+      }
+      const j = res.input || parseJson(res.text, res.stop);
       const d1 = rekodSemasa(id); const patch = {}; const diisi = []; const ditolak = [];
       sp.fields.forEach(f => {
         if (!nilaiKosong(d1[f.k])) return; let v = j[f.k]; if (v === undefined || v === null) return;
@@ -200,7 +259,7 @@ Pulangkan JSON sekarang.`;
   }
   function renderStat(d) {
     const ai = (d && d.aiIsi) || {};
-    GROUPS.forEach(g => { const el = document.querySelector('[data-aistat="' + g.letter + '"]'); if (!el) return; const s = ai[g.letter]; if (!s) { el.hidden = true; el.textContent = ''; return; } el.hidden = false; el.textContent = 'Draf AI ' + R.fmtTime(s.masa) + (s.model ? ' (' + String(s.model).replace('claude-', '') + ')' : '') + (s.medan ? ', ' + s.medan.length + ' medan' : ''); el.title = 'Diisi automatik daripada PDF; medan: ' + ((s.medan || []).join(', ') || 'tiada'); });
+    GROUPS.forEach(g => { const el = document.querySelector('[data-aistat="' + g.letter + '"]'); if (!el) return; const s = ai[g.letter]; if (!s) { el.hidden = true; el.textContent = ''; return; } el.hidden = false; el.textContent = 'Draf AI ' + R.fmtTime(s.masa) + (s.model ? ' (' + String(s.model).replace('claude-', '') + ')' : '') + (s.medan ? ', ' + s.medan.length + ' medan' : ''); el.title = 'Diisi automatik daripada PDF; medan: ' + ((s.medan || []).join(', ') || 'tiada') + (s.token ? '; token masuk ' + s.token.masuk + ', keluar ' + s.token.keluar + ', cache dibaca ' + s.token.cacheBaca : ''); });
     const b = $('#btnIsiSemua'); if (b) b.hidden = !(d && (d.fail || []).length);
   }
   $('#form').addEventListener('click', e => { const b = e.target.closest('[data-isi]'); if (!b) return; e.preventDefault(); isi(R.S.currentId, b.dataset.isi).catch(() => {}); });
