@@ -5,7 +5,8 @@ import { initFlip } from './mod/flip.js';
 import { initHarian } from './mod/harian.js';
 import { initPeta } from './mod/peta.js';
 import { initWeb } from './mod/web.js';
-const VERSION = '1.5.0';
+import { initIsi } from './mod/isi.js';
+const VERSION = '1.6.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -218,7 +219,7 @@ function makeTestAdapters() {
     create(data) { const id = 'd' + (++n); docs.set(id, clone(data)); window.__creates = (window.__creates || 0) + 1; setTimeout(fire, 10); return id; },
     async update(id, patch) { if (!docs.has(id)) throw { code: 'not-found' }; docs.set(id, Object.assign({}, docs.get(id), clone(patch))); window.__updates = (window.__updates || 0) + 1; setTimeout(fire, 10); },
     async remove(id) { docs.delete(id); setTimeout(fire, 10); },
-    async getMeta() { return meta; }, async setMeta(p) { Object.assign(meta, p); },
+    async getMeta() { return meta; }, async setMeta(p) { Object.assign(meta, p); return { awan: true }; },
     async get(path) { deny(path); if (path === 'meta/tetapan') return meta; return other.has(path) ? clone(other.get(path)) : null; },
     async set(path, data, merge) { deny(path); if (path === 'meta/tetapan') { Object.assign(meta, data); return; } other.set(path, merge && other.has(path) ? deepMerge(other.get(path), data) : clone(data)); window.__sets = (window.__sets || 0) + 1; },
     async list(coll, limit) { deny(coll + '/'); return Array.from(other.keys()).filter(k => k.startsWith(coll + '/')).sort().reverse().slice(0, limit || 50).map(k => ({ id: k.slice(coll.length + 1), data: clone(other.get(k)) })); },
@@ -259,8 +260,8 @@ async function makeRealAdapters() {
     create(data) { const ref = FB.doc(FB.collection(db, COLL)); FB.setDoc(ref, data).catch(e => { toast('Gagal mencipta rekod: ' + dbMsg(e), true); }); return ref.id; },
     update(id, patch) { return FB.updateDoc(FB.doc(db, COLL, id), patch); },
     remove(id) { return FB.deleteDoc(FB.doc(db, COLL, id)); },
-    async getMeta() { try { const s = await FB.getDoc(FB.doc(db, 'meta', 'tetapan')); return s.exists() ? s.data() : {}; } catch (e) { return {}; } },
-    async setMeta(p) { try { await FB.setDoc(FB.doc(db, 'meta', 'tetapan'), p, { merge: true }); } catch (e) {} },
+    async getMeta() { let cloud = {}; try { const s = await FB.getDoc(FB.doc(db, 'meta', 'tetapan')); if (s.exists()) cloud = s.data() || {}; } catch (e) {} return Object.assign({}, lsGet('rslr_meta', {}) || {}, cloud); },
+    async setMeta(p) { const local = Object.assign(lsGet('rslr_meta', {}) || {}, p); lsSet('rslr_meta', local); try { await FB.setDoc(FB.doc(db, 'meta', 'tetapan'), p, { merge: true }); return { awan: true }; } catch (e) { return { awan: false, err: e }; } },
     async get(path) { const s = await FB.getDoc(FB.doc(db, path)); return s.exists() ? s.data() : null; },
     set(path, data, merge) { return FB.setDoc(FB.doc(db, path), data, merge ? { merge: true } : {}); },
     async list(coll, limit) { const q = FB.query(FB.collection(db, coll), FB.orderBy('tarikh', 'desc'), FB.limit(limit || 50)); const s = await FB.getDocs(q); return s.docs.map(d => ({ id: d.id, data: d.data() })); },
@@ -540,7 +541,7 @@ function openFlip(id, idx, page) {
 
 /* ---------- rendering: record form ---------- */
 function buildForm() {
-  $('#form').innerHTML = GROUPS.map(g => `<section id="${g.id}" class="group"><h2>${g.letter}. ${esc(g.title)} <small>${esc(g.sub)}</small></h2>${g.medan.map(m => `<div class="medan"><h3><b>${m.n}</b>${esc(m.title)}</h3><div class="fgrid">${m.fields.map(fieldHtml).join('')}</div></div>`).join('')}</section>`).join('');
+  $('#form').innerHTML = GROUPS.map(g => `<section id="${g.id}" class="group"><h2>${g.letter}. ${esc(g.title)} <small>${esc(g.sub)}</small><span class="ai-wrap"><span class="ai-stat" data-aistat="${g.letter}" hidden></span><button type="button" class="btn btn-sm btn-ai" data-isi="${g.letter}" title="Claude membaca keseluruhan PDF artikel ini dan mengisi medan bahagian ${g.letter} yang masih kosong sebagai draf">Mohon Prof Dr Claude isikan</button></span></h2>${g.medan.map(m => `<div class="medan"><h3><b>${m.n}</b>${esc(m.title)}</h3><div class="fgrid">${m.fields.map(fieldHtml).join('')}</div></div>`).join('')}</section>`).join('');
 }
 function fieldHtml(f) {
   const id = 'f_' + f.k; const wide = f.wide ? ' wide' : ''; const help = f.help ? `<div class="help">${esc(f.help)}</div>` : '';
@@ -563,7 +564,7 @@ function writeControl(k, v) {
   const s = v === null || v === undefined ? '' : String(v);
   if (el.value !== s) el.value = s;
 }
-function fillForm(d) { ALL_KEYS.forEach(k => writeControl(k, d[k])); renderRecordHead(d); renderFiles(d); }
+function fillForm(d) { ALL_KEYS.forEach(k => writeControl(k, d[k])); renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); }
 function mergeIntoForm() {
   const d = S.docs.get(S.currentId); if (!d) return;
   const dirty = S.dirty[S.currentId] || new Set(); const active = document.activeElement;
@@ -573,7 +574,7 @@ function mergeIntoForm() {
     if (el && active === el) return;
     writeControl(k, d[k]);
   });
-  renderRecordHead(d); renderFiles(d);
+  renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d);
 }
 function renderRecordHead(d) {
   const t = (d.penulis || 'Penulis belum diisi') + (d.tahun ? ' (' + d.tahun + ')' : '');
@@ -676,10 +677,10 @@ async function ensureDrive(interactive) {
   }
 }
 function richModal(title, html, okLabel, cancelLabel) {
-  $('#modalTitle').textContent = title; const p = $('#modalText'); p.className = 'modal-rich'; p.innerHTML = html;
+  $('#modalTitle').textContent = title; const p = $('#modalText'); p.className = 'modal-rich'; p.innerHTML = html; $('#modal .modal-card').classList.add('wide');
   const ok = $('#modalOk'); ok.textContent = okLabel || 'Tutup'; ok.className = 'btn btn-primary'; $('#modalCancel').hidden = !cancelLabel; if (cancelLabel) $('#modalCancel').textContent = cancelLabel;
   $('#modal').hidden = false;
-  return new Promise(res => { modalResolve = v => { const inp = p.querySelector('input'); richModal.lastValue = inp ? inp.value : null; p.className = ''; p.innerHTML = ''; $('#modalCancel').hidden = false; $('#modalCancel').textContent = 'Batal'; res(v); }; });
+  return new Promise(res => { modalResolve = v => { const inp = p.querySelector('input'); richModal.lastValue = inp ? inp.value : null; richModal.values = {}; p.querySelectorAll('input[id],select[id],textarea[id]').forEach(el => { richModal.values[el.id] = el.type === 'checkbox' ? el.checked : el.value; }); p.className = ''; p.innerHTML = ''; $('#modal .modal-card').classList.remove('wide'); $('#modalCancel').hidden = false; $('#modalCancel').textContent = 'Batal'; res(v); }; });
 }
 async function showDiag() {
   const li = (k, v, cls) => `<li class="${cls || ''}"><b>${esc(k)}</b><span>${esc(v)}</span></li>`;
@@ -700,10 +701,17 @@ async function showDiag() {
 }
 async function showTetapan() {
   const meta = await DB.getMeta(); const cur = meta && meta.openalexKey ? String(meta.openalexKey) : '';
-  const okk = await richModal('Tetapan', `<div class="help">Kunci API OpenAlex (disyorkan, percuma). Tanpa kunci, carian harian berkongsi bajet awam kecil (kira-kira 100 carian sehari untuk semua pengguna pada alamat IP yang sama, contohnya rangkaian kampus) dan boleh ditolak dengan ralat 429. Dengan kunci, bajet ialah 1,000 carian sehari untuk Prof Dr sahaja.<br>Cara: buka <a href="https://openalex.org/settings/api" target="_blank" rel="noopener">openalex.org/settings/api</a>, daftar akaun percuma dengan e-mel (30 saat), salin kunci dan tampal di bawah. Kunci disimpan dalam Firestore dan dikongsi semua peranti.</div><label for="tetKey">Kunci API OpenAlex</label><input id="tetKey" class="modal-in" type="text" autocomplete="off" value="${esc(cur)}" placeholder="kosongkan untuk tidak menggunakan kunci">`, 'Simpan', 'Batal');
+  const ak = meta && meta.anthropicKey ? String(meta.anthropicKey) : ''; const am = (meta && meta.anthropicModel) || Isi.MODEL_DEFAULT; const prof = (meta && meta.profilKajian) || '';
+  const okk = await richModal('Tetapan', `<div class="help">Kunci API OpenAlex (disyorkan, percuma). Tanpa kunci, carian harian berkongsi bajet awam kecil (kira-kira 100 carian sehari untuk semua pengguna pada alamat IP yang sama) dan boleh ditolak dengan ralat 429. Dengan kunci, bajet ialah 1,000 carian sehari untuk Prof Dr sahaja. Cara: buka <a href="https://openalex.org/settings/api" target="_blank" rel="noopener">openalex.org/settings/api</a>, daftar akaun percuma, salin kunci dan tampal di bawah.</div><label for="tetKey">Kunci API OpenAlex</label><input id="tetKey" class="modal-in" type="text" autocomplete="off" value="${esc(cur)}" placeholder="kosongkan untuk tidak menggunakan kunci">
+    <div class="help"><b>Mohon Prof Dr Claude isikan.</b> Kunci API Anthropic (akaun Console Anthropic, berbayar mengikut penggunaan, kira-kira beberapa sen setiap bahagian). Cara: buka <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>, daftar, tambah kredit, cipta API key dan tampal di bawah. Kunci dihantar hanya ke api.anthropic.com daripada aplikasi ini.</div><label for="tetAk">Kunci API Anthropic</label><input id="tetAk" class="modal-in" type="password" autocomplete="off" value="${esc(ak)}" placeholder="sk-ant-...">
+    <label for="tetModel">Model</label><select id="tetModel" class="modal-in">${Isi.MODELS.map(([v, l]) => `<option value="${esc(v)}"${v === am ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+    <label for="tetProfil">Profil kajian Prof Dr (digunakan untuk bahagian E dan F; kosongkan untuk profil lalai)</label><textarea id="tetProfil" class="modal-in" rows="7" placeholder="${esc(Isi.PROFIL_DEFAULT.slice(0, 160))}...">${esc(prof)}</textarea>`, 'Simpan', 'Batal');
   if (!okk) return;
-  const v = String(richModal.lastValue ?? cur).trim();
-  await DB.setMeta({ openalexKey: v }); toast(v ? 'Kunci OpenAlex disimpan' : 'Kunci OpenAlex dibuang');
+  const v = richModal.values || {};
+  const patch = { openalexKey: String(v.tetKey ?? cur).trim(), anthropicKey: String(v.tetAk ?? ak).trim(), anthropicModel: String(v.tetModel || am).trim() || Isi.MODEL_DEFAULT, profilKajian: String(v.tetProfil ?? prof).trim() };
+  const st = await DB.setMeta(patch);
+  if (st && st.awan === false) toast('Tetapan disimpan pada peranti ini sahaja; Firestore menolak penulisan ke koleksi meta (' + ((st.err && st.err.code) || 'ralat') + '). Terbitkan peraturan Firestore supaya tetapan dikongsi semua peranti.', true);
+  else toast('Tetapan disimpan');
 }
 async function uploadFiles(files, articleId) {
   files = Array.from(files || []); if (!files.length) return;
@@ -1184,11 +1192,12 @@ async function start() {
 const R = {
   $, $$, esc, toast, confirmBox, fmtTime, fmtBytes, lsGet, lsSet, saveFile, normDoi, TEMA, C, S, V,
   db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList,
-  uploadFiles, openFlip, downloadPdf
+  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan()
 };
 const Flip = initFlip(R); R.Flip = Flip;
 const Harian = initHarian(R); R.Harian = Harian;
 const Peta = initPeta(R); R.Peta = Peta;
 const Web = initWeb(R); R.Web = Web;
-if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, S };
+const Isi = initIsi(R); R.Isi = Isi;
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, S };
 start();

@@ -188,6 +188,13 @@ button.chip{cursor:pointer}
 .group{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;scroll-margin-top:calc(var(--bar-h) + env(safe-area-inset-top,0px) + 52px)}
 .group h2{font-size:17px;font-weight:700;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .group h2 small{font-family:var(--font-body);font-weight:600;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.group h2 .ai-wrap{margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--font-body)}
+.btn-ai{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line);font-weight:700}
+.btn-ai:disabled{opacity:.7}
+.ai-stat{font-size:11.5px;font-weight:600;color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:2px 8px;text-transform:none;letter-spacing:0}
+.modal-card select.modal-in,.modal-card textarea.modal-in{width:100%;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-size:14px;margin:6px 0 12px;background:var(--surface);font-family:inherit}
+.modal-card{max-height:92vh;overflow:auto}
+.modal-card.wide{max-width:640px}
 .group .medan{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 .group .medan:first-of-type{border-top:0;padding-top:0}
 .medan h3{font-size:14.5px;font-weight:700;font-family:var(--font-body);color:var(--accent);margin-bottom:8px}
@@ -568,6 +575,7 @@ body.web-open{overflow:hidden}
           </div>
           <span class="spacer"></span>
           <button id="btnViewPdf" class="btn btn-sm btn-primary" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4zM8 18v2h8v-2"/></svg>Lihat PDF</button>
+          <button id="btnIsiSemua" class="btn btn-sm btn-ai" hidden title="Claude membaca keseluruhan PDF dan mengisi semua medan kosong bahagian A hingga F sebagai draf">Isi semua bahagian (A hingga F)</button>
           <button id="btnSplit" class="btn btn-sm" hidden title="Baca PDF di sebelah borang"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg>Pandangan berpecah</button>
         </div>
         <h1 id="rekodTitle">Artikel</h1>
