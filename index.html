@@ -394,6 +394,15 @@ button.chip{cursor:pointer}
 .web-legend .dot.dash{background:transparent;border-style:dashed}
 body.web-open{overflow:hidden}
 @media (max-width:900px){.web{padding:0}.web-card{border-radius:0}.web-body{grid-template-columns:minmax(0,1fr)}.web-side{border-left:0;border-top:1px solid var(--line);max-height:38%}.web-body{display:flex;flex-direction:column}.web-svg{flex:1;min-height:0}}
+.pick .kaedah{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12.5px}
+.pick .kaedah .pet{width:100%;color:var(--muted);font-size:12px;line-height:1.4}
+.pick .kaedah .pet .auto{color:var(--muted);font-style:italic}
+.pick .kaedah .padan{display:inline-flex;align-items:center;gap:6px;color:var(--fg);font-weight:600}
+.pick .kaedah .padan i{display:inline-block;width:72px;height:6px;border-radius:4px;background:var(--line);overflow:hidden}
+.pick .kaedah .padan i b{display:block;height:100%;background:var(--accent)}
+.tag.j0{background:var(--ok-soft);color:var(--ok)} .tag.j1{background:var(--surface-2);color:var(--muted)} .tag.j2{background:var(--warn-soft);color:var(--warn)} .tag.j3,.tag.j4{background:var(--bad-soft);color:var(--bad)}
+.harian-semak{font-size:12.5px;line-height:1.5;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;margin-top:12px}
+.harian-semak.bad{border-color:var(--bad);background:var(--bad-soft);color:var(--fg)}
 .pick .manual{font-size:13px;line-height:1.45;background:var(--warn-soft);color:var(--fg);border-radius:8px;padding:8px 10px}
 .pick.over{outline:2px dashed var(--accent);outline-offset:3px;background:var(--accent-soft)}
 
@@ -526,7 +535,8 @@ body.web-open{overflow:hidden}
     <button id="btnHarianCari" class="btn btn-primary">Cari semula</button>
   </div>
   <div id="picks" class="picks"></div>
-  <div class="harian-note">Sumber carian: pangkalan data terbuka OpenAlex. Keutamaan: jurnal Scopus (Q1 hingga Q4 mengikut anggaran SJR, kemudian Scopus tanpa kuartil), diikuti jurnal teras CWTS dan DOAJ; artikel yang tidak dapat disahkan diindeks dan berwasit ditolak. Tapisan lain: tahun penerbitan lima tahun terkini, artikel jurnal, akses terbuka, berkonteks pendidikan, bukan TAM atau UTAUT, belum ada dalam repositori dan belum pernah dicadangkan. Rantaian: calon hari ini diambil daripada senarai Rujukan artikel sebelumnya bagi konstruk yang sama selagi ada penerbitan dalam julat tahun itu; jika tiada, carian baharu dimulakan. Senarai Scopus: Scopus Source Title List November 2024; pengesahan terkini dan kuartil rasmi melalui pautan Semak SJR.</div>
+  <div id="harianSemak" class="harian-semak" hidden></div>
+  <div class="harian-note">Sumber carian: pangkalan data terbuka OpenAlex. Keutamaan: (1) artikel empirikal kuantitatif (termasuk kaedah campuran, pengesahan instrumen dan eksperimen) dahulu, kemudian artikel yang jenisnya tidak dapat dipastikan, kualitatif, ulasan dan konseptual; (2) jurnal Scopus (Q1 hingga Q4 mengikut anggaran SJR, kemudian Scopus tanpa kuartil), diikuti jurnal teras CWTS dan DOAJ, manakala artikel yang tidak dapat disahkan diindeks dan berwasit ditolak; (3) padanan metodologi dengan kajian Prof Dr (tinjauan soal selidik, responden guru sekolah rendah, SEM, analisis perantara). Jenis dan padanan dikesan automatik daripada tajuk dan abstrak. Tapisan lain: tahun penerbitan lima tahun terkini, artikel jurnal, akses terbuka, berkonteks pendidikan, bukan TAM atau UTAUT, belum ada dalam repositori dan belum pernah dicadangkan. Rantaian: calon hari ini diambil daripada senarai Rujukan artikel sebelumnya bagi konstruk yang sama selagi ada penerbitan dalam julat tahun itu; jika tiada, carian baharu dimulakan. Senarai Scopus: Scopus Source Title List November 2024; pengesahan terkini dan kuartil rasmi melalui pautan Semak SJR.</div>
   <section id="rantaian" class="rantaian"></section>
 </main>
 

@@ -5,7 +5,7 @@ import { initFlip } from './mod/flip.js';
 import { initHarian } from './mod/harian.js';
 import { initPeta } from './mod/peta.js';
 import { initWeb } from './mod/web.js';
-const VERSION = '1.4.1';
+const VERSION = '1.5.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -211,6 +211,7 @@ function makeTestAdapters() {
     async logout() { this.user = null; this.cb && this.cb(null); } };
   if (window.__RSLR_TEST_USER) Auth.user = { email: window.__RSLR_TEST_USER, uid: 'u_test' };
   const other = new Map(); // dokumen lain: 'cadangan/2026-01-01', 'meta/x', 'teks/id_1'
+  const deny = path => { const d = window.__RSLR_TEST_DENY || []; if (d.some(p => path.startsWith(p))) throw { code: 'permission-denied', message: 'ujian: ditolak' }; };
   const clone = x => JSON.parse(JSON.stringify(x));
   const deepMerge = (a, b) => { Object.keys(b).forEach(k => { if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && a[k] && typeof a[k] === 'object' && !Array.isArray(a[k])) deepMerge(a[k], b[k]); else a[k] = clone(b[k]); }); return a; };
   DB = { subscribe(onSnap) { listeners.add(onSnap); setTimeout(fire, 40); return () => listeners.delete(onSnap); },
@@ -218,9 +219,9 @@ function makeTestAdapters() {
     async update(id, patch) { if (!docs.has(id)) throw { code: 'not-found' }; docs.set(id, Object.assign({}, docs.get(id), clone(patch))); window.__updates = (window.__updates || 0) + 1; setTimeout(fire, 10); },
     async remove(id) { docs.delete(id); setTimeout(fire, 10); },
     async getMeta() { return meta; }, async setMeta(p) { Object.assign(meta, p); },
-    async get(path) { if (path === 'meta/tetapan') return meta; return other.has(path) ? clone(other.get(path)) : null; },
-    async set(path, data, merge) { if (path === 'meta/tetapan') { Object.assign(meta, data); return; } other.set(path, merge && other.has(path) ? deepMerge(other.get(path), data) : clone(data)); window.__sets = (window.__sets || 0) + 1; },
-    async list(coll, limit) { return Array.from(other.keys()).filter(k => k.startsWith(coll + '/')).sort().reverse().slice(0, limit || 50).map(k => ({ id: k.slice(coll.length + 1), data: clone(other.get(k)) })); },
+    async get(path) { deny(path); if (path === 'meta/tetapan') return meta; return other.has(path) ? clone(other.get(path)) : null; },
+    async set(path, data, merge) { deny(path); if (path === 'meta/tetapan') { Object.assign(meta, data); return; } other.set(path, merge && other.has(path) ? deepMerge(other.get(path), data) : clone(data)); window.__sets = (window.__sets || 0) + 1; },
+    async list(coll, limit) { deny(coll + '/'); return Array.from(other.keys()).filter(k => k.startsWith(coll + '/')).sort().reverse().slice(0, limit || 50).map(k => ({ id: k.slice(coll.length + 1), data: clone(other.get(k)) })); },
     async batchSet(items) { items.forEach(it => other.set(it.path, clone(it.data))); window.__batch = (window.__batch || 0) + items.length; },
     async batchDelete(paths) { paths.forEach(p => other.delete(p)); },
     async teksSince(t) { return Array.from(other.entries()).filter(([k, v]) => k.startsWith('teks/') && (v.t || 0) > t).map(([k, v]) => ({ path: k, data: clone(v) })); },
@@ -725,8 +726,16 @@ async function uploadOne(file, articleId) {
   if (!file.size) { row.fail('Fail kosong'); return; }
   if (file.size > MAX_PDF) { row.fail('Melebihi had 100 MB'); return; }
   if (!articleId) { const dup = findByFilename(file.name); if (dup) { row.fail(`Dilangkau: fail dengan nama sama sudah ada pada Bil. ${dup.bil}`); return; } }
-  let meta = null;
+  let meta = null; let dipautkan = null;
   if (!articleId) { row.status('Membaca metadata PDF'); try { meta = await Promise.race([readPdfMeta(file), sleep(15000).then(() => null)]); } catch (e) { meta = null; } }
+  if (!articleId && meta && meta.doi) {
+    // Elak rekod pendua: DOI yang dikesan dalam PDF dipadankan dengan rekod sedia ada.
+    const n = normDoi(meta.doi); let ada = null; S.docs.forEach((d, id) => { if (!ada && n && normDoi(d.doi) === n) ada = { id, d }; });
+    if (ada) {
+      if ((ada.d.fail || []).length) { row.fail(`Dilangkau: artikel dengan DOI sama sudah ada pada Bil. ${ada.d.bil || '?'} (PDF sudah dimuat naik)`); return; }
+      articleId = ada.id; dipautkan = ada.d.bil;
+    }
+  }
   row.status('Memuat naik ke Google Drive'); row.progress(0);
   let res = null, err = null;
   for (let attempt = 0; attempt < 2 && !res; attempt++) {
@@ -747,7 +756,8 @@ async function uploadOne(file, articleId) {
       articleId = createArticle(extra);
       if (meta && meta.doi) { try { await Harian.linkByDoi(articleId, meta.doi, true); } catch (e) {} }
     }
-    row.ok('Selesai' + (meta && meta.doi ? ', DOI dikesan' : '') + '. Bil. ' + ((S.docs.get(articleId) || {}).bil || ''));
+    if (dipautkan !== null && meta && meta.doi) { try { await Harian.linkByDoi(articleId, meta.doi, false); } catch (e) {} }
+    row.ok('Selesai' + (meta && meta.doi ? ', DOI dikesan' : '') + (dipautkan !== null ? ', dipautkan ke rekod sedia ada (DOI sama)' : '') + '. Bil. ' + ((S.docs.get(articleId) || {}).bil || ''));
     renderList(); if (S.view === 'harian') Harian.render();
   } catch (e) {
     row.fail('Fail dimuat naik ke Drive tetapi rekod gagal disimpan (' + dbMsg(e) + ').');
@@ -1083,7 +1093,7 @@ function subscribe() {
     const m = new Map(); snap.docs.forEach(d => m.set(d.id, d.data));
     Object.keys(S.pending).forEach(id => { if (m.has(id)) m.set(id, Object.assign({}, m.get(id), S.pending[id])); });
     S.docs = m;
-    if (!snap.fromCache) { S.gotDefinitive = true; setConn(S.online ? 'ok' : 'luar'); }
+    if (!snap.fromCache) { S.gotDefinitive = true; S.fromServer = true; setConn(S.online ? 'ok' : 'luar'); }
     else if (!S.gotDefinitive) { if (m.size) { S.gotDefinitive = true; setConn(S.online ? 'cache' : 'luar', S.online ? 'Dari cache, menyegerakkan' : 'Luar talian, data dari cache'); } else setConn('cache'); }
     if (!snap.pending && snap.fromCache === false && S.currentId && !S.pending[S.currentId] && !$('#saveChip').hidden && $('#saveChip').classList.contains('warn')) setSave('ok');
     renderList();
@@ -1166,7 +1176,7 @@ async function start() {
     if (wantView !== 'papan') goView(wantView);
     if (wantId) { const iv = setInterval(() => { if (S.docs.has(wantId)) { clearInterval(iv); if (S.view === 'papan') openRecord(wantId); } else if (S.gotDefinitive) clearInterval(iv); }, 300); setTimeout(() => clearInterval(iv), 15000); }
     // Cadangan Harian: muat (dan cari sekali sehari secara automatik) selepas rekod repositori tiba.
-    const hv = setInterval(() => { if (S.gotDefinitive || !navigator.onLine) { clearInterval(hv); Harian.load(Harian.todayStr(), true).then(() => Harian.loadDates()).then(() => intakeShared()); } }, 400); setTimeout(() => clearInterval(hv), 20000);
+    const hv0 = now(); const hv = setInterval(() => { if (S.fromServer || !navigator.onLine || (S.gotDefinitive && now() - hv0 > 12000)) { clearInterval(hv); Harian.load(Harian.todayStr(), true).then(() => Harian.loadDates()).then(() => intakeShared()); } }, 400); setTimeout(() => clearInterval(hv), 30000);
   });
 }
 
