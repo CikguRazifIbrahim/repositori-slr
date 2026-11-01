@@ -7,7 +7,7 @@ export function initIsi(R) {
   const MODEL_DEFAULT = 'claude-sonnet-5-5';
   const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (seimbang, disyorkan)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (paling pantas dan murah)'], ['claude-opus-5-5', 'Claude Opus 5.5 (paling teliti, kos tertinggi)']];
   const SKIP = new Set(['catatan']);
-  const I = { cache: new Map(), busy: new Set(), semua: false };
+  const I = { cache: new Map(), busy: new Set(), semua: false, mod: {} };
   const PROFIL_DEFAULT = `Tajuk: Pengaruh Kepimpinan Digital Guru Besar terhadap Kompetensi Digital Guru dengan Pengurusan Pengetahuan Organisasi sebagai Perantara di Sekolah Rendah Negeri Perak (calon PhD, Universiti Pendidikan Sultan Idris).
 Model: pemboleh ubah bebas Kepimpinan Digital Guru Besar (KD; kerangka ISTE Standards for Education Leaders 2024, lima dimensi: Penyokong Kewarganegaraan Digital, Perancang Berwawasan, Pemimpin Pemerkasa, Pereka Bentuk Sistem, Pembelajar Berhubung); pemboleh ubah perantara Pengurusan Pengetahuan Organisasi (PPO; Model SECI Nonaka dan Takeuchi: Sosialisasi, Eksternalisasi, Kombinasi, Internalisasi, serta konsep Ba dan Pandangan Berasaskan Pengetahuan Grant 1996; dilihat sebagai amalan dan tahap amalan); pemboleh ubah bersandar Kompetensi Digital Guru (KDG; DigCompEdu Redecker 2017, enam bidang, 22 kompetensi).
 Hipotesis: H1 KD mempengaruhi KDG secara langsung; H2 KD mempengaruhi PPO; H3 PPO mempengaruhi KDG; H4 PPO mengantara hubungan KD dengan KDG (kesan tidak langsung a x b).
@@ -84,7 +84,7 @@ Peraturan yang mesti dipatuhi:
 5. Medan pilihan: pilih TEPAT satu pilihan daripada senarai yang diberi dan salin ejaannya tepat. Medan pilihan berbilang: pulangkan senarai JSON yang merupakan subset senarai pilihan (boleh kosong).
 6. Medan teks: satu hingga tiga ayat; medan "dapatan", "instrumen" dan "konstruk" boleh lebih panjang tetapi padat. Jangan gunakan senarai berbutir Markdown; gunakan titik koma untuk memisahkan butiran.
 7. Kaitkan dengan kajian Prof Dr (profil di bawah) hanya pada medan yang memintanya (jurang, relevansi, padanan, bandingan, bab, subtopik); jangan mengada-adakan kaitan jika memang tiada.
-8. Format output: SATU objek JSON sahaja, tanpa teks pengantar, tanpa penutup dan tanpa pagar kod. Kunci tepat seperti yang diminta. Nilai rentetan dalam satu perenggan.
+8. Format output: SATU objek JSON sahaja mengikut skema yang disediakan (atau melalui alat isi_medan jika alat itu diberi), tanpa teks pengantar, tanpa penutup dan tanpa pagar kod. Kunci tepat seperti yang diminta; kunci medan yang tidak diminta ditinggalkan, atau jika skema mewajibkannya, diisi dengan "-". Nilai rentetan dalam satu perenggan.
 
 Profil kajian Prof Dr:
 ${profil}`;
@@ -105,36 +105,75 @@ Pulangkan JSON sekarang.`;
   }
 
   /* ---- panggilan API ---- */
-  /* Output berstruktur: satu alat "isi_medan" dengan skema SEMUA medan (sama bagi setiap bahagian supaya cache prompt kekal sah);
-     model dipaksa memanggil alat itu, maka jawapan tiba sebagai objek JSON yang sudah disahkan API, bukan teks bebas. */
-  function skemaAlat() {
-    const props = {};
-    GROUPS.forEach(g => g.medan.forEach(m => m.fields.forEach(f => {
-      if (SKIP.has(f.k)) return; const desc = `${g.letter}${m.n}. ${f.label}${f.help ? '. ' + f.help : ''}`;
-      if (f.type === 'select') props[f.k] = { type: 'string', enum: f.opts, description: desc + ' (pilih hanya jika jelas daripada artikel; jika tidak, tinggalkan kunci ini)' };
-      else if (f.type === 'multi') props[f.k] = { type: 'array', items: { type: 'string', enum: f.opts }, description: desc };
-      else props[f.k] = { type: 'string', description: desc };
-    })));
-    return { name: 'isi_medan', description: 'Isi medan ekstrak Jadual SLR yang diminta dalam arahan bahagian. Sertakan hanya kunci yang diminta dalam arahan; tinggalkan kunci lain. Nilai teks dalam Bahasa Melayu Malaysia akademik, dengan muka surat (m.s. N) bagi angka dan petikan.', input_schema: { type: 'object', properties: props, additionalProperties: false } };
+  /* Output berstruktur. Model keluarga 5.5 (Sonnet, Opus) menolak tool_choice "tool" dan "any" dengan ralat 400, maka mod lalai ialah
+     output_config.format (json_schema): API menjamin teks jawapan ialah JSON yang sah mengikut skema. Satu skema dikongsi oleh semua
+     bahagian supaya awalan cache prompt kekal sama (menukar output_config.format membatalkan cache). Had API: 24 medan pilihan (optional)
+     bagi setiap permintaan, maka 19 medan pendek diwajibkan (nilai "-" jika bukan bahagian yang diminta) dan 22 medan panjang dibiarkan pilihan.
+     Jika API menolak skema (400), aplikasi beralih kepada alat isi_medan dengan tool_choice auto, kemudian kepada teks JSON biasa; mod
+     yang berjaya diingati bagi setiap model (I.mod). Ralat 400 tidak dicaj token. */
+  const MOD_TURUTAN = ['skema', 'alat', 'teks'];
+  const WAJIB_TEKS = new Set(['penulis', 'tahun', 'doi', 'negara', 'teknik', 'perisian']);
+  const TIADA = '-';
+  function senaraiMedan() {
+    const out = [];
+    GROUPS.forEach(g => g.medan.forEach(m => m.fields.forEach(f => { if (!SKIP.has(f.k)) out.push(Object.assign({ letter: g.letter, n: m.n }, f)); })));
+    return out;
+  }
+  function sifatMedan(f, wajib) {
+    const desc = `${f.letter}${f.n} ${f.label}` + (wajib ? ` ("${TIADA}" jika bukan bahagian yang diminta atau tidak jelas daripada artikel)` : '');
+    if (f.type === 'select') return { type: 'string', enum: wajib ? f.opts.concat([TIADA]) : f.opts, description: desc };
+    if (f.type === 'multi') return { type: 'array', items: { type: 'string', enum: f.opts }, description: desc };
+    return { type: 'string', description: desc };
+  }
+  function skemaJson() {
+    const props = {}; const required = [];
+    senaraiMedan().forEach(f => { const wajib = f.type === 'select' || WAJIB_TEKS.has(f.k); props[f.k] = sifatMedan(f, wajib); if (wajib) required.push(f.k); });
+    return { type: 'object', properties: props, required, additionalProperties: false };
+  }
+  function alatIsi() {
+    const props = {}; senaraiMedan().forEach(f => { props[f.k] = sifatMedan(f, false); });
+    return { name: 'isi_medan', description: 'Isi medan ekstrak Jadual SLR yang diminta dalam arahan bahagian. Sertakan hanya kunci yang diminta; tinggalkan kunci lain. Nilai teks dalam Bahasa Melayu Malaysia akademik, dengan muka surat (m.s. N) bagi angka dan petikan.', input_schema: { type: 'object', properties: props, additionalProperties: false } };
+  }
+  function modSemasa(model) { return MOD_TURUTAN.includes(I.mod[model]) ? I.mod[model] : MOD_TURUTAN[0]; }
+  function modSeterusnya(mod) { const i = MOD_TURUTAN.indexOf(mod); return i >= 0 && i < MOD_TURUTAN.length - 1 ? MOD_TURUTAN[i + 1] : null; }
+  /* Ralat 400 yang berpunca daripada cara output diminta (bukan daripada kandungan) membolehkan peralihan mod. */
+  function sebabMod(mod, mesej) {
+    const m = String(mesej || '').toLowerCase();
+    if (mod === 'skema') return !m || /output_config|output_format|schema|format|grammar|structured/.test(m);
+    if (mod === 'alat') return !m || /tool/.test(m);
+    return false;
   }
   const HAD_TOKEN = 8192, HAD_TOKEN_ULANG = 16384;
   async function panggil(t, system, artikel, task, hadToken) {
     const artBlock = artikel.pdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: artikel.pdf }, cache_control: { type: 'ephemeral' } }
       : { type: 'text', text: 'TEKS PENUH ARTIKEL (fail ' + artikel.nama + ', ' + artikel.pages + ' muka surat):\n\n' + artikel.text, cache_control: { type: 'ephemeral' } };
-    const body = { model: t.model, max_tokens: hadToken || HAD_TOKEN, tools: [skemaAlat()], tool_choice: { type: 'tool', name: 'isi_medan' }, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: [artBlock, { type: 'text', text: task }] }] };
-    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 240000);
-    let r;
-    try { r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': t.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body), signal: ctl.signal }); }
-    catch (e) { throw { code: e && e.name === 'AbortError' ? 'masa' : 'rangkaian', message: String(e && e.message || e) }; }
-    finally { clearTimeout(tm); }
-    let j = null; try { j = await r.json(); } catch (e) {}
-    if (!r.ok) throw { code: 'http', status: r.status, message: (j && j.error && j.error.message) || '' };
-    const blocks = (j && j.content) || [];
-    const tool = blocks.find(b => b.type === 'tool_use' && b.input && typeof b.input === 'object');
-    const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n');
-    const u = (j && j.usage) || {};
-    I.lastRaw = { text, tool: tool ? tool.input : null, stop: j && j.stop_reason };
-    return { input: tool ? tool.input : null, text, usage: { masuk: u.input_tokens || 0, keluar: u.output_tokens || 0, cacheTulis: u.cache_creation_input_tokens || 0, cacheBaca: u.cache_read_input_tokens || 0 }, stop: j && j.stop_reason };
+    let mod = modSemasa(t.model);
+    for (;;) {
+      const tugas = mod === 'alat' ? task + '\n\nPanggil alat isi_medan untuk memulangkan jawapan; jangan balas dalam bentuk teks.' : task;
+      const body = { model: t.model, max_tokens: hadToken || HAD_TOKEN, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: [artBlock, { type: 'text', text: tugas }] }] };
+      if (mod === 'skema') body.output_config = { format: { type: 'json_schema', schema: skemaJson() } };
+      else if (mod === 'alat') { body.tools = [alatIsi()]; body.tool_choice = { type: 'auto' }; }
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 240000);
+      let r;
+      try { r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': t.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body), signal: ctl.signal }); }
+      catch (e) { throw { code: e && e.name === 'AbortError' ? 'masa' : 'rangkaian', message: String(e && e.message || e) }; }
+      finally { clearTimeout(tm); }
+      let j = null; try { j = await r.json(); } catch (e) {}
+      const mesej = (j && j.error && j.error.message) || '';
+      if (r.status === 400 && sebabMod(mod, mesej)) {
+        const lagi = modSeterusnya(mod);
+        if (lagi) { console.warn('isi: mod "' + mod + '" ditolak API (' + mesej + '); beralih kepada mod "' + lagi + '"'); I.mod[t.model] = lagi; mod = lagi; continue; }
+      }
+      if (!r.ok) throw { code: 'http', status: r.status, message: mesej };
+      I.mod[t.model] = mod;
+      const blocks = (j && j.content) || [];
+      const tool = blocks.find(b => b.type === 'tool_use' && b.input && typeof b.input === 'object');
+      const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n');
+      const u = (j && j.usage) || {}; const stop = j && j.stop_reason;
+      I.lastRaw = { mod, text, tool: tool ? tool.input : null, stop };
+      if (stop === 'refusal') throw { code: 'refusal' };
+      return { input: tool ? tool.input : null, text, usage: { masuk: u.input_tokens || 0, keluar: u.output_tokens || 0, cacheTulis: u.cache_creation_input_tokens || 0, cacheBaca: u.cache_read_input_tokens || 0 }, stop, mod };
+    }
   }
   /* Sandaran: jika model membalas teks (bukan alat), baiki JSON yang lazim rosak: pagar kod, tanda petik tidak dilepaskan di dalam
      rentetan, baris baharu mentah, koma hujung dan kurungan yang terpotong. */
@@ -178,7 +217,8 @@ Pulangkan JSON sekarang.`;
     if (c === 'no_token') return 'Google Drive belum disambung.';
     if (c === 'scan_besar') return `PDF ini imbasan tanpa teks dan melebihi 100 muka surat (${e.pages}); tidak dapat dihantar.`;
     if (c === 'json') return e && e.stop === 'max_tokens' ? 'jawapan model terpotong kerana mencapai had token; cuba sekali lagi (medan yang panjang boleh diisi berasingan).' : 'jawapan model tidak dapat dibaca sebagai JSON walaupun selepas pembaikan; cuba sekali lagi.';
-    if (c === 'masa') return 'tamat masa menunggu jawapan (3 minit).';
+    if (c === 'refusal') return 'model enggan menjawab permintaan ini (stop_reason refusal); cuba sekali lagi atau tukar model dalam Tetapan.';
+    if (c === 'masa') return 'tamat masa menunggu jawapan (4 minit).';
     if (c === 'rangkaian') return 'permintaan ke api.anthropic.com gagal (talian terputus atau disekat pelayar).';
     if (st === 401) return 'kunci API Anthropic tidak sah (semak Tetapan).';
     if (st === 403) return 'akses ditolak oleh API Anthropic.';
@@ -226,14 +266,14 @@ Pulangkan JSON sekarang.`;
       const j = res.input || parseJson(res.text, res.stop);
       const d1 = rekodSemasa(id); const patch = {}; const diisi = []; const ditolak = [];
       sp.fields.forEach(f => {
-        if (!nilaiKosong(d1[f.k])) return; let v = j[f.k]; if (v === undefined || v === null) return;
+        if (!nilaiKosong(d1[f.k])) return; let v = j[f.k]; if (v === undefined || v === null || v === TIADA) return;
         if (f.type === 'multi') { const arr = (Array.isArray(v) ? v : String(v).split(/[;,]/)).map(x => String(x).trim()); const ok = f.opts.filter(o => arr.some(x => x.toLowerCase() === o.toLowerCase())); if (!ok.length) return; patch[f.k] = ok; diisi.push(f.k); return; }
-        v = String(Array.isArray(v) ? v.join('; ') : v).replace(/\s*[—–]\s*/g, ', ').replace(/\s+\n/g, '\n').trim(); if (!v) return;
+        v = String(Array.isArray(v) ? v.join('; ') : v).replace(/\s*[—–]\s*/g, ', ').replace(/\s+\n/g, '\n').trim(); if (!v || v === TIADA) return;
         if (f.type === 'select') { const o = f.opts.find(x => x.toLowerCase() === v.toLowerCase()) || f.opts.find(x => v.toLowerCase().startsWith(x.toLowerCase())); if (!o) { ditolak.push(f.k + ' (' + v.slice(0, 30) + ')'); return; } v = o; }
         if (f.k === 'tahun') { const m = /\b(19|20)\d{2}\b/.exec(v); if (!m) return; v = m[0]; }
         patch[f.k] = v; diisi.push(f.k);
       });
-      const masa = Date.now(); const stat = { masa, model: t.model, medan: diisi, token: res.usage };
+      const masa = Date.now(); const stat = { masa, model: t.model, medan: diisi, token: res.usage, mod: res.mod || null };
       patch.aiIsi = Object.assign({}, d1.aiIsi || {}, { [letter]: stat });
       await R.writeNow(id, patch);
       if (R.S.currentId === id) { R.mergeIntoForm(); renderStat(R.S.docs.get(id)); }
@@ -259,7 +299,7 @@ Pulangkan JSON sekarang.`;
   }
   function renderStat(d) {
     const ai = (d && d.aiIsi) || {};
-    GROUPS.forEach(g => { const el = document.querySelector('[data-aistat="' + g.letter + '"]'); if (!el) return; const s = ai[g.letter]; if (!s) { el.hidden = true; el.textContent = ''; return; } el.hidden = false; el.textContent = 'Draf AI ' + R.fmtTime(s.masa) + (s.model ? ' (' + String(s.model).replace('claude-', '') + ')' : '') + (s.medan ? ', ' + s.medan.length + ' medan' : ''); el.title = 'Diisi automatik daripada PDF; medan: ' + ((s.medan || []).join(', ') || 'tiada') + (s.token ? '; token masuk ' + s.token.masuk + ', keluar ' + s.token.keluar + ', cache dibaca ' + s.token.cacheBaca : ''); });
+    GROUPS.forEach(g => { const el = document.querySelector('[data-aistat="' + g.letter + '"]'); if (!el) return; const s = ai[g.letter]; if (!s) { el.hidden = true; el.textContent = ''; return; } el.hidden = false; el.textContent = 'Draf AI ' + R.fmtTime(s.masa) + (s.model ? ' (' + String(s.model).replace('claude-', '') + ')' : '') + (s.medan ? ', ' + s.medan.length + ' medan' : ''); el.title = 'Diisi automatik daripada PDF; medan: ' + ((s.medan || []).join(', ') || 'tiada') + (s.token ? '; token masuk ' + s.token.masuk + ', keluar ' + s.token.keluar + ', cache dibaca ' + s.token.cacheBaca : '') + (s.mod ? '; mod output ' + s.mod : ''); });
     const b = $('#btnIsiSemua'); if (b) b.hidden = !(d && (d.fail || []).length);
   }
   $('#form').addEventListener('click', e => { const b = e.target.closest('[data-isi]'); if (!b) return; e.preventDefault(); isi(R.S.currentId, b.dataset.isi).catch(() => {}); });
