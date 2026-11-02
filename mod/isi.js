@@ -134,7 +134,7 @@ Pulangkan JSON sekarang.`;
     const props = {}; senaraiMedan().forEach(f => { props[f.k] = sifatMedan(f, false); });
     return { name: 'isi_medan', description: 'Isi medan ekstrak Jadual SLR yang diminta dalam arahan bahagian. Sertakan hanya kunci yang diminta; tinggalkan kunci lain. Nilai teks dalam Bahasa Melayu Malaysia akademik, dengan muka surat (m.s. N) bagi angka dan petikan.', input_schema: { type: 'object', properties: props, additionalProperties: false } };
   }
-  function modSemasa(model) { return MOD_TURUTAN.includes(I.mod[model]) ? I.mod[model] : MOD_TURUTAN[0]; }
+  function modSemasa(kunci) { return MOD_TURUTAN.includes(I.mod[kunci]) ? I.mod[kunci] : MOD_TURUTAN[0]; }
   function modSeterusnya(mod) { const i = MOD_TURUTAN.indexOf(mod); return i >= 0 && i < MOD_TURUTAN.length - 1 ? MOD_TURUTAN[i + 1] : null; }
   /* Ralat 400 yang berpunca daripada cara output diminta (bukan daripada kandungan) membolehkan peralihan mod. */
   function sebabMod(mod, mesej) {
@@ -144,15 +144,17 @@ Pulangkan JSON sekarang.`;
     return false;
   }
   const HAD_TOKEN = 8192, HAD_TOKEN_ULANG = 16384;
-  async function panggil(t, system, artikel, task, hadToken) {
-    const artBlock = artikel.pdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: artikel.pdf }, cache_control: { type: 'ephemeral' } }
-      : { type: 'text', text: 'TEKS PENUH ARTIKEL (fail ' + artikel.nama + ', ' + artikel.pages + ' muka surat):\n\n' + artikel.text, cache_control: { type: 'ephemeral' } };
-    let mod = modSemasa(t.model);
+  /* Penghantar generik (digunakan oleh "isi medan" dan modul lain seperti Banding Artikel): mod skema -> alat -> teks dengan ingatan
+     mod bagi setiap kunci (model atau tujuan:model). content ialah senarai blok kandungan pengguna; skema ialah JSON Schema jawapan;
+     alat ialah definisi alat bagi mod sandaran. */
+  async function hantar(t, p) {
+    const kunci = p.kunciMod || t.model; let mod = modSemasa(kunci);
     for (;;) {
-      const tugas = mod === 'alat' ? task + '\n\nPanggil alat isi_medan untuk memulangkan jawapan; jangan balas dalam bentuk teks.' : task;
-      const body = { model: t.model, max_tokens: hadToken || HAD_TOKEN, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: [artBlock, { type: 'text', text: tugas }] }] };
-      if (mod === 'skema') body.output_config = { format: { type: 'json_schema', schema: skemaJson() } };
-      else if (mod === 'alat') { body.tools = [alatIsi()]; body.tool_choice = { type: 'auto' }; }
+      const content = p.content.slice();
+      if (mod === 'alat' && p.alat) { const last = content[content.length - 1]; if (last && last.type === 'text') content[content.length - 1] = { type: 'text', text: last.text + '\n\nPanggil alat ' + p.alat.name + ' untuk memulangkan jawapan; jangan balas dalam bentuk teks.' }; }
+      const body = { model: t.model, max_tokens: p.hadToken || HAD_TOKEN, system: [{ type: 'text', text: p.system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] };
+      if (mod === 'skema' && p.skema) body.output_config = { format: { type: 'json_schema', schema: p.skema } };
+      else if (mod === 'alat' && p.alat) { body.tools = [p.alat]; body.tool_choice = { type: 'auto' }; }
       const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 240000);
       let r;
       try { r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': t.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body), signal: ctl.signal }); }
@@ -162,10 +164,10 @@ Pulangkan JSON sekarang.`;
       const mesej = (j && j.error && j.error.message) || '';
       if (r.status === 400 && sebabMod(mod, mesej)) {
         const lagi = modSeterusnya(mod);
-        if (lagi) { console.warn('isi: mod "' + mod + '" ditolak API (' + mesej + '); beralih kepada mod "' + lagi + '"'); I.mod[t.model] = lagi; mod = lagi; continue; }
+        if (lagi) { console.warn('isi: mod "' + mod + '" ditolak API (' + mesej + '); beralih kepada mod "' + lagi + '"'); I.mod[kunci] = lagi; mod = lagi; continue; }
       }
       if (!r.ok) throw { code: 'http', status: r.status, message: mesej };
-      I.mod[t.model] = mod;
+      I.mod[kunci] = mod;
       const blocks = (j && j.content) || [];
       const tool = blocks.find(b => b.type === 'tool_use' && b.input && typeof b.input === 'object');
       const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n');
@@ -174,6 +176,11 @@ Pulangkan JSON sekarang.`;
       if (stop === 'refusal') throw { code: 'refusal' };
       return { input: tool ? tool.input : null, text, usage: { masuk: u.input_tokens || 0, keluar: u.output_tokens || 0, cacheTulis: u.cache_creation_input_tokens || 0, cacheBaca: u.cache_read_input_tokens || 0 }, stop, mod };
     }
+  }
+  async function panggil(t, system, artikel, task, hadToken) {
+    const artBlock = artikel.pdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: artikel.pdf }, cache_control: { type: 'ephemeral' } }
+      : { type: 'text', text: 'TEKS PENUH ARTIKEL (fail ' + artikel.nama + ', ' + artikel.pages + ' muka surat):\n\n' + artikel.text, cache_control: { type: 'ephemeral' } };
+    return hantar(t, { kunciMod: t.model, system, content: [artBlock, { type: 'text', text: task }], skema: skemaJson(), alat: alatIsi(), hadToken });
   }
   /* Sandaran: jika model membalas teks (bukan alat), baiki JSON yang lazim rosak: pagar kod, tanda petik tidak dilepaskan di dalam
      rentetan, baris baharu mentah, koma hujung dan kurungan yang terpotong. */
@@ -304,5 +311,5 @@ Pulangkan JSON sekarang.`;
   }
   $('#form').addEventListener('click', e => { const b = e.target.closest('[data-isi]'); if (!b) return; e.preventDefault(); isi(R.S.currentId, b.dataset.isi).catch(() => {}); });
   const bs = $('#btnIsiSemua'); if (bs) bs.addEventListener('click', () => isiSemua(R.S.currentId));
-  return { isi, isiSemua, renderStat, tetapan, MODELS, MODEL_DEFAULT, PROFIL_DEFAULT, bacaArtikel, state: I };
+  return { isi, isiSemua, renderStat, tetapan, MODELS, MODEL_DEFAULT, PROFIL_DEFAULT, bacaArtikel, hantar, parseJson, msg, nilaiKosong, SKIP, state: I };
 }

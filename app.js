@@ -6,7 +6,8 @@ import { initHarian } from './mod/harian.js';
 import { initPeta } from './mod/peta.js';
 import { initWeb } from './mod/web.js';
 import { initIsi } from './mod/isi.js';
-const VERSION = '1.6.2';
+import { initBanding } from './mod/banding.js';
+const VERSION = '1.7.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -174,8 +175,8 @@ function showBanner(text, kind, action) {
   if (text && action) { const btn = document.createElement('button'); btn.className = 'btn btn-sm'; btn.textContent = action.label; btn.addEventListener('click', action.fn); b.appendChild(btn); }
 }
 function showView(name) {
-  ['setup', 'login', 'papan', 'harian', 'peta', 'rekod'].forEach(v => { $('#' + v).hidden = v !== name; });
-  const inApp = name === 'papan' || name === 'harian' || name === 'peta' || name === 'rekod';
+  ['setup', 'login', 'papan', 'harian', 'peta', 'banding', 'rekod'].forEach(v => { $('#' + v).hidden = v !== name; });
+  const inApp = name === 'papan' || name === 'harian' || name === 'peta' || name === 'banding' || name === 'rekod';
   $('#barActions').hidden = !inApp;
   $('#nav').hidden = !inApp;
   $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.view === (name === 'rekod' ? 'papan' : name)));
@@ -185,6 +186,7 @@ function goView(name) {
   S.view = name; showView(name); savePrefs(); window.scrollTo(0, 0);
   if (name === 'harian') Harian.load(Harian.state.date, false);
   if (name === 'peta') { Peta.show(); setTimeout(() => $('#petaQ').focus(), 50); }
+  if (name === 'banding') Banding.show();
 }
 
 /* ---------- local persistence (per device conveniences) ---------- */
@@ -766,7 +768,7 @@ async function uploadOne(file, articleId) {
     }
     if (dipautkan !== null && meta && meta.doi) { try { await Harian.linkByDoi(articleId, meta.doi, false); } catch (e) {} }
     row.ok('Selesai' + (meta && meta.doi ? ', DOI dikesan' : '') + (dipautkan !== null ? ', dipautkan ke rekod sedia ada (DOI sama)' : '') + '. Bil. ' + ((S.docs.get(articleId) || {}).bil || ''));
-    renderList(); if (S.view === 'harian') Harian.render();
+    renderList(); if (S.view === 'harian') Harian.render(); if (S.view === 'banding' && R.Banding) R.Banding.refresh();
   } catch (e) {
     row.fail('Fail dimuat naik ke Drive tetapi rekod gagal disimpan (' + dbMsg(e) + ').');
   }
@@ -1179,7 +1181,7 @@ async function start() {
     if (Drive.justRedirected && Drive.hasToken()) toast('Google Drive disambung melalui lencongan');
     setConn('cache'); S.gotDefinitive = false;
     const wantId = prefs.view === 'rekod' ? prefs.currentId : null;
-    const wantView = prefs.view === 'harian' || prefs.view === 'peta' ? prefs.view : 'papan';
+    const wantView = prefs.view === 'harian' || prefs.view === 'peta' || prefs.view === 'banding' ? prefs.view : 'papan';
     showView('papan'); renderList(); subscribe();
     if (wantView !== 'papan') goView(wantView);
     if (wantId) { const iv = setInterval(() => { if (S.docs.has(wantId)) { clearInterval(iv); if (S.view === 'papan') openRecord(wantId); } else if (S.gotDefinitive) clearInterval(iv); }, 300); setTimeout(() => clearInterval(iv), 15000); }
@@ -1199,5 +1201,6 @@ const Harian = initHarian(R); R.Harian = Harian;
 const Peta = initPeta(R); R.Peta = Peta;
 const Web = initWeb(R); R.Web = Web;
 const Isi = initIsi(R); R.Isi = Isi;
-if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, S };
+const Banding = initBanding(R); R.Banding = Banding;
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, S };
 start();
