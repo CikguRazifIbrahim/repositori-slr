@@ -586,6 +586,35 @@ body.web-open{overflow:hidden}
   .tul-kiri{position:static}
   .tul-senarai{max-height:34vh}
 }
+
+/* Tulisan: susunan, aras, seret dan lepas */
+.tul-kiri-acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tul-kiri-help{font-size:11.5px;margin-bottom:6px}
+.tul-item{display:flex;align-items:flex-start;gap:6px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.tul-item .tul-item-isi{flex:1;min-width:0}
+.tul-item.a2{margin-left:14px}
+.tul-item.a3{margin-left:28px}
+.tul-item.a2 .tj,.tul-item.a3 .tj{font-weight:600}
+.tul-item.a3 .tj{font-weight:500}
+.tul-item .tj .no{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:2px}
+.tul-item.kosong .tj{color:var(--muted)}
+.tul-item.kosong.on .tj{color:var(--fg)}
+.tul-grip{color:var(--muted);font-size:14px;line-height:1.2;padding:2px 2px 0 0;cursor:grab;touch-action:none;letter-spacing:-2px;flex:none}
+.tul-grip:active{cursor:grabbing}
+.tul-aras{display:flex;flex-direction:column;gap:2px;flex:none;opacity:0;transition:opacity .15s}
+.tul-item:hover .tul-aras,.tul-item.on .tul-aras,.tul-item:focus-within .tul-aras{opacity:1}
+.tul-aras .ab{width:20px;height:18px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--muted);font-size:12px;line-height:1;cursor:pointer;padding:0}
+.tul-aras .ab:hover:not(:disabled){color:var(--accent);border-color:var(--accent-line)}
+.tul-aras .ab:disabled{opacity:.3;cursor:default}
+.tul-item.dragging{opacity:.3}
+.tul-drop{box-sizing:border-box;border:2px dashed var(--accent);border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:12px;font-weight:700;margin:2px 0;min-height:30px}
+.tul-ghost{position:fixed;z-index:1000;pointer-events:none;opacity:.92;background:var(--surface);border:1px solid var(--accent-line);border-radius:8px;padding:7px 9px;box-shadow:var(--shadow);display:flex;gap:6px;align-items:flex-start;font-size:13.5px}
+.tul-ghost .tul-aras{display:none}
+.tul-ghost .tj{font-weight:600;line-height:1.3}
+.tul-ghost .mt{font-size:11.5px;color:var(--muted)}
+body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
+.tul-no{font-weight:800;color:var(--accent);font-family:var(--font-display);font-size:16px;padding:0 4px;flex:none;font-variant-numeric:tabular-nums}
+@media (hover:none){.tul-aras{opacity:1}}
 </style>
 </head>
 <body>
@@ -750,7 +779,7 @@ body.web-open{overflow:hidden}
   <div class="tul-cari"><input id="tulCari" type="search" placeholder="Cari dalam semua tulisan, contohnya: perantara, SECI, Hassan" autocomplete="off"><div id="tulCariHasil" class="tul-cari-hasil" hidden></div></div>
   <div id="tulBab" class="tul-bab"></div>
   <div class="tul-badan">
-    <aside class="tul-kiri"><div class="tul-kiri-head"><h2>Seksyen</h2><button id="btnTulSeksyen" class="btn btn-sm btn-primary">Seksyen baharu</button></div><div id="tulSenarai" class="tul-senarai"></div></aside>
+    <aside class="tul-kiri"><div class="tul-kiri-head"><h2>Seksyen</h2><div class="tul-kiri-acts"><button id="btnTulTemplat" class="btn btn-sm" title="Masukkan subtopik daripada proposal yang belum ada dalam bab ini">Subtopik proposal</button><button id="btnTulSeksyen" class="btn btn-sm btn-primary">Seksyen baharu</button></div></div><div class="help tul-kiri-help">Pegang dan seret untuk menyusun semula (pada telefon, tekan dan tahan). Anak panah: promosi atau demosi aras; nombor dijana automatik.</div><div id="tulSenarai" class="tul-senarai"></div></aside>
     <section id="tulEditor" class="tul-editor"></section>
   </div>
   <div class="harian-note">Cara kerja yang disyorkan: taip terus di sini (disimpan automatik, tiada yang perlu dimuat naik). Jika Prof Dr lebih selesa menaip dalam MS Word, muat turun bab itu, sunting, kemudian muat naik semula; sistem memadankan seksyen mengikut tajuk, menunjukkan pratonton sebelum menimpa, memberi amaran jika versi dalam sistem lebih baharu daripada fail, menyimpan versi lama, dan mengarkibkan setiap fail dalam folder Tulisan di Google Drive. Bab yang dimuat turun ditanda "dipinjam ke Word" dan peringatan dipaparkan setiap kali log masuk sehingga fail dimuat naik semula.</div>
