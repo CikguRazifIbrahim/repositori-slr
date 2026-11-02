@@ -239,7 +239,8 @@ ${profil}`;
       <h3 class="band-h3">Laporan keseluruhan</h3><p class="band-p">${esc(l.keseluruhan)}</p>
       <h3 class="band-h3">Refleksi terhadap kajian Prof Dr</h3><p class="band-p">${esc(l.refleksi)}</p>
       <h3 class="band-h3">Cadangan sitasi bersama</h3><p class="band-p">${esc(l.sitasi)}</p>
-      <div class="band-verdict"><b>Lebih berguna untuk kajian Prof Dr: ${esc(menang)}.</b> ${esc(l.sebab)}</div>`;
+      <div class="band-verdict"><b>Lebih berguna untuk kajian Prof Dr: ${esc(menang)}.</b> ${esc(l.sebab)}</div>
+      <div class="band-tulis"><button class="btn btn-primary" data-tulis="1">Tulis ke Tulisan Tesis (Bab 2)</button><span class="help">Laporan keseluruhan, refleksi dan cadangan sitasi dimasukkan sebagai seksyen baharu dalam Bab 2 Sorotan Literatur untuk Prof Dr olah menjadi perenggan tesis; tiada yang perlu ditaip semula.</span></div>`;
     $('#btnBandingSalin').hidden = false; $('#btnBandingMd').hidden = false;
   }
 
@@ -271,7 +272,13 @@ ${profil}`;
     $('#btnBandingMd').addEventListener('click', () => muatTurun());
     root.addEventListener('click', e => {
       const b = e.target.closest('[data-buka]'); if (b) { R.openRecord(b.dataset.buka); return; }
-      const f = e.target.closest('[data-flipb]'); if (f) { R.openFlip(f.dataset.flipb, 0); }
+      const f = e.target.closest('[data-flipb]'); if (f) { R.openFlip(f.dataset.flipb, 0); return; }
+      if (e.target.closest('[data-tulis]') && B.laporan && R.Tulisan) {
+        const da = rekod(B.a), db = rekod(B.b); const l = B.laporan;
+        const teks = [`Perbandingan ${nama(da)} dengan ${nama(db)}.`, l.keseluruhan, l.refleksi, l.sitasi].filter(Boolean).join('\n\n');
+        R.Tulisan.daripadaBanding(2, `Banding: ${nama(da)} lwn ${nama(db)}`, teks, B.a, B.b, `${nama(da)} lwn ${nama(db)}`);
+        R.goView('tulisan'); toast('Seksyen baharu dicipta dalam Bab 2 daripada laporan Banding');
+      }
     });
   }
   return { show, refresh, banding, agen, indeksPantas, kelengkapan, laporanMd, state: B };

@@ -415,6 +415,8 @@ body.web-open{overflow:hidden}
 
 @media (max-width:520px){
   .brand-name{display:none}
+  .nav{gap:2px}
+  .nav button{padding:6px 6px}
   .nav button span{display:none}
 }
 @media (max-width:900px){
@@ -520,6 +522,70 @@ body.web-open{overflow:hidden}
   .band-tbl>div:nth-child(3n+2)::before{content:"Artikel 1: ";font-weight:700;color:var(--kd)}
   .band-tbl>div:nth-child(3n+3)::before{content:"Artikel 2: ";font-weight:700;color:var(--kdg)}
 }
+
+/* Tulisan Tesis */
+.tul-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tul-head .sub{color:var(--muted);font-size:14px}
+.tul-acts{display:flex;gap:8px;flex-wrap:wrap}
+.tul-sambung{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px}
+.tul-sambung-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tul-sambung h3{font-size:14px;margin-bottom:6px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tul-link{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:6px 2px;font-size:13.5px;color:var(--fg);cursor:pointer;line-height:1.4}
+.tul-link:hover{background:var(--surface-2)}
+.tul-link span{color:var(--muted);font-size:12.5px;display:block}
+.tul-link mark{background:var(--warn-soft);color:var(--fg);padding:0 2px;border-radius:3px}
+.tul-log{font-size:13.5px;line-height:1.45;margin:4px 0}
+.tul-log.amaran{color:var(--warn);font-weight:600}
+.tul-cari{position:relative;margin-bottom:10px}
+.tul-cari input{width:100%}
+.tul-cari-hasil{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;margin-top:6px;max-height:320px;overflow:auto}
+.tul-bab{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.tul-tab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:left;display:flex;flex-direction:column;gap:2px;cursor:pointer;color:var(--fg);min-width:0}
+.tul-tab .b{font-weight:800;font-family:var(--font-display);font-size:14px}
+.tul-tab .t{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tul-tab .m{font-size:11.5px;color:var(--muted)}
+.tul-tab .m .pinjam{color:var(--warn)}
+.tul-tab.on{border-color:var(--accent-line);background:var(--accent-soft)}
+.tul-tab.on .b{color:var(--accent)}
+.tul-badan{display:grid;grid-template-columns:300px 1fr;gap:12px;align-items:start}
+.tul-kiri{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;position:sticky;top:calc(var(--bar-h) + 8px)}
+.tul-kiri-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.tul-kiri-head h2{font-size:15px}
+.tul-senarai{max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.tul-item{padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.tul-item:hover{background:var(--surface-2)}
+.tul-item.on{background:var(--accent-soft);border-color:var(--accent-line)}
+.tul-item .tj{font-weight:600;font-size:13.5px;line-height:1.3}
+.tul-item .mt{font-size:11.5px;color:var(--muted)}
+.tul-pinjam{background:var(--warn-soft);color:var(--fg);border:1px solid var(--warn);border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.45;margin-bottom:6px}
+.tul-pinjam .btn{margin-top:4px}
+.tul-editor{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-width:0}
+.tul-kosong{color:var(--muted);font-size:14px;line-height:1.5;padding:20px 8px}
+.tul-kosong h3{font-size:16px;color:var(--fg);margin-bottom:8px}
+.tul-ed-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.tul-tajuk{flex:1;min-width:220px;font-weight:700;font-size:16px;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--fg)}
+.tul-ed-acts{display:flex;gap:6px;flex-wrap:wrap}
+.tul-sumber{font-size:12.5px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:6px 10px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tul-teks{width:100%;min-height:260px;resize:vertical;border:1px solid var(--line-strong);border-radius:8px;padding:12px 14px;font-family:"Source Sans 3","Times New Roman",serif;font-size:16px;line-height:1.8;background:var(--surface);color:var(--fg)}
+.tul-ed-foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--muted)}
+.tul-amaran{color:var(--warn);font-weight:600;background:var(--warn-soft);border-radius:8px;padding:8px 10px}
+.tul-gabung{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-height:46vh;overflow:auto}
+.tul-gabung-row{display:grid;grid-template-columns:20px 92px 1fr;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer}
+.tul-gabung-row .st{font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;border-radius:6px;padding:2px 6px;text-align:center}
+.tul-gabung-row .st.baharu{background:var(--ok-soft);color:var(--ok)}
+.tul-gabung-row .st.ubah{background:var(--info-soft);color:var(--info)}
+.tul-gabung-row .st.sama{background:var(--surface-2);color:var(--muted)}
+.tul-gabung-row .tj{font-weight:600}
+.tul-gabung-row .mt{grid-column:2/-1;font-size:12px;color:var(--muted)}
+.tul-pre{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.5;max-height:40vh;overflow:auto;background:var(--surface-2);padding:8px;border-radius:8px;margin:6px 0}
+.band-tulis{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+@media (max-width:900px){
+  .tul-sambung-grid{grid-template-columns:1fr}
+  .tul-bab{grid-template-columns:repeat(2,1fr)}
+  .tul-badan{grid-template-columns:1fr}
+  .tul-kiri{position:static}
+  .tul-senarai{max-height:34vh}
+}
 </style>
 </head>
 <body>
@@ -535,6 +601,7 @@ body.web-open{overflow:hidden}
       <button data-view="harian" title="Bacaan hari ini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/><circle cx="12" cy="12" r="4"/></svg><span>Hari ini</span><span class="badge" id="navBadge" hidden>3</span></button>
       <button data-view="peta" title="Peta Ayat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="17.5" cy="16.5" r="3"/><path d="M20 19l2 2"/></svg><span>Peta Ayat</span></button>
       <button data-view="banding" title="Banding dua artikel kepala ke kepala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 5h6v14H4zM14 5h6v14h-6z"/><path d="M7 9v6M17 9v6M10 12h4"/></svg><span>Banding</span></button>
+      <button data-view="tulisan" title="Tulisan Tesis: buku nota penulisan Bab 1 hingga Bab 5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M12.5 7.5l4 4"/></svg><span>Tulisan</span></button>
     </nav>
     <div class="bar-status">
       <span id="connChip" class="chip busy">Menyambung</span>
@@ -554,6 +621,8 @@ body.web-open{overflow:hidden}
           <button data-x="drive">Sambung semula Google Drive</button>
           <button data-x="drive-redirect">Sambung Drive (cara lencongan)</button>
           <button data-x="diag">Diagnostik Drive</button>
+          <button data-x="tul-naik">Muat naik fail MS Word (Tulisan Tesis)</button>
+          <button data-x="tul-turun">Muat turun fail MS Word (Tulisan Tesis)</button>
           <button data-x="tetapan">Tetapan (kunci OpenAlex)</button>
           <button data-x="pasang" id="btnInstall" hidden>Pasang sebagai aplikasi</button>
           <button data-x="keluar">Log keluar</button>
@@ -665,6 +734,26 @@ body.web-open{overflow:hidden}
   <div id="bandAmaran" class="band-amaran" hidden></div>
   <div id="bandHasil"></div>
   <div class="harian-note">Pilihan terhad kepada artikel yang sudah ada dalam repositori; tiada carian web. Perbandingan hanya untuk dua artikel yang semua medan Bahagian A hingga F sudah diisi. Indeks pantas dikira secara telus daripada medan (tahun, kuartil dan indeks, reka bentuk dan teknik, penanda statistik dalam dapatan, relevansi, padanan KD ke PPO dan PPO ke KDG, asas teori, konteks). Agen Banding menghantar medan A hingga F kedua-dua rekod (bukan PDF) ke API Anthropic dengan kunci API Prof Dr; laporan disimpan dalam awan (meta) dan pada peranti.</div>
+</main>
+
+<main id="tulisan" class="view" hidden>
+  <div class="tul-head">
+    <div><h1>Tulisan Tesis</h1><div class="sub">Buku nota penulisan Bab 1 hingga Bab 5. Disimpan automatik ke awan dan disegerakkan ke semua peranti; MS Word hanya pintu masuk dan keluar.</div></div>
+    <span class="spacer"></span>
+    <div class="tul-acts">
+      <button id="btnTulNaik" class="btn btn-primary" title="Baca fail .docx, padankan seksyen mengikut tajuk dan tunjukkan pratonton sebelum menimpa">Muat naik fail MS Word</button>
+      <button id="btnTulTurun" class="btn btn-primary" title="Jana fail .docx bab (Times New Roman 12, langkau dua) dan tandakan bab sebagai dipinjam ke Word">Muat turun fail MS Word</button>
+      <input id="tulFail" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
+    </div>
+  </div>
+  <section id="tulSambung" class="tul-sambung"></section>
+  <div class="tul-cari"><input id="tulCari" type="search" placeholder="Cari dalam semua tulisan, contohnya: perantara, SECI, Hassan" autocomplete="off"><div id="tulCariHasil" class="tul-cari-hasil" hidden></div></div>
+  <div id="tulBab" class="tul-bab"></div>
+  <div class="tul-badan">
+    <aside class="tul-kiri"><div class="tul-kiri-head"><h2>Seksyen</h2><button id="btnTulSeksyen" class="btn btn-sm btn-primary">Seksyen baharu</button></div><div id="tulSenarai" class="tul-senarai"></div></aside>
+    <section id="tulEditor" class="tul-editor"></section>
+  </div>
+  <div class="harian-note">Cara kerja yang disyorkan: taip terus di sini (disimpan automatik, tiada yang perlu dimuat naik). Jika Prof Dr lebih selesa menaip dalam MS Word, muat turun bab itu, sunting, kemudian muat naik semula; sistem memadankan seksyen mengikut tajuk, menunjukkan pratonton sebelum menimpa, memberi amaran jika versi dalam sistem lebih baharu daripada fail, menyimpan versi lama, dan mengarkibkan setiap fail dalam folder Tulisan di Google Drive. Bab yang dimuat turun ditanda "dipinjam ke Word" dan peringatan dipaparkan setiap kali log masuk sehingga fail dimuat naik semula.</div>
 </main>
 
 <main id="rekod" class="view" hidden>

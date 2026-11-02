@@ -7,7 +7,8 @@ import { initPeta } from './mod/peta.js';
 import { initWeb } from './mod/web.js';
 import { initIsi } from './mod/isi.js';
 import { initBanding } from './mod/banding.js';
-const VERSION = '1.7.0';
+import { initTulisan } from './mod/tulisan.js';
+const VERSION = '1.8.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -175,8 +176,8 @@ function showBanner(text, kind, action) {
   if (text && action) { const btn = document.createElement('button'); btn.className = 'btn btn-sm'; btn.textContent = action.label; btn.addEventListener('click', action.fn); b.appendChild(btn); }
 }
 function showView(name) {
-  ['setup', 'login', 'papan', 'harian', 'peta', 'banding', 'rekod'].forEach(v => { $('#' + v).hidden = v !== name; });
-  const inApp = name === 'papan' || name === 'harian' || name === 'peta' || name === 'banding' || name === 'rekod';
+  ['setup', 'login', 'papan', 'harian', 'peta', 'banding', 'tulisan', 'rekod'].forEach(v => { $('#' + v).hidden = v !== name; });
+  const inApp = name === 'papan' || name === 'harian' || name === 'peta' || name === 'banding' || name === 'tulisan' || name === 'rekod';
   $('#barActions').hidden = !inApp;
   $('#nav').hidden = !inApp;
   $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.view === (name === 'rekod' ? 'papan' : name)));
@@ -187,6 +188,7 @@ function goView(name) {
   if (name === 'harian') Harian.load(Harian.state.date, false);
   if (name === 'peta') { Peta.show(); setTimeout(() => $('#petaQ').focus(), 50); }
   if (name === 'banding') Banding.show();
+  if (name === 'tulisan') Tulisan.show();
 }
 
 /* ---------- local persistence (per device conveniences) ---------- */
@@ -237,6 +239,8 @@ function makeTestAdapters() {
     async upload(file, onProgress) { if (!token) throw { code: 'no_token' }; const buf = await file.arrayBuffer(); const id = 'f' + (++fn2); files.set(id, buf); onProgress && onProgress(1); return { id, name: file.name, size: buf.byteLength, webViewLink: 'https://drive.google.com/file/d/' + id + '/view' }; },
     async download(id, onProgress) { if (!token) throw { code: 'no_token' }; const b = files.get(id); if (!b) throw { code: 'download', status: 404 }; onProgress && onProgress(1); return b.slice(0); },
     async remove(id) { files.delete(id); },
+    async uploadAs(file, opts) { if (!token) throw { code: 'no_token' }; const buf = await file.arrayBuffer(); const id = 'f' + (++fn2); files.set(id, buf); const name = (opts && opts.name) || file.name; window.__uploadsAs = (window.__uploadsAs || []).concat([{ id, name, sub: opts && opts.subfolder, mime: opts && opts.mime, size: buf.byteLength }]); return { id, name, size: buf.byteLength, modifiedTime: new Date().toISOString(), webViewLink: 'https://drive.google.com/file/d/' + id + '/view' }; },
+    async listFolder(sub) { if (!token) throw { code: 'no_token' }; return (window.__uploadsAs || []).filter(f => f.sub === sub).map(f => ({ id: f.id, name: f.name, size: f.size, modifiedTime: new Date().toISOString(), webViewLink: 'https://drive.google.com/file/d/' + f.id + '/view' })).reverse(); },
     link: id => 'https://drive.google.com/file/d/' + id + '/view' };
 }
 
@@ -359,6 +363,47 @@ function makeDriveAdapter() {
     }
     folderId = id; await DB.setMeta({ driveFolderId: id, driveFolderName: name }); return id;
   }
+  const subIds = {};
+  async function ensureSubfolder(name) {
+    const parent = await ensureFolder();
+    if (subIds[name]) return subIds[name];
+    const q = encodeURIComponent(`name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${parent}' in parents and trashed=false`);
+    let id = null;
+    try { const r = await authed(`files?q=${q}&fields=files(id,name)&spaces=drive`); if (r.ok) { const j = await r.json(); if (j.files && j.files.length) id = j.files[0].id; } } catch (e) {}
+    if (!id) {
+      const r = await authed('files?fields=id', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parent] }) });
+      if (!r.ok) throw { code: 'folder', status: r.status, message: await safeText(r) };
+      id = (await r.json()).id;
+    }
+    subIds[name] = id; return id;
+  }
+  /* Muat naik fail bukan PDF (contoh dokumen Word Tulisan Tesis) ke subfolder folder aplikasi. */
+  async function uploadAs(file, opts) {
+    opts = opts || {}; const t = await connect(false);
+    const folder = opts.subfolder ? await ensureSubfolder(opts.subfolder) : await ensureFolder();
+    const mime = opts.mime || file.type || 'application/octet-stream'; const name = opts.name || file.name;
+    const init = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,size,modifiedTime,webViewLink', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(file.size) },
+      body: JSON.stringify({ name, parents: [folder], mimeType: mime })
+    });
+    if (!init.ok) throw { code: 'upload_init', status: init.status, message: await safeText(init) };
+    const loc = init.headers.get('Location') || init.headers.get('location');
+    if (!loc) throw { code: 'upload_init', status: init.status, message: 'Tiada URL sesi muat naik' };
+    return new Promise((res, rej) => {
+      const x = new XMLHttpRequest(); x.open('PUT', loc); x.setRequestHeader('Content-Type', mime);
+      x.upload.onprogress = e => { if (e.lengthComputable && opts.onProgress) opts.onProgress(e.loaded / e.total); };
+      x.onload = () => { if (x.status >= 200 && x.status < 300) { try { res(JSON.parse(x.responseText)); } catch (e) { res({ id: null }); } } else rej({ code: 'upload', status: x.status, message: x.responseText }); };
+      x.onerror = () => rej({ code: 'network' });
+      x.send(file);
+    });
+  }
+  async function listFolder(sub) {
+    const id = await ensureSubfolder(sub);
+    const q = encodeURIComponent(`'${id}' in parents and trashed=false`);
+    const r = await authed(`files?q=${q}&fields=files(id,name,size,modifiedTime,webViewLink)&orderBy=modifiedTime desc&pageSize=100`);
+    if (!r.ok) throw { code: 'list', status: r.status, message: await safeText(r) };
+    return ((await r.json()).files || []);
+  }
   async function upload(file, onProgress) {
     const t = await connect(false);
     const folder = await ensureFolder();
@@ -395,7 +440,7 @@ function makeDriveAdapter() {
   }
   async function remove(id) { const r = await authed(`files/${encodeURIComponent(id)}`, { method: 'DELETE' }); if (!r.ok && r.status !== 404) throw { code: 'delete', status: r.status }; }
   async function safeText(r) { try { return (await r.text()).slice(0, 300); } catch (e) { return ''; } }
-  return { ready: gisReady, hasToken, connect, connectRedirect, about, upload, download, remove, link: id => `https://drive.google.com/file/d/${id}/view`,
+  return { ready: gisReady, hasToken, connect, connectRedirect, about, upload, uploadAs, listFolder, download, remove, link: id => `https://drive.google.com/file/d/${id}/view`,
     get lastError() { return self.lastError; }, get justRedirected() { return !!self.justRedirected; }, redirectUri: self.redirectUri, tokenExpiry: () => exp, forget() { token = null; exp = 0; try { localStorage.removeItem('rslr_drive'); sessionStorage.removeItem('rslr_drive'); } catch (e) {} } };
 }
 function driveMsg(e) {
@@ -1016,6 +1061,8 @@ $('#moreMenu').addEventListener('click', async e => {
   else if (x === 'drive-redirect') { const okk = await confirmBox('Sambung Drive melalui lencongan', 'Aplikasi akan beralih ke halaman kebenaran Google dan kembali ke sini selepas akses dibenarkan. Perubahan yang belum dihantar disimpan dahulu.', 'Teruskan', false); if (okk) Drive.connectRedirect(); }
   else if (x === 'diag') { await showDiag(); }
   else if (x === 'tetapan') { await showTetapan(); }
+  else if (x === 'tul-naik') { goView('tulisan'); $('#tulFail').click(); }
+  else if (x === 'tul-turun') { goView('tulisan'); Tulisan.muatTurun(); }
   else if (x === 'pasang') { if (S.installPrompt) { S.installPrompt.prompt(); try { await S.installPrompt.userChoice; } catch (er) {} S.installPrompt = null; $('#btnInstall').hidden = true; } }
   else exportData(x);
 });
@@ -1181,9 +1228,10 @@ async function start() {
     if (Drive.justRedirected && Drive.hasToken()) toast('Google Drive disambung melalui lencongan');
     setConn('cache'); S.gotDefinitive = false;
     const wantId = prefs.view === 'rekod' ? prefs.currentId : null;
-    const wantView = prefs.view === 'harian' || prefs.view === 'peta' || prefs.view === 'banding' ? prefs.view : 'papan';
+    const wantView = prefs.view === 'harian' || prefs.view === 'peta' || prefs.view === 'banding' || prefs.view === 'tulisan' ? prefs.view : 'papan';
     showView('papan'); renderList(); subscribe();
     if (wantView !== 'papan') goView(wantView);
+    if (wantView !== 'tulisan') Tulisan.muatSemua().then(() => Tulisan.peringatan()).catch(() => {});
     if (wantId) { const iv = setInterval(() => { if (S.docs.has(wantId)) { clearInterval(iv); if (S.view === 'papan') openRecord(wantId); } else if (S.gotDefinitive) clearInterval(iv); }, 300); setTimeout(() => clearInterval(iv), 15000); }
     // Cadangan Harian: muat (dan cari sekali sehari secara automatik) selepas rekod repositori tiba.
     const hv0 = now(); const hv = setInterval(() => { if (S.fromServer || !navigator.onLine || (S.gotDefinitive && now() - hv0 > 12000)) { clearInterval(hv); Harian.load(Harian.todayStr(), true).then(() => Harian.loadDates()).then(() => intakeShared()); } }, 400); setTimeout(() => clearInterval(hv), 30000);
@@ -1194,7 +1242,7 @@ async function start() {
 const R = {
   $, $$, esc, toast, confirmBox, fmtTime, fmtBytes, lsGet, lsSet, saveFile, normDoi, TEMA, C, S, V,
   db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList,
-  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan()
+  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name)
 };
 const Flip = initFlip(R); R.Flip = Flip;
 const Harian = initHarian(R); R.Harian = Harian;
@@ -1202,5 +1250,6 @@ const Peta = initPeta(R); R.Peta = Peta;
 const Web = initWeb(R); R.Web = Web;
 const Isi = initIsi(R); R.Isi = Isi;
 const Banding = initBanding(R); R.Banding = Banding;
-if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, S };
+const Tulisan = initTulisan(R); R.Tulisan = Tulisan;
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, S };
 start();
