@@ -53,9 +53,13 @@ export function initBanding(R) {
   function senaraiPilihan() {
     return Array.from(R.S.docs.entries()).map(([id, d]) => [id, rekod(id)]).sort((x, y) => (x[1].bil || 0) - (y[1].bil || 0) || String(x[1].penulis || '').localeCompare(String(y[1].penulis || '')));
   }
+  const STATUS_KUMPULAN = [['Selesai', 'Selesai dibaca'], ['Sedang dibaca', 'Sedang dibaca'], ['Belum dibaca', 'Belum dibaca']];
   function isiSelect(sel, pilih, lain) {
-    const arr = senaraiPilihan();
-    sel.innerHTML = '<option value="">Pilih artikel daripada repositori</option>' + arr.map(([id, d]) => { const k = kelengkapan(d); return `<option value="${esc(id)}"${id === pilih ? ' selected' : ''}${id === lain ? ' disabled' : ''}>Bil. ${esc(d.bil || '?')} ${esc(nama(d))} ${k.ok ? '[A hingga F lengkap]' : '[belum lengkap: ' + k.bahagian.filter(b => !b.ok).map(b => b.letter).join('') + ']'} ${esc(String(d.tajuk || '').slice(0, 70))}</option>`; }).join('');
+    const arr = senaraiPilihan(); const kumpulan = {}; STATUS_KUMPULAN.forEach(([k]) => { kumpulan[k] = []; });
+    arr.forEach(x => { const st = x[1].status || 'Belum dibaca'; (kumpulan[st] || (kumpulan[st] = [])).push(x); });
+    const opt = ([id, d]) => { const k = kelengkapan(d); return `<option value="${esc(id)}"${id === pilih ? ' selected' : ''}${id === lain ? ' disabled' : ''}>Bil. ${esc(d.bil || '?')} ${esc(nama(d))} ${k.ok ? '[A hingga F lengkap]' : '[belum lengkap: ' + k.bahagian.filter(b => !b.ok).map(b => b.letter).join('') + ']'} ${esc(String(d.tajuk || '').slice(0, 70))}</option>`; };
+    const semua = STATUS_KUMPULAN.map(x => x[0]).concat(Object.keys(kumpulan).filter(k => !STATUS_KUMPULAN.some(x => x[0] === k)));
+    sel.innerHTML = '<option value="">Pilih artikel daripada repositori</option>' + semua.map(k => { const items = kumpulan[k] || []; const label = (STATUS_KUMPULAN.find(x => x[0] === k) || [k, k])[1]; const lengkap = items.filter(x => kelengkapan(x[1]).ok).length; return `<optgroup label="${esc(label)} (${items.length} artikel, ${lengkap} lengkap A hingga F)">${items.length ? items.map(opt).join('') : '<option disabled>Tiada artikel</option>'}</optgroup>`; }).join('');
   }
   function kad(id, sisi) {
     const el = $('#bandKad' + sisi.toUpperCase()); if (!el) return;
