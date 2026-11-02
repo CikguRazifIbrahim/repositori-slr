@@ -8,7 +8,7 @@ import { initWeb } from './mod/web.js';
 import { initIsi } from './mod/isi.js';
 import { initBanding } from './mod/banding.js';
 import { initTulisan } from './mod/tulisan.js';
-const VERSION = '1.10.1';
+const VERSION = '1.10.2';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -88,14 +88,14 @@ const GROUPS = [
     { n: 10, title: 'Kritikan sendiri', fields: [
       { k: 'kekuatan', label: 'Kekuatan', type: 'textarea', rows: 2 },
       { k: 'kelemahan', label: 'Kelemahan', type: 'textarea', rows: 2, help: 'Contoh: bias kaedah sepunya, sampel kecil, dakwaan sebab-akibat daripada data keratan rentas.' },
-      { k: 'mmat', label: 'Nota MMAT', type: 'text', wide: true, help: 'Lima kriteria bagi kategori reka bentuk berkenaan, jika penarafan formal diperlukan.' }
+      { k: 'mmat', label: 'Nota MMAT', type: 'textarea', rows: 4, wide: true, help: 'Lima kriteria bagi kategori reka bentuk berkenaan, jika penarafan formal diperlukan. Seret penjuru kanan bawah untuk membesarkan ruangan.' }
     ] }
   ] },
   { id: 'secF', letter: 'F', title: 'Kaitan dengan kajian', sub: 'Medan 11 hingga 13', medan: [
     { n: 11, title: 'Relevansi dan padanan', fields: [
       { k: 'relevansi', label: 'Relevansi', type: 'select', opts: RELEVANSI },
       { k: 'jenisKesan', label: 'Kesan yang diuji', type: 'select', opts: ['Langsung', 'Perantaraan', 'Kedua-dua', 'Tiada'] },
-      { k: 'alasanRelevansi', label: 'Alasan relevansi (satu ayat)', type: 'text', wide: true },
+      { k: 'alasanRelevansi', label: 'Alasan relevansi (satu ayat)', type: 'textarea', rows: 2, wide: true },
       { k: 'padananKdPpo', label: 'Padanan Kepimpinan Digital ke PPO', type: 'select', opts: ['YA', 'TIDAK', 'Tidak pasti'] },
       { k: 'padananPpoKdg', label: 'Padanan PPO ke Kompetensi Digital Guru', type: 'select', opts: ['YA', 'TIDAK', 'Tidak pasti'] }
     ] },
