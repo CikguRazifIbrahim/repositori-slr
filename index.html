@@ -615,6 +615,52 @@ body.web-open{overflow:hidden}
 body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
 .tul-no{font-weight:800;color:var(--accent);font-family:var(--font-display);font-size:16px;padding:0 4px;flex:none;font-variant-numeric:tabular-nums}
 @media (hover:none){.tul-aras{opacity:1}}
+
+/* Banding: dimensi konstruk, kayu ukur, pola */
+.band-kayu{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;margin:0 0 12px;font-size:13.5px}
+.band-kayu .kayu-nama{flex:1;min-width:200px}
+.tag.kayu{background:var(--warn-soft);color:var(--warn);font-size:11.5px}
+.band-kons-col h4{font-size:14px;margin-bottom:6px}
+.band-kons{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px;background:var(--surface)}
+.band-kons .kh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
+.band-kons .kr{font-size:12px;color:var(--muted);margin:2px 0 4px}
+.band-kons .kd{margin:0;padding-left:18px;font-size:13.5px;line-height:1.5}
+.band-kons .kd li.sama{background:var(--ok-soft);border-radius:4px;padding:0 4px}
+.band-kons .kd .sub{display:block;font-size:12px;color:var(--muted)}
+.band-kons .kd-tiada{font-size:12.5px;color:var(--muted);font-style:italic}
+.tag.p0{background:#DFE6F7;color:#3A5CA8} .tag.p1{background:var(--accent-soft);color:var(--accent)} .tag.p2{background:var(--warn-soft);color:var(--warn)} .tag.p3{background:#EFE3F5;color:var(--kdg)} .tag.p4,.tag.p5{background:var(--surface-2);color:var(--muted)}
+:root:not([data-theme="light"]) .tag.p0{background:#1F2A44;color:#9DB4EE} :root:not([data-theme="light"]) .tag.p3{background:#33203D;color:#D3A8E6}
+.band-pola{margin-top:12px}
+.pola-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px}
+.pola-grid h4{font-size:14px;margin-bottom:6px}
+.pola-pasangan{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+.pola-tbl{display:grid;grid-template-columns:200px repeat(4,1fr) 90px;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12.5px;line-height:1.4}
+.pola-tbl>div{background:var(--surface);padding:8px;min-width:0}
+.pola-tbl .h{background:var(--surface-2);font-weight:700}
+.pola-tbl .k .sub{display:block;font-size:11.5px;color:var(--muted);margin:2px 0 4px}
+.pola-tbl .k.kayu{background:var(--warn-soft)}
+.pola-tbl .pk{margin-bottom:6px}
+.pola-tbl .pk i{color:var(--muted);font-size:11.5px}
+.pola-tbl .chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.pola-tbl .chips .tag{font-size:11px;padding:1px 6px;font-weight:500}
+.pola-tbl .chips .tag.sama{background:var(--ok-soft);color:var(--ok);font-weight:700}
+.pola-tbl .pdn{font-weight:800;font-family:var(--font-display);font-size:15px;color:var(--accent);text-align:center;display:flex;align-items:center;justify-content:center}
+.pola-ringkas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:12px}
+.pola-kad{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.pola-kad h4{font-size:14px;margin-bottom:4px}
+.pola-kad .chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.pola-kad .chips .tag b{margin-left:4px;color:var(--accent)}
+@media (max-width:900px){
+  .pola-grid{grid-template-columns:1fr}
+  .pola-tbl{grid-template-columns:1fr}
+  .pola-tbl .h{display:none}
+  .pola-tbl>div:nth-child(6n+2)::before{content:"Bebas: ";font-weight:700}
+  .pola-tbl>div:nth-child(6n+3)::before{content:"Perantara: ";font-weight:700}
+  .pola-tbl>div:nth-child(6n+4)::before{content:"Bersandar: ";font-weight:700}
+  .pola-tbl>div:nth-child(6n+5)::before{content:"Lain: ";font-weight:700}
+  .pola-tbl .pdn::before{content:"Padanan kayu ukur: ";font-size:12px;color:var(--muted);font-weight:500;font-family:var(--font-body)}
+  .pola-tbl .k{background:var(--surface-2)}
+}
 </style>
 </head>
 <body>
@@ -760,8 +806,10 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
     <button id="btnBandingSalin" class="btn" hidden>Salin laporan</button>
     <button id="btnBandingMd" class="btn" hidden>Muat turun laporan (.md)</button>
   </div>
+  <div id="bandKayu" class="band-kayu"></div>
   <div id="bandAmaran" class="band-amaran" hidden></div>
   <div id="bandHasil"></div>
+  <section id="bandPola" class="group band-grp band-pola"></section>
   <div class="harian-note">Pilihan terhad kepada artikel yang sudah ada dalam repositori; tiada carian web. Perbandingan hanya untuk dua artikel yang semua medan Bahagian A hingga F sudah diisi. Indeks pantas dikira secara telus daripada medan (tahun, kuartil dan indeks, reka bentuk dan teknik, penanda statistik dalam dapatan, relevansi, padanan KD ke PPO dan PPO ke KDG, asas teori, konteks). Agen Banding menghantar medan A hingga F kedua-dua rekod (bukan PDF) ke API Anthropic dengan kunci API Prof Dr; laporan disimpan dalam awan (meta) dan pada peranti.</div>
 </main>
 
