@@ -451,7 +451,8 @@ body.web-open{overflow:hidden}
 .band-kad .kad-top{display:flex;align-items:center;gap:10px}
 .band-kad .avatar{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:18px;background:var(--accent-soft);color:var(--accent);flex:none}
 .band-kad.b .avatar{background:#EFE3F5;color:var(--kdg)}
-:root:not([data-theme="light"]) .band-kad.b .avatar{background:#33203D}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .band-kad.b .avatar{background:#33203D}}
+:root[data-theme="dark"] .band-kad.b .avatar{background:#33203D}
 .band-kad .nama{font-weight:700;font-size:16px}
 .band-kad .meta{font-size:12.5px;color:var(--muted)}
 .band-kad .tajuk{font-size:13.5px;line-height:1.4}
@@ -629,7 +630,8 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
 .band-kons .kd .sub{display:block;font-size:12px;color:var(--muted)}
 .band-kons .kd-tiada{font-size:12.5px;color:var(--muted);font-style:italic}
 .tag.p0{background:#DFE6F7;color:#3A5CA8} .tag.p1{background:var(--accent-soft);color:var(--accent)} .tag.p2{background:var(--warn-soft);color:var(--warn)} .tag.p3{background:#EFE3F5;color:var(--kdg)} .tag.p4,.tag.p5{background:var(--surface-2);color:var(--muted)}
-:root:not([data-theme="light"]) .tag.p0{background:#1F2A44;color:#9DB4EE} :root:not([data-theme="light"]) .tag.p3{background:#33203D;color:#D3A8E6}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tag.p0{background:#1F2A44;color:#9DB4EE} :root:not([data-theme="light"]) .tag.p3{background:#33203D;color:#D3A8E6}}
+:root[data-theme="dark"] .tag.p0{background:#1F2A44;color:#9DB4EE} :root[data-theme="dark"] .tag.p3{background:#33203D;color:#D3A8E6}
 .band-pola{margin-top:12px}
 .pola-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px}
 .pola-grid h4{font-size:14px;margin-bottom:6px}
@@ -661,6 +663,22 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
   .pola-tbl .pdn::before{content:"Padanan kayu ukur: ";font-size:12px;color:var(--muted);font-weight:500;font-family:var(--font-body)}
   .pola-tbl .k{background:var(--surface-2)}
 }
+
+/* Tulisan: jadual semalam (Times New Roman 12 pt, merah) */
+.tul-semalam{background:var(--surface);border:1px solid #E5B4B0;border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;max-height:34vh;display:flex;flex-direction:column;--merah:#C62828}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tul-semalam{--merah:#FF8A80;border-color:#5A2A27}}
+:root[data-theme="dark"] .tul-semalam{--merah:#FF8A80;border-color:#5A2A27}
+.tul-semalam .sm-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:8px}
+.tul-semalam .sm-head h2{font-family:"Times New Roman",Times,serif;font-size:12pt;font-weight:700;color:var(--merah)}
+.tul-semalam .sm-head .sub{font-family:"Times New Roman",Times,serif;font-size:12pt;color:var(--merah)}
+.tul-semalam .sm-wrap{overflow:auto;min-height:0}
+.tul-semalam .sm-tbl{width:100%;border-collapse:collapse;font-family:"Times New Roman",Times,serif;font-size:12pt;color:var(--merah)}
+.tul-semalam .sm-tbl th,.tul-semalam .sm-tbl td{border:1px solid var(--merah);padding:4px 8px;text-align:left;vertical-align:top}
+.tul-semalam .sm-tbl th{font-weight:700;position:sticky;top:0;background:var(--surface)}
+.tul-semalam .sm-tbl tr.padam td{text-decoration:line-through;opacity:.7}
+.tul-semalam .sm-tbl td:last-child{white-space:nowrap}
+.tul-semalam .sm-tbl .btn{font-family:var(--font-body);font-size:12px}
+@media (max-width:700px){.tul-semalam{max-height:none}.tul-semalam .sm-tbl td:last-child{white-space:normal}}
 </style>
 </head>
 <body>
@@ -823,6 +841,7 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
       <input id="tulFail" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
     </div>
   </div>
+  <section id="tulSemalam" class="tul-semalam"></section>
   <section id="tulSambung" class="tul-sambung"></section>
   <div class="tul-cari"><input id="tulCari" type="search" placeholder="Cari dalam semua tulisan, contohnya: perantara, SECI, Hassan" autocomplete="off"><div id="tulCariHasil" class="tul-cari-hasil" hidden></div></div>
   <div id="tulBab" class="tul-bab"></div>

@@ -46,19 +46,32 @@ export function initTulisan(R) {
     const d = awan ? gabung(lokal, awan) : lokal; T.docs[n] = d; R.lsSet(lsKey(n), d); return d;
   }
   async function muatSemua() { for (const [n] of BAB) await muatBab(n); T.loaded = true; }
+  /* Had saiz dokumen Firestore 1 MiB: jika bab menghampiri had, versi lama seksyen (sejarah) dibuang dahulu. */
+  function jagaSaiz(d) {
+    const saiz = () => { try { return new Blob([JSON.stringify(d)]).size; } catch (e) { return JSON.stringify(d).length; } };
+    if (saiz() < 800000) return;
+    Object.values(d.seksyen).forEach(sk => { if (sk.sejarah && sk.sejarah.length > 1) sk.sejarah = sk.sejarah.slice(0, 1); });
+    if (saiz() < 800000) return;
+    Object.values(d.seksyen).forEach(sk => { if (sk.sejarah) sk.sejarah = []; });
+    if (saiz() < 950000) return;
+    Object.values(d.seksyen).forEach(sk => { if (sk.padam) sk.teks = ''; });
+  }
   async function simpanAwan(n, patch) {
-    const d = doc(n); R.lsSet(lsKey(n), d);
+    const d = doc(n); jagaSaiz(d); R.lsSet(lsKey(n), d);
+    if (patch && patch.seksyen) Object.keys(patch.seksyen).forEach(id => { if (d.seksyen[id]) patch.seksyen[id] = d.seksyen[id]; });
     try { await R.db().set(kunci(n), Object.assign({ bab: n, tajuk: d.tajuk, masa: d.masa }, patch), true); T.status.awan = 'ok'; return true; }
     catch (e) { T.status.awan = 'gagal'; console.warn('tulisan: simpanan awan gagal', e); return false; }
   }
   function catatLog(d, id, delta) {
-    if (!delta) return; const h = hariIni(); d.log = d.log || {}; const l = d.log[h] || { patah: 0, seksyen: {} };
-    l.patah = (l.patah || 0) + delta; l.seksyen = l.seksyen || {}; l.seksyen[id] = (l.seksyen[id] || 0) + delta; d.log[h] = l;
+    const h = hariIni(); d.log = d.log || {}; const l = d.log[h] || { patah: 0, seksyen: {}, masa: {} };
+    l.masa = l.masa || {}; l.masa[id] = Date.now();
+    if (delta) { l.patah = (l.patah || 0) + delta; l.seksyen = l.seksyen || {}; l.seksyen[id] = (l.seksyen[id] || 0) + delta; }
+    d.log[h] = l;
     const keys = Object.keys(d.log).sort(); while (keys.length > 90) delete d.log[keys.shift()];
   }
   function tulisSeksyen(n, id, patch, opts) {
     opts = opts || {}; const d = doc(n); const s = d.seksyen[id] || { tajuk: '', teks: '', cipta: Date.now(), masa: 0, patah: 0 };
-    const lama = s.patah || 0; Object.assign(s, patch); s.masa = Date.now(); s.patah = patah(s.teks); d.seksyen[id] = s;
+    const lama = s.patah || 0; Object.assign(s, patch); s.masa = Date.now(); s.patah = s.padam ? 0 : patah(s.teks); d.seksyen[id] = s;
     if (!d.susunan.includes(id)) d.susunan.push(id);
     catatLog(d, id, s.patah - lama); d.masa = s.masa;
     R.lsSet(lsKey(n), d); setStatus('Menyimpan');
@@ -148,9 +161,42 @@ export function initTulisan(R) {
     if (jumlah) toast(jumlah + ' subtopik daripada proposal dimasukkan ke Bab 1 hingga Bab 5; semua boleh diubah suai.');
   }
 
+  function gabungSeksyen(n, id, sasaran) {
+    const d = doc(n); const a = d.seksyen[id], b = d.seksyen[sasaran]; if (!a || !b || id === sasaran) return false;
+    const teks = [b.teks || '', a.teks || ''].filter(t => t.trim()).join('\n\n');
+    tulisSeksyen(n, sasaran, { teks }, { senyap: true, segera: true }); padamSeksyen(n, id); return true;
+  }
+  async function gabungModal(n, id) {
+    const d = doc(n); const s = d.seksyen[id]; const nb = nombor(n); const lain = senarai(n).filter(x => x !== id);
+    if (!lain.length) { toast('Tiada seksyen lain dalam bab ini untuk digabungkan', true); return; }
+    const okk = await R.richModal('Gabungkan seksyen', `<p>Teks "<b>${esc(s.tajuk || 'Tanpa tajuk')}</b>" (${s.patah || 0} patah) akan ditambah di hujung seksyen yang dipilih, kemudian seksyen asal dipadam.</p><select id="tulSasaran" class="modal-in">${lain.map(x => `<option value="${esc(x)}">${esc(nb[x].no)} ${esc(d.seksyen[x].tajuk || 'Tanpa tajuk')} (${d.seksyen[x].patah || 0} patah)</option>`).join('')}</select>`, 'Gabungkan', 'Batal');
+    if (!okk) return; const sasaran = R.richModal.values.tulSasaran; if (gabungSeksyen(n, id, sasaran)) { T.bab = n; T.sek = sasaran; renderSemua(); toast('Seksyen digabungkan'); }
+  }
+  /* ---- semalam: jadual apa yang dibuat pada hari terakhir sebelum hari ini ---- */
+  function hariAktifTerakhir() {
+    const h = hariIni(); const tarikh = new Set();
+    BAB.forEach(([n]) => Object.keys(doc(n).log || {}).forEach(k => { if (k < h) tarikh.add(k); }));
+    return Array.from(tarikh).sort().pop() || null;
+  }
+  const HARI = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
+  const BULAN = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+  function tarikhPanjang(ymd) { const d = new Date(ymd + 'T00:00:00'); return `${HARI[d.getDay()]}, ${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`; }
+  function renderSemalam() {
+    const el = $('#tulSemalam'); if (!el) return;
+    const t = hariAktifTerakhir(); const semalam = tarikhStr(Date.now() - 86400000);
+    if (!t) { el.innerHTML = `<div class="sm-head"><h2>Semalam</h2><span class="sub">Belum ada rekod tulisan sebelum hari ini. Selepas Prof Dr menulis, jadual ini menyenaraikan setiap seksyen yang disentuh pada hari sebelumnya.</span></div>`; return; }
+    const hariLalu = Math.round((new Date(hariIni() + 'T00:00:00') - new Date(t + 'T00:00:00')) / 86400000);
+    const rows = [];
+    BAB.forEach(([n]) => { const l = (doc(n).log || {})[t]; if (!l) return; const nb = nombor(n); const ids = new Set(Object.keys(l.seksyen || {}).concat(Object.keys(l.masa || {}))); ids.forEach(id => { const sk = doc(n).seksyen[id]; if (!sk) return; rows.push({ n, id, sk, delta: (l.seksyen || {})[id] || 0, masa: (l.masa || {})[id] || 0, no: nb[id] ? nb[id].no : (sk.padam ? 'dipadam' : '') }); }); });
+    rows.sort((x, y) => (y.masa || 0) - (x.masa || 0));
+    const jumlah = rows.reduce((a, r) => a + r.delta, 0);
+    el.innerHTML = `<div class="sm-head"><h2>${hariLalu === 1 ? 'Semalam' : 'Hari terakhir menulis'}: ${esc(tarikhPanjang(t))}${hariLalu > 1 ? ' (' + hariLalu + ' hari lalu)' : ''}</h2><span class="sub">${rows.length} seksyen disentuh, ${jumlah >= 0 ? '+' : ''}${jumlah} patah perkataan. Sambung seksyen yang sama, gabungkan dengan seksyen lain, atau padam.</span></div>
+      <div class="sm-wrap"><table class="sm-tbl"><thead><tr><th>Bab</th><th>Seksyen</th><th>Perubahan</th><th>Patah kini</th><th>Masa terakhir</th><th>Tindakan</th></tr></thead><tbody>${rows.map(r => `<tr${r.sk.padam ? ' class="padam"' : ''}><td>Bab ${r.n}</td><td>${esc(r.no)} ${esc(r.sk.tajuk || 'Tanpa tajuk')}${r.sk.padam ? ' (dipadam)' : ''}</td><td>${r.delta ? (r.delta > 0 ? '+' : '') + r.delta + ' patah' : 'disunting, bilangan patah sama'}</td><td>${r.sk.padam ? '' : (r.sk.patah || 0)}</td><td>${r.masa ? esc(R.fmtTime(r.masa)) : ''}</td><td>${r.sk.padam ? '' : `<button class="btn btn-sm btn-primary" data-buka="${r.n}|${esc(r.id)}">Sambung</button> <button class="btn btn-sm" data-gabung="${r.n}|${esc(r.id)}">Gabung</button> <button class="btn btn-sm btn-danger" data-padamsm="${r.n}|${esc(r.id)}">Padam</button>`}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+
   /* ---- paparan ---- */
   function show() { if (!T.mula) { T.mula = true; muatSemua().then(() => { templatAuto(); renderSemua(); peringatan(); }); } renderSemua(); }
-  function renderSemua() { renderBab(); renderSenarai(); renderEditor(); renderSambung(); renderCari(); }
+  function renderSemua() { renderSemalam(); renderBab(); renderSenarai(); renderEditor(); renderSambung(); renderCari(); }
   function jumlahPatah(n) { return senarai(n).reduce((s, id) => s + (doc(n).seksyen[id].patah || 0), 0); }
   function renderBab() {
     const el = $('#tulBab'); if (!el) return;
@@ -165,7 +211,7 @@ export function initTulisan(R) {
     const el = $('#tulEditor'); if (!el) return; const n = T.bab; const d = doc(n); const s = T.sek ? d.seksyen[T.sek] : null;
     if (!s || s.padam) { el.innerHTML = `<div class="tul-kosong"><h3>Pilih seksyen di sebelah kiri atau cipta seksyen baharu</h3><p>Setiap seksyen disimpan automatik ke awan beberapa saat selepas Prof Dr berhenti menaip, dan disegerakkan ke semua peranti. Tulis dalam bentuk perenggan; pisahkan perenggan dengan satu baris kosong. Tanda **tebal** dan *condong* dikekalkan apabila dimuat turun sebagai Word.</p></div>`; return; }
     const k = nombor(n)[T.sek] || { aras: 1, no: n + '.?' };
-    el.innerHTML = `<div class="tul-ed-head"><span class="tul-no" title="Nombor dikira automatik daripada kedudukan dan aras seksyen">${esc(k.no)}</span><input id="tulTajuk" class="tul-tajuk" placeholder="Tajuk seksyen, contohnya Kepimpinan digital dan pengurusan pengetahuan (nombor dijana automatik)" value="${esc(s.tajuk || '')}"><div class="tul-ed-acts"><button class="btn btn-sm" data-arased="-1" title="Promosi: naik satu aras (contoh 2.3.1 menjadi 2.4)"${k.aras > 1 ? '' : ' disabled'}>&#8592; Promosi</button><button class="btn btn-sm" data-arased="1" title="Demosi: turun satu aras di bawah seksyen sebelumnya (contoh 2.4 menjadi 2.3.1)"${bolehDemosi(n, T.sek) ? '' : ' disabled'}>Demosi &#8594;</button><button class="btn btn-sm" data-gerak="-1" title="Alih ke atas">Atas</button><button class="btn btn-sm" data-gerak="1" title="Alih ke bawah">Bawah</button><button class="btn btn-sm" data-salin="1">Salin teks</button><button class="btn btn-sm btn-danger" data-padamsek="1">Padam</button></div></div>
+    el.innerHTML = `<div class="tul-ed-head"><span class="tul-no" title="Nombor dikira automatik daripada kedudukan dan aras seksyen">${esc(k.no)}</span><input id="tulTajuk" class="tul-tajuk" placeholder="Tajuk seksyen, contohnya Kepimpinan digital dan pengurusan pengetahuan (nombor dijana automatik)" value="${esc(s.tajuk || '')}"><div class="tul-ed-acts"><button class="btn btn-sm" data-arased="-1" title="Promosi: naik satu aras (contoh 2.3.1 menjadi 2.4)"${k.aras > 1 ? '' : ' disabled'}>&#8592; Promosi</button><button class="btn btn-sm" data-arased="1" title="Demosi: turun satu aras di bawah seksyen sebelumnya (contoh 2.4 menjadi 2.3.1)"${bolehDemosi(n, T.sek) ? '' : ' disabled'}>Demosi &#8594;</button><button class="btn btn-sm" data-gerak="-1" title="Alih ke atas">Atas</button><button class="btn btn-sm" data-gerak="1" title="Alih ke bawah">Bawah</button><button class="btn btn-sm" data-salin="1">Salin teks</button><button class="btn btn-sm" data-gabung="${n}|${esc(T.sek)}" title="Tambah teks seksyen ini ke hujung seksyen lain, kemudian padam seksyen ini">Gabung</button><button class="btn btn-sm btn-danger" data-padamsek="1">Padam</button></div></div>
       ${s.word && !(s.sumber && s.sumber.jenis === 'word') ? `<div class="tul-sumber">Dikemas kini daripada Word: ${esc(s.word.fail || '')} (${esc(R.fmtTime(s.word.masa || 0))})</div>` : ''}
       ${s.sumber && s.sumber.jenis !== 'templat' ? `<div class="tul-sumber">${s.sumber.jenis === 'banding' ? `Ditulis daripada Banding Artikel: ${esc(s.sumber.label || '')} <button class="btn btn-sm" data-bukabanding="${esc(s.sumber.idA)}|${esc(s.sumber.idB)}">Buka Banding</button>` : s.sumber.jenis === 'artikel' ? `Berkaitan rekod ${esc(s.sumber.label || '')} <button class="btn btn-sm" data-bukarekod="${esc(s.sumber.id)}">Buka rekod</button>` : s.sumber.jenis === 'word' ? `Dimuat naik daripada Word: ${esc(s.sumber.fail || '')} (${esc(R.fmtTime(s.sumber.masa || 0))})` : ''}</div>` : ''}
       <textarea id="tulTeks" class="tul-teks" placeholder="Taip perenggan di sini. Satu baris kosong memisahkan perenggan.">${esc(s.teks || '')}</textarea>
@@ -181,7 +227,7 @@ export function initTulisan(R) {
     const el = $('#tulSambung'); if (!el) return;
     const semua = semuaSeksyen(); const terkini = semua.filter(x => x.s.masa && (x.s.patah || 0) > 0).sort((a, b) => (b.s.masa || 0) - (a.s.masa || 0)).slice(0, 5);
     const h = hariIni(); const sm = tarikhStr(Date.now() - 86400000);
-    const logHari = tgl => BAB.map(([n]) => { const l = (doc(n).log || {})[tgl]; if (!l) return null; const items = Object.keys(l.seksyen || {}).map(id => { const s = doc(n).seksyen[id]; return s ? `${esc(s.tajuk || 'Tanpa tajuk')} (${l.seksyen[id] >= 0 ? '+' : ''}${l.seksyen[id]})` : null; }).filter(Boolean); return `Bab ${n}: ${l.patah >= 0 ? '+' : ''}${l.patah} patah${items.length ? ' dalam ' + items.join(', ') : ''}`; }).filter(Boolean);
+    const logHari = tgl => BAB.map(([n]) => { const l = (doc(n).log || {})[tgl]; if (!l) return null; const semuaItem = Object.keys(l.seksyen || {}).sort((a, b) => Math.abs(l.seksyen[b]) - Math.abs(l.seksyen[a])).map(id => { const s = doc(n).seksyen[id]; return s ? `${esc(s.tajuk || 'Tanpa tajuk')} (${l.seksyen[id] >= 0 ? '+' : ''}${l.seksyen[id]})` : null; }).filter(Boolean); const items = semuaItem.slice(0, 8); if (semuaItem.length > 8) items.push('dan ' + (semuaItem.length - 8) + ' seksyen lagi'); return `Bab ${n}: ${l.patah >= 0 ? '+' : ''}${l.patah} patah${items.length ? ' dalam ' + items.join(', ') : ''}`; }).filter(Boolean);
     const lh = logHari(h), ls = logHari(sm);
     const pinjam = BAB.filter(([n]) => doc(n).pinjam).map(([n]) => `Bab ${n} (sejak ${esc(R.fmtTime(doc(n).pinjam.masa))})`);
     const seminggu = BAB.reduce((s, [n]) => { const lg = doc(n).log || {}; return s + Object.keys(lg).filter(k => Date.now() - new Date(k + 'T00:00:00').getTime() < 7 * 86400000).reduce((a, k) => a + (lg[k].patah || 0), 0); }, 0);
@@ -304,7 +350,7 @@ export function initTulisan(R) {
     const d = doc(n); const ids = senarai(n); const dipakai = new Set();
     const padan = s => { const nt = norm(s.tajuk); let id = ids.find(x => !dipakai.has(x) && norm(d.seksyen[x].tajuk) === nt && nt); if (!id && nt) id = ids.find(x => !dipakai.has(x) && (norm(d.seksyen[x].tajuk).startsWith(nt) || nt.startsWith(norm(d.seksyen[x].tajuk))) && norm(d.seksyen[x].tajuk)); if (id) dipakai.add(id); return id || null; };
     const failMasa = f.lastModified || Date.now();
-    const baris = k.seksyen.map((s, i) => { const id = padan(s); const lama = id ? d.seksyen[id] : null; const sama = lama && (lama.teks || '').trim() === s.teks.trim(); const sistemBaharu = lama && (lama.masa || 0) > failMasa + 60000 && !sama; return { i, s, id, lama, status: !lama ? 'baharu' : sama ? 'sama' : 'ubah', sistemBaharu, pilih: !lama || (!sama && !sistemBaharu) }; });
+    const baris = k.seksyen.map((s, i) => { const id = padan(s); const lama = id ? d.seksyen[id] : null; const sama = lama && (lama.teks || '').trim() === s.teks.trim(); const sistemBaharu = lama && (lama.teks || '').trim() && (lama.masa || 0) > failMasa + 60000 && !sama; return { i, s, id, lama, status: !lama ? 'baharu' : sama ? 'sama' : 'ubah', sistemBaharu, pilih: !lama || (!sama && !sistemBaharu) }; });
     const tiada = ids.filter(id => !dipakai.has(id));
     const adaAmaran = baris.some(b => b.sistemBaharu);
     const html = `<p>Fail <b>${esc(f.name)}</b> (diubah ${esc(R.fmtTime(failMasa))}) dibaca untuk <b>Bab ${n} ${esc(d.tajuk || tajukBab(n))}</b>: ${k.seksyen.length} seksyen. Tanda seksyen yang mahu dimasukkan ke sistem.</p>
@@ -385,6 +431,8 @@ export function initTulisan(R) {
       const tab = e.target.closest('[data-bab]'); if (tab) { T.bab = +tab.dataset.bab; T.sek = null; renderSemua(); return; }
       const it = e.target.closest('[data-sek]'); if (it) { T.sek = it.dataset.sek; renderSenarai(); renderEditor(); return; }
       const bk = e.target.closest('[data-buka]'); if (bk) { const [n, id] = bk.dataset.buka.split('|'); buka(+n, id); return; }
+      const gb = e.target.closest('[data-gabung]'); if (gb) { const [n, id] = gb.dataset.gabung.split('|'); gabungModal(+n, id); return; }
+      const ps = e.target.closest('[data-padamsm]'); if (ps) { const [n, id] = ps.dataset.padamsm.split('|'); const sk = doc(+n).seksyen[id]; if (!sk) return; const okk = await R.confirmBox('Padam seksyen?', `"${sk.tajuk || 'Tanpa tajuk'}" (${sk.patah || 0} patah) akan dipadam daripada Bab ${n}.`, 'Padam'); if (okk) { padamSeksyen(+n, id); renderSemua(); } return; }
       const ar = e.target.closest('[data-aras]'); if (ar) { e.stopPropagation(); if (!ar.disabled) { T.sek = ar.dataset.id; ubahAras(T.bab, ar.dataset.id, +ar.dataset.aras); } return; }
       const ae = e.target.closest('[data-arased]'); if (ae) { if (!ae.disabled) ubahAras(T.bab, T.sek, +ae.dataset.arased); return; }
       const g = e.target.closest('[data-gerak]'); if (g) { gerak(T.bab, T.sek, +g.dataset.gerak); return; }
@@ -405,5 +453,5 @@ export function initTulisan(R) {
     $('#tulFail').addEventListener('change', e => { const fs = e.target.files; muatNaik(fs); e.target.value = ''; });
     $('#tulCari').addEventListener('input', e => { T.cari = e.target.value; renderCari(); });
   }
-  return { show, muatTurun, muatNaik, daripadaBanding, muatSemua, peringatan, huraiHtml, nombor, ubahAras, susunSemula, isiTemplat, TEMPLAT, state: T, BAB };
+  return { show, muatTurun, muatNaik, daripadaBanding, muatSemua, peringatan, huraiHtml, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, TEMPLAT, state: T, BAB };
 }
