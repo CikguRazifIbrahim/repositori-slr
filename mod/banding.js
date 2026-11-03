@@ -79,7 +79,7 @@ export function initBanding(R) {
     if (B.a && !R.S.docs.has(B.a)) B.a = ''; if (B.b && !R.S.docs.has(B.b)) B.b = '';
     isiSelect(sa, B.a, B.b); isiSelect(sb, B.b, B.a); kad(B.a, 'a'); kad(B.b, 'b'); renderKayu(); renderPola();
     $('#btnBandingAgen').disabled = !B.hasil;
-    if (B.hasil && (!B.a || !B.b)) { B.hasil = false; $('#bandHasil').innerHTML = ''; $('#btnBandingAgen').disabled = true; $('#btnBandingSalin').hidden = true; $('#btnBandingMd').hidden = true; }
+    if (B.hasil && (!B.a || !B.b)) { B.hasil = false; $('#bandHasil').innerHTML = ''; $('#btnBandingAgen').disabled = true; $('#btnBandingSalin').hidden = true; $('#btnBandingMd').hidden = true; $('#btnBandingPdf').hidden = true; }
   }
 
   /* ---- amaran kelengkapan (butang kembali ke rekod) ---- */
@@ -119,7 +119,7 @@ export function initBanding(R) {
     if (ids[0] === ids[1]) { toast('Pilih dua artikel yang berbeza', true); return; }
     const da = rekod(ids[0]), db = rekod(ids[1]); const ka = kelengkapan(da), kb = kelengkapan(db);
     const tak = []; if (!ka.ok) tak.push({ no: 1, id: ids[0], d: da, k: ka }); if (!kb.ok) tak.push({ no: 2, id: ids[1], d: db, k: kb });
-    amaran(tak); B.hasil = false; B.laporan = null; B.simpanan = null; $('#btnBandingSalin').hidden = true; $('#btnBandingMd').hidden = true; $('#btnBandingAgen').disabled = true;
+    amaran(tak); B.hasil = false; B.laporan = null; B.simpanan = null; $('#btnBandingSalin').hidden = true; $('#btnBandingMd').hidden = true; $('#btnBandingPdf').hidden = true; $('#btnBandingAgen').disabled = true;
     if (tak.length) { $('#bandHasil').innerHTML = ''; return; }
     const ia = indeksPantas(da), ib = indeksPantas(db); const va = ia.map(x => x.nilai), vb = ib.map(x => x.nilai);
     const rows = PANTAS.map((label, i) => ({ label, a: va[i], b: vb[i], sebabA: ia[i].sebab, sebabB: ib[i].sebab }));
@@ -268,7 +268,7 @@ ${profil}`;
       <h3 class="band-h3">Cadangan sitasi bersama</h3><p class="band-p">${esc(l.sitasi)}</p>
       <div class="band-verdict"><b>Lebih berguna untuk kajian Prof Dr: ${esc(menang)}.</b> ${esc(l.sebab)}</div>
       <div class="band-tulis"><button class="btn btn-primary" data-tulis="1">Tulis ke Tulisan Tesis (Bab 2)</button><span class="help">Laporan keseluruhan, refleksi dan cadangan sitasi dimasukkan sebagai seksyen baharu dalam Bab 2 Sorotan Literatur untuk Prof Dr olah menjadi perenggan tesis; tiada yang perlu ditaip semula.</span></div>`;
-    $('#btnBandingSalin').hidden = false; $('#btnBandingMd').hidden = false;
+    $('#btnBandingSalin').hidden = false; $('#btnBandingMd').hidden = false; $('#btnBandingPdf').hidden = false;
   }
 
   /* ---- dimensi dan subdimensi konstruk ---- */
@@ -378,7 +378,29 @@ ${profil}`;
     return out.join('\n');
   }
   async function salin() { const md = laporanMd(); try { await navigator.clipboard.writeText(md); toast('Laporan disalin ke papan keratan (Markdown)'); } catch (e) { R.saveFile('banding.md', md, 'text/markdown'); } }
-  function muatTurun() { const da = rekod(B.a), db = rekod(B.b); const nm = (s => s.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, ''))(`Banding_${da.penulis || 'A'}_${da.tahun || ''}_lwn_${db.penulis || 'B'}_${db.tahun || ''}`); R.saveFile(nm + '.md', laporanMd(), 'text/markdown'); }
+  function namaFail() { const da = rekod(B.a), db = rekod(B.b); return (s => s.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, ''))(`Banding_${da.penulis || 'A'}_${da.tahun || ''}_lwn_${db.penulis || 'B'}_${db.tahun || ''}`); }
+  function muatTurun() { R.saveFile(namaFail() + '.md', laporanMd(), 'text/markdown'); }
+  /* Laporan PDF bergrafik: data disediakan di sini (rekod, indeks pantas, laporan agen dengan tanda dimensi dikongsi, jadual A hingga F),
+     dilukis oleh mod/laporanpdf.js dengan jsPDF daripada vendor/laporan.bundle.js yang dimuat hanya apabila diperlukan. */
+  function dataPdf() {
+    const da = rekod(B.a), db = rekod(B.b); const l = B.laporan; const ia = indeksPantas(da), ib = indeksPantas(db);
+    const kad = (d, no) => ({ no, nama: nama(d), tajuk: d.tajuk || 'Tajuk belum diisi', rujukan: nilaiTeks(d.rujukan), bil: d.bil || '?', status: d.status || 'Belum dibaca', doi: d.doi || '', chips: [d.tema, d.jenis, d.rekaBentuk, d.indeks && d.indeks !== 'Tidak pasti' ? d.indeks + (d.kuartil && !/Tiada|Tidak pasti/.test(d.kuartil) ? ' ' + d.kuartil : '') : '', d.negara, d.peringkat, d.teknik].filter(Boolean) });
+    const sama = l && l.dimensi ? samaMengikutPeranan(l.dimensi.a, l.dimensi.b) : null;
+    const kons = arr => (arr || []).map(k => ({ konstruk: k.konstruk, peranan: k.peranan, kerangka: k.kerangka, dimensi: (k.dimensi || []).map(dd => ({ nama: dd.nama, sub: dd.sub || [], sama: !!(sama && sama[k.peranan] && sama[k.peranan].has(normDim(dd.nama))) })) }));
+    return { artikel: [kad(da, 1), kad(db, 2)], dijana: R.fmtTime(Date.now()), masa: B.simpanan ? R.fmtTime(B.simpanan.masa) : '', model: B.simpanan && B.simpanan.model || '', token: B.simpanan && B.simpanan.token || null,
+      pantas: { labels: PANTAS, a: ia, b: ib }, laporan: l ? Object.assign({}, l, { dimensi: l.dimensi ? { a: kons(l.dimensi.a), b: kons(l.dimensi.b) } : null }) : null,
+      bahagian: SEK.map(s => ({ letter: s.letter, title: s.title })),
+      sisi: SEK.map(s => ({ letter: s.letter, title: s.title, rows: s.fields.map(f => { const va = nilaiTeks(da[f.k]), vb = nilaiTeks(db[f.k]); return { label: f.label, a: va, b: vb, sama: f.type === 'select' && !!va && va === vb }; }) })) };
+  }
+  async function muatTurunPdf() {
+    if (!B.hasil || !B.a || !B.b) { toast('Klik "Banding sekarang" dahulu', true); return; }
+    const btn = $('#btnBandingPdf'); if (btn.disabled) return; const asal = btn.textContent; btn.disabled = true; btn.textContent = 'Menyediakan PDF';
+    try {
+      const [lib, mod] = await Promise.all([import('../vendor/laporan.bundle.js'), import('./laporanpdf.js')]);
+      const buf = mod.janaPdf(lib, dataPdf()); R.saveFile(namaFail() + '.pdf', buf, 'application/pdf'); toast('Laporan PDF dimuat turun');
+    } catch (e) { console.error('banding: pdf gagal', e); toast('PDF gagal dijana: ' + (e && e.message ? e.message : e), true); }
+    finally { btn.disabled = false; btn.textContent = asal; }
+  }
 
   /* ---- peristiwa ---- */
   const root = $('#banding');
@@ -390,6 +412,7 @@ ${profil}`;
     $('#btnBandingAgen').addEventListener('click', () => agen());
     $('#btnBandingSalin').addEventListener('click', () => salin());
     $('#btnBandingMd').addEventListener('click', () => muatTurun());
+    $('#btnBandingPdf').addEventListener('click', () => muatTurunPdf());
     root.addEventListener('click', e => {
       const b = e.target.closest('[data-buka]'); if (b) { R.openRecord(b.dataset.buka); return; }
       if (e.target.closest('[data-kayuset]')) { if (B.a) tetapKayu(B.a); return; }
@@ -408,5 +431,5 @@ ${profil}`;
       }
     });
   }
-  return { show, refresh, banding, agen, indeksPantas, kelengkapan, laporanMd, senaraiKonstruk, janaPeta, tetapKayu, renderPola, state: B };
+  return { show, refresh, banding, agen, indeksPantas, kelengkapan, laporanMd, dataPdf, muatTurunPdf, senaraiKonstruk, janaPeta, tetapKayu, renderPola, state: B };
 }
