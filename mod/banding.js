@@ -380,20 +380,20 @@ ${profil}`;
   async function salin() { const md = laporanMd(); try { await navigator.clipboard.writeText(md); toast('Laporan disalin ke papan keratan (Markdown)'); } catch (e) { R.saveFile('banding.md', md, 'text/markdown'); } }
   function namaFail() { const da = rekod(B.a), db = rekod(B.b); return (s => s.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, ''))(`Banding_${da.penulis || 'A'}_${da.tahun || ''}_lwn_${db.penulis || 'B'}_${db.tahun || ''}`); }
   function muatTurun() { R.saveFile(namaFail() + '.md', laporanMd(), 'text/markdown'); }
-  /* Laporan PDF bergrafik: data disediakan di sini (rekod, indeks pantas, laporan agen dengan tanda dimensi dikongsi, jadual A hingga F),
-     dilukis oleh mod/laporanpdf.js dengan jsPDF daripada vendor/laporan.bundle.js yang dimuat hanya apabila diperlukan. */
+  /* Laporan PDF bergrafik bagi laporan agen sahaja (isian Prof Dr sendiri, iaitu indeks pantas dan jadual A hingga F, tidak dimuatkan): data disediakan
+     di sini (kad pengenalan artikel, laporan agen dengan tanda dimensi dikongsi), dilukis oleh mod/laporanpdf.js dengan jsPDF daripada vendor/laporan.bundle.js yang dimuat hanya apabila diperlukan. */
   function dataPdf() {
-    const da = rekod(B.a), db = rekod(B.b); const l = B.laporan; const ia = indeksPantas(da), ib = indeksPantas(db);
+    const da = rekod(B.a), db = rekod(B.b); const l = B.laporan;
     const kad = (d, no) => ({ no, nama: nama(d), tajuk: d.tajuk || 'Tajuk belum diisi', rujukan: nilaiTeks(d.rujukan), bil: d.bil || '?', status: d.status || 'Belum dibaca', doi: d.doi || '', chips: [d.tema, d.jenis, d.rekaBentuk, d.indeks && d.indeks !== 'Tidak pasti' ? d.indeks + (d.kuartil && !/Tiada|Tidak pasti/.test(d.kuartil) ? ' ' + d.kuartil : '') : '', d.negara, d.peringkat, d.teknik].filter(Boolean) });
     const sama = l && l.dimensi ? samaMengikutPeranan(l.dimensi.a, l.dimensi.b) : null;
     const kons = arr => (arr || []).map(k => ({ konstruk: k.konstruk, peranan: k.peranan, kerangka: k.kerangka, dimensi: (k.dimensi || []).map(dd => ({ nama: dd.nama, sub: dd.sub || [], sama: !!(sama && sama[k.peranan] && sama[k.peranan].has(normDim(dd.nama))) })) }));
     return { artikel: [kad(da, 1), kad(db, 2)], dijana: R.fmtTime(Date.now()), masa: B.simpanan ? R.fmtTime(B.simpanan.masa) : '', model: B.simpanan && B.simpanan.model || '', token: B.simpanan && B.simpanan.token || null,
-      pantas: { labels: PANTAS, a: ia, b: ib }, laporan: l ? Object.assign({}, l, { dimensi: l.dimensi ? { a: kons(l.dimensi.a), b: kons(l.dimensi.b) } : null }) : null,
-      bahagian: SEK.map(s => ({ letter: s.letter, title: s.title })),
-      sisi: SEK.map(s => ({ letter: s.letter, title: s.title, rows: s.fields.map(f => { const va = nilaiTeks(da[f.k]), vb = nilaiTeks(db[f.k]); return { label: f.label, a: va, b: vb, sama: f.type === 'select' && !!va && va === vb }; }) })) };
+      laporan: l ? Object.assign({}, l, { dimensi: l.dimensi ? { a: kons(l.dimensi.a), b: kons(l.dimensi.b) } : null }) : null,
+      bahagian: SEK.map(s => ({ letter: s.letter, title: s.title })) };
   }
   async function muatTurunPdf() {
     if (!B.hasil || !B.a || !B.b) { toast('Klik "Banding sekarang" dahulu', true); return; }
+    if (!B.laporan) { toast('Laporan agen belum dijana bagi pasangan ini', true); return; }
     const btn = $('#btnBandingPdf'); if (btn.disabled) return; const asal = btn.textContent; btn.disabled = true; btn.textContent = 'Menyediakan PDF';
     try {
       const [lib, mod] = await Promise.all([import('../vendor/laporan.bundle.js'), import('./laporanpdf.js')]);

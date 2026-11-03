@@ -1,5 +1,5 @@
-/* Laporan PDF Banding Artikel: menjana laporan bergrafik (kad artikel, carta radar, bar bercermin, jadual dan perenggan)
-   daripada data yang disediakan oleh mod/banding.js. Modul ini tulen: tiada DOM, hanya jsPDF, jspdf-autotable dan fon
+/* Laporan PDF Agen Banding: menjana laporan bergrafik (kad artikel, carta radar, bar bercermin, jadual dan perenggan) bagi laporan
+   yang dijana oleh Agen Banding Prof Dr Claude sahaja, daripada data yang disediakan oleh mod/banding.js. Modul ini tulen: tiada DOM, hanya jsPDF, jspdf-autotable dan fon
    terbenam daripada vendor/laporan.bundle.js, maka ia boleh diuji dalam Node. Saiz dalam milimeter, kertas A4 tegak.
    Warna siri: Artikel 1 biru (seperti skrin), Artikel 2 merah jambu tua yang lulus semakan keterbezaan pada kertas
    putih; poligon Artikel 2 bergaris putus dan berpenanda segi empat supaya kekal boleh dibezakan tanpa warna. */
@@ -82,7 +82,6 @@ export function janaPdf(lib, data) {
     autoTable(doc, o);
     y = doc.lastAutoTable.finalY + 4;
   }
-  const kosongKe = v => { const t = bersih(v).trim(); return t || 'kosong'; };
 
   /* ---- carta radar: pusat (cx, cy), jejari r, label dibalut 22 mm; ukurRadar mengira jangkauan sebenar label di atas dan di bawah
      pusat supaya blok tidak menempah ruang kosong; legenda dua lajur di bawah label terbawah ---- */
@@ -148,19 +147,20 @@ export function janaPdf(lib, data) {
   /* Blok carta: radar di kiri, skor purata dan bar di lajur kanan apabila keseluruhannya muat pada baki muka surat; jika tidak,
      radar yang lebih besar dan skor purata dahulu (bersebelahan), kemudian bar selebar 140 mm yang mengalir merentas muka surat.
      Tajuk seksyen dilukis bersama blok supaya tidak terpisah di hujung muka surat. */
-  function blokRadarBar(tajuk, labels, va, vb, namaA, namaB, rows) {
-    const hTajuk = tajuk ? mm(10.5) * 1.25 + 3.6 : 0; const jurang = 6;
+  function blokRadarBar(tajuk, labels, va, vb, namaA, namaB, rows, arasH2) {
+    const tajukkan = () => { if (!tajuk) return; if (arasH2) h2(tajuk); else h3(tajuk); };
+    const hTajuk = tajuk ? (arasH2 ? 3 + mm(12.5) * 1.2 + 0.8 + 3.4 : mm(10.5) * 1.25 + 3.6) : 0; const jurang = 6;
     const r1 = 26, lebar1 = 92, lebarKanan = CW - lebar1 - jurang, xKanan = ML + lebar1 + jurang; const u1 = ukurRadar(r1, labels);
     const hKanan = H_SKOR + rows.reduce((s, rr) => s + ukurBar(rr, lebarKanan).h, 0); const hBlok = Math.max(u1.tinggi, hKanan);
     if (y + hTajuk + hBlok <= BAWAH) {
-      if (tajuk) h3(tajuk); const y0 = y; radar(ML + lebar1 / 2, y0 + u1.atas, r1, lebar1, labels, va, vb, namaA, namaB, u1);
+      tajukkan(); const y0 = y; radar(ML + lebar1 / 2, y0 + u1.atas, r1, lebar1, labels, va, vb, namaA, namaB, u1);
       y = y0; skorBesar(xKanan, lebarKanan, va, vb); rows.forEach(rr => barisBar(xKanan, lebarKanan, rr, ukurBar(rr, lebarKanan))); y = y0 + hBlok + 2;
     } else {
-      /* radar besar jika muat pada baki muka surat, radar sederhana jika hanya itu yang muat, jika tidak muka surat baharu dengan radar besar */
-      const calon = [[32, 112], [26, 92]].map(([r, lebar]) => ({ r, lebar, u: ukurRadar(r, labels) }));
+      /* radar besar jika muat pada baki muka surat, radar sederhana atau kecil jika hanya itu yang muat, jika tidak muka surat baharu dengan radar besar */
+      const calon = [[32, 112], [26, 92], [22, 80]].map(([r, lebar]) => ({ r, lebar, u: ukurRadar(r, labels) }));
       let pilih = calon.find(c => y + hTajuk + c.u.tinggi <= BAWAH); if (!pilih) { mukaBaru(); pilih = calon[0]; }
       const { r: r2, lebar: lebar2, u: u2 } = pilih;
-      if (tajuk) h3(tajuk); const y0 = y; radar(ML + lebar2 / 2, y0 + u2.atas, r2, lebar2, labels, va, vb, namaA, namaB, u2);
+      tajukkan(); const y0 = y; radar(ML + lebar2 / 2, y0 + u2.atas, r2, lebar2, labels, va, vb, namaA, namaB, u2);
       y = y0 + Math.round(u2.tinggi / 2 - H_SKOR / 2); skorBesar(ML + lebar2 + jurang, CW - lebar2 - jurang, va, vb); y = y0 + u2.tinggi + 2;
       kumpulanBar(ML + 17, 140, rows); y += 2;
     }
@@ -172,41 +172,39 @@ export function janaPdf(lib, data) {
     isi(warnaIsi); garis(W.line); doc.setLineWidth(0.2); doc.roundedRect(ML, y, CW, s.h + 2 * pad, 2, 2, 'F'); y += pad; lukisBaris(s, { x: ML + pad, tanpaPecah: true }); y += pad + 3;
   }
 
-  /* ================= kandungan ================= */
+  /* ================= kandungan: hanya laporan yang dijana oleh Agen Banding Prof Dr Claude =================
+     Indeks pantas dan jadual A hingga F ialah isian Prof Dr sendiri yang boleh dibaca semula dalam aplikasi pada bila-bila masa, maka
+     tidak dimuatkan; kad artikel dikekalkan sekadar untuk mengenal pasti pasangan yang dibandingkan. */
   const A1 = data.artikel[0], A2 = data.artikel[1]; const l = data.laporan;
-  doc.setProperties({ title: `Banding Artikel: ${A1.nama} lwn ${A2.nama}`, subject: 'Laporan perbandingan dua artikel, Repositori SLR', author: 'Repositori SLR', creator: 'Repositori SLR' });
+  doc.setProperties({ title: `Laporan Agen Banding: ${A1.nama} lwn ${A2.nama}`, subject: 'Laporan Agen Banding Prof Dr Claude, Repositori SLR', author: 'Repositori SLR', creator: 'Repositori SLR' });
 
-  fon('sans', 'bold'); doc.setFontSize(8); warna(W.muted); doc.text('REPOSITORI SLR  ·  LAPORAN BANDING ARTIKEL', ML, y, { baseline: 'top' }); y += 6;
-  h1('Banding Artikel'); perenggan([{ t: `${A1.nama}  lwn  ${A2.nama}`, b: true }], { pt: 13, jarak: 1.5 });
-  perenggan([{ t: `Dijana ${data.dijana}${data.model ? ', agen ' + String(data.model).replace('claude-', '') : ''}${data.token ? ' (token masuk ' + data.token.masuk + ', keluar ' + data.token.keluar + ')' : ''}. Perbandingan kepala ke kepala berdasarkan medan Bahagian A hingga F kedua-dua rekod; draf untuk disemak oleh Prof Dr.`, c: W.muted }], { pt: 9.2, faktor: 1.3, jarak: 4 });
+  fon('sans', 'bold'); doc.setFontSize(8); warna(W.muted); doc.text('REPOSITORI SLR  ·  BANDING ARTIKEL', ML, y, { baseline: 'top' }); y += 6;
+  h1('Laporan Agen Banding Prof Dr Claude'); perenggan([{ t: `${A1.nama}  lwn  ${A2.nama}`, b: true }], { pt: 13, jarak: 1.5 });
+  perenggan([{ t: `Dijana ${data.masa || data.dijana}${data.model ? ' oleh ' + String(data.model).replace('claude-', '') : ''}${data.token ? ' (token masuk ' + data.token.masuk + ', keluar ' + data.token.keluar + ')' : ''} daripada medan Bahagian A hingga F kedua-dua rekod, bukan PDF artikel; dimuat turun ${data.dijana}. Draf untuk disemak oleh Prof Dr; angka ialah skor penilaian agen, bukan ukuran empirikal.`, c: W.muted }], { pt: 9.2, faktor: 1.3, jarak: 4 });
 
-  /* 1. Artikel */
-  h2('1. Artikel yang dibandingkan');
+  /* kad pengenalan artikel */
   const kad = a => [bersih(a.tajuk || 'Tajuk belum diisi'), bersih(a.rujukan || ''), (a.chips || []).map(bersih).filter(Boolean).join('  ·  '), `Bil. ${a.bil}  ·  ${a.status}${a.doi ? '  ·  https://doi.org/' + a.doi : ''}`];
   const k1 = kad(A1), k2 = kad(A2); const badan = [], jenisBaris = []; k1.forEach((_, i) => { if (k1[i] || k2[i]) { badan.push([k1[i], k2[i]]); jenisBaris.push(i); } });
   jadual({ head: [[`Artikel 1  ·  ${A1.nama}`, `Artikel 2  ·  ${A2.nama}`]], body: badan, columnStyles: { 0: { cellWidth: CW / 2 }, 1: { cellWidth: CW / 2 } }, alternateRowStyles: { fillColor: W.putih },
     didParseCell: h => { if (h.section === 'head') { h.cell.styles.fillColor = h.column.index === 0 ? W.aLembut : W.bLembut; h.cell.styles.textColor = h.column.index === 0 ? W.a : W.b; h.cell.styles.fontSize = 9.5; return; } const i = jenisBaris[h.row.index]; if (i === 0) { h.cell.styles.fontStyle = 'italic'; h.cell.styles.fontSize = 10; } else if (i === 1) { h.cell.styles.fontSize = 8.6; h.cell.styles.textColor = W.muted; } else { h.cell.styles.font = 'LSans'; h.cell.styles.fontSize = 8; h.cell.styles.textColor = W.muted; } } });
 
-  /* 2. Indeks pantas */
-  h2('2. Indeks pantas');
-  nota('Dikira secara automatik dan telus daripada medan A hingga F (0 hingga 100): tahun, kuartil dan indeks, reka bentuk dan teknik, penanda statistik dalam dapatan, relevansi, padanan KD ke PPO dan PPO ke KDG, asas teori dan konteks. Bukan penilaian agen.');
-  const pa = data.pantas.a, pb = data.pantas.b;
-  blokRadarBar('', data.pantas.labels, pa.map(x => x.nilai), pb.map(x => x.nilai), A1.nama, A2.nama, data.pantas.labels.map((lbl, i) => ({ label: lbl, a: pa[i].nilai, b: pb[i].nilai, sebabA: pa[i].sebab, sebabB: pb[i].sebab })));
-
-  /* 3. Laporan agen */
-  if (l) {
-    h2('3. Laporan Agen Banding Prof Dr Claude');
-    nota(`Dijana ${data.masa || data.dijana}${data.model ? ' oleh ' + String(data.model).replace('claude-', '') : ''} daripada medan A hingga F kedua-dua rekod (bukan PDF). Draf untuk disemak oleh Prof Dr; angka ialah skor penilaian agen, bukan ukuran empirikal.`);
+  if (!l) {
+    nota('Laporan agen belum dijana bagi pasangan ini. Klik "Mohon Agen Banding Prof Dr Claude" dalam aplikasi, kemudian muat turun semula PDF ini.');
+  } else {
+    /* 1. Profil */
+    h2('1. Profil kedua-dua artikel');
     jadual({ head: [[`Artikel 1  ·  ${A1.nama}`, `Artikel 2  ·  ${A2.nama}`]], body: [[bersih(l.profil.a), bersih(l.profil.b)]], columnStyles: { 0: { cellWidth: CW / 2 }, 1: { cellWidth: CW / 2 } }, styles: { fontSize: 9.6 },
       didParseCell: h => { if (h.section === 'head') { h.cell.styles.fillColor = h.column.index === 0 ? W.aLembut : W.bLembut; h.cell.styles.textColor = h.column.index === 0 ? W.a : W.b; h.cell.styles.fontSize = 9.5; } } });
+    /* 2. Penilaian teknikal */
     if (l.skor && l.skor.length) {
       const va = l.skor.map(x => clamp(x.a)), vb = l.skor.map(x => clamp(x.b)); const labels = l.skor.map(x => x.dimensi);
-      blokRadarBar('3.1 Penilaian teknikal agen', labels, va, vb, A1.nama, A2.nama, l.skor.map(x => ({ label: x.dimensi, a: x.a, b: x.b })));
+      blokRadarBar('2. Penilaian teknikal agen', labels, va, vb, A1.nama, A2.nama, l.skor.map(x => ({ label: x.dimensi, a: x.a, b: x.b })), true);
       h4('Asas skor setiap dimensi');
       l.skor.forEach(x => perenggan([{ t: bersih(x.dimensi) + ' ', b: true }, { t: `(Artikel 1: ${clamp(x.a)}; Artikel 2: ${clamp(x.b)}). `, c: W.muted, jenis: 'sans' }, { t: x.ulasan }], { pt: 10 }));
     }
+    /* 3. Dimensi konstruk */
     if (l.dimensi) {
-      h3('3.2 Dimensi dan subdimensi konstruk', 52);
+      h2('3. Dimensi dan subdimensi konstruk', 60);
       nota('Dipetakan oleh agen daripada medan konstruk, definisi, teori dan instrumen. ● dimensi yang dikongsi kedua-dua artikel bagi peranan konstruk yang sama; ○ dimensi yang hanya ada pada artikel ini.');
       [['Artikel 1', A1.nama, l.dimensi.a, W.aLembut, W.a], ['Artikel 2', A2.nama, l.dimensi.b, W.bLembut, W.b]].forEach(([lbl, nm, arr, lembut, c]) => {
         const rows = (arr || []).map(k => [bersih(k.konstruk), bersih(k.peranan), bersih(k.kerangka || 'Tiada dalam rekod'), k.dimensi && k.dimensi.length ? k.dimensi.map(dd => (dd.sama ? '● ' : '○ ') + bersih(dd.nama) + (dd.sub && dd.sub.length ? ' (' + dd.sub.map(bersih).join('; ') + ')' : '')).join('\n') : 'Dimensi tidak dinyatakan dalam rekod (unidimensi atau belum diisi).']);
@@ -216,37 +214,27 @@ export function janaPdf(lib, data) {
       const bd = l.bandingDimensi || {}; h4('Perbandingan dimensi');
       labelTeks('Persamaan.', bd.persamaan); labelTeks('Perbezaan.', bd.perbezaan); labelTeks('Implikasi kepada instrumen Prof Dr.', bd.implikasi);
     }
-    h3('3.3 Perbandingan setiap bahagian');
+    /* 4. Bahagian A hingga F */
+    h2('4. Perbandingan setiap bahagian');
     (l.bahagian || []).forEach(x => { const s = (data.bahagian || []).find(b => b.letter === x.bahagian); h4(`Bahagian ${x.bahagian}. ${s ? s.title : ''}`); labelTeks('Persamaan.', x.persamaan); labelTeks('Perbezaan.', x.perbezaan); labelTeks('Penilaian.', x.penilaian); });
-    h3('3.4 Kekuatan dan kelemahan', 44);
+    /* 5. Kekuatan dan kelemahan */
+    h2('5. Kekuatan dan kelemahan', 50);
     jadual({ head: [['', `Artikel 1  ·  ${A1.nama}`, `Artikel 2  ·  ${A2.nama}`]], body: [['Kekuatan', bersih(l.kekuatan.a), bersih(l.kekuatan.b)], ['Kelemahan', bersih(l.kelemahan.a), bersih(l.kelemahan.b)]], columnStyles: { 0: { cellWidth: 24, font: 'LSans', fontStyle: 'bold', fontSize: 8.5 }, 1: { cellWidth: 75 }, 2: { cellWidth: 75 } }, styles: { fontSize: 9.6 }, alternateRowStyles: { fillColor: W.putih },
       didParseCell: h => { if (h.section === 'head' && h.column.index > 0) { h.cell.styles.fillColor = h.column.index === 1 ? W.aLembut : W.bLembut; h.cell.styles.textColor = h.column.index === 1 ? W.a : W.b; } } });
-    h3('3.5 Laporan keseluruhan'); perenggan(l.keseluruhan, { pt: 10.5 });
-    h3('3.6 Refleksi terhadap kajian Prof Dr'); perenggan(l.refleksi, { pt: 10.5 });
-    h3('3.7 Cadangan sitasi bersama'); perenggan(l.sitasi, { pt: 10.5 });
+    /* 6 hingga 8. Keseluruhan, refleksi, sitasi, keputusan */
+    h2('6. Laporan keseluruhan'); perenggan(l.keseluruhan, { pt: 10.5 });
+    h2('7. Refleksi terhadap kajian Prof Dr'); perenggan(l.refleksi, { pt: 10.5 });
+    h2('8. Cadangan sitasi bersama'); perenggan(l.sitasi, { pt: 10.5 });
     const menang = l.lebihBerguna === 'Artikel 1' ? `Artikel 1, ${A1.nama}` : l.lebihBerguna === 'Artikel 2' ? `Artikel 2, ${A2.nama}` : 'kedua-dua setara';
     kotak([{ t: `Lebih berguna untuk kajian Prof Dr: ${menang}. `, b: true, c: l.lebihBerguna === 'Artikel 1' ? W.a : l.lebihBerguna === 'Artikel 2' ? W.b : W.fg }, { t: l.sebab }], l.lebihBerguna === 'Artikel 1' ? W.aLembut : l.lebihBerguna === 'Artikel 2' ? W.bLembut : W.lembut);
-  } else {
-    h2('3. Laporan Agen Banding Prof Dr Claude');
-    nota('Laporan agen belum dijana bagi pasangan ini. Klik "Mohon Agen Banding Prof Dr Claude" dalam aplikasi, kemudian muat turun semula PDF ini.');
   }
-
-  /* 4. Lampiran: jadual A hingga F */
-  h2('4. Lampiran: Bahagian A hingga F bersebelahan', 64);
-  nota('Nilai medan kedua-dua rekod seperti yang diisi dalam repositori; pilihan yang sama bagi medan pilihan ditanda hijau.');
-  (data.sisi || []).forEach(s => {
-    h4(`Bahagian ${s.letter}. ${s.title}`, null, 42);
-    const rows = s.rows.map(r => [bersih(r.label), kosongKe(r.a), kosongKe(r.b)]);
-    jadual({ head: [['Medan', `Artikel 1  ·  ${A1.nama}`, `Artikel 2  ·  ${A2.nama}`]], body: rows, columnStyles: { 0: { cellWidth: 36, font: 'LSans', fontSize: 8, textColor: W.muted }, 1: { cellWidth: 69 }, 2: { cellWidth: 69 } }, styles: { fontSize: 8.8 },
-      didParseCell: h => { if (h.section === 'head' && h.column.index > 0) { h.cell.styles.fillColor = h.column.index === 1 ? W.aLembut : W.bLembut; h.cell.styles.textColor = h.column.index === 1 ? W.a : W.b; } if (h.section === 'body' && h.column.index > 0) { const r = s.rows[h.row.index]; if (r && r.sama) { h.cell.styles.fillColor = W.okLembut; h.cell.styles.textColor = W.ok; } if (h.cell.raw === 'kosong') { h.cell.styles.fontStyle = 'italic'; h.cell.styles.textColor = W.muted; } } } });
-  });
 
   /* ---- kaki muka surat dan tanda buku ---- */
   const N = doc.internal.getNumberOfPages();
   for (let p = 1; p <= N; p++) {
     doc.setPage(p); garis(W.line); doc.setLineWidth(0.2); doc.line(ML, PH - 13, ML + CW, PH - 13);
     fon('sans', 'normal'); doc.setFontSize(7.5); warna(W.muted);
-    doc.text(`Repositori SLR  ·  Banding Artikel  ·  ${bersih(A1.nama)} lwn ${bersih(A2.nama)}`.slice(0, 110), ML, PH - 10.5, { baseline: 'top' });
+    doc.text(`Repositori SLR  ·  Laporan Agen Banding  ·  ${bersih(A1.nama)} lwn ${bersih(A2.nama)}`.slice(0, 110), ML, PH - 10.5, { baseline: 'top' });
     doc.text(`Muka surat ${p} daripada ${N}`, ML + CW, PH - 10.5, { baseline: 'top', align: 'right' });
   }
   try { if (doc.outline && tandaBuku.length) { let induk = null; tandaBuku.forEach(b => { const node = doc.outline.add(b.aras === 0 ? null : induk, b.tajuk, { pageNumber: b.muka }); if (b.aras === 0) induk = node; }); } } catch (e) { /* tanda buku pilihan */ }
