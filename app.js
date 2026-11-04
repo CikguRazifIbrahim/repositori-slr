@@ -8,7 +8,7 @@ import { initWeb } from './mod/web.js';
 import { initIsi } from './mod/isi.js';
 import { initBanding } from './mod/banding.js';
 import { initTulisan } from './mod/tulisan.js';
-const VERSION = '1.13.0';
+const VERSION = '1.14.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';

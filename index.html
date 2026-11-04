@@ -28,6 +28,7 @@
   --ok:#2C7A4B; --ok-soft:#DDF1E4; --warn:#9A6A12; --warn-soft:#FBEBC8; --bad:#B23B35; --bad-soft:#F8DCDA;
   --info:#3A5CA8; --info-soft:#DFE6F7;
   --kd:#3A5CA8; --ppo:#0F6D70; --kdg:#7B3E92; --lain:#5F6B7A;
+  --w-merah:#C0392B; --w-biru:#2F6DB5; --w-hijau:#2E8B57; --w-oren:#D98324; --w-ungu:#7B5EA7; --w-kelabu:#7A8694;
   --viewer-bg:#2A2F38; --viewer-bar:#1C2129; --viewer-fg:#E8ECF2;
   --shadow:0 1px 2px rgba(20,30,45,.06),0 6px 20px rgba(20,30,45,.06);
   --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
@@ -44,6 +45,7 @@
     --ok:#6CC58F; --ok-soft:#173424; --warn:#E3B45B; --warn-soft:#3A2E12; --bad:#F08A84; --bad-soft:#3F1F1D;
     --info:#8FA9E8; --info-soft:#1E2A45;
     --kd:#8FA9E8; --ppo:#5EC4C6; --kdg:#C48AD6; --lain:#9DA9B9;
+    --w-merah:#FF8A80; --w-biru:#8FB8F0; --w-hijau:#7FD6A3; --w-oren:#F5B36B; --w-ungu:#C5A8EE; --w-kelabu:#A8B2BF;
     --viewer-bg:#0C1117; --viewer-bar:#141A22; --viewer-fg:#E7ECF2;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
     color-scheme:dark;
@@ -56,6 +58,7 @@
   --ok:#6CC58F; --ok-soft:#173424; --warn:#E3B45B; --warn-soft:#3A2E12; --bad:#F08A84; --bad-soft:#3F1F1D;
   --info:#8FA9E8; --info-soft:#1E2A45;
   --kd:#8FA9E8; --ppo:#5EC4C6; --kdg:#C48AD6; --lain:#9DA9B9;
+  --w-merah:#FF8A80; --w-biru:#8FB8F0; --w-hijau:#7FD6A3; --w-oren:#F5B36B; --w-ungu:#C5A8EE; --w-kelabu:#A8B2BF;
   --viewer-bg:#0C1117; --viewer-bar:#141A22; --viewer-fg:#E7ECF2;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
   color-scheme:dark;
@@ -596,6 +599,11 @@ body.web-open{overflow:hidden}
 .tul-kaya img.hilang{min-height:40px;border:1px dashed var(--bad);padding:8px;color:var(--bad);font-size:13px}
 .tul-kaya a{color:var(--accent);text-decoration:underline}
 .tul-kaya sup,.tul-kaya sub{font-size:.75em;line-height:1}
+.tul-kaya .w-merah{color:var(--w-merah)}.tul-kaya .w-biru{color:var(--w-biru)}.tul-kaya .w-hijau{color:var(--w-hijau)}.tul-kaya .w-oren{color:var(--w-oren)}.tul-kaya .w-ungu{color:var(--w-ungu)}.tul-kaya .w-kelabu{color:var(--w-kelabu)}
+.tul-bar .w-dot{width:22px;height:22px;min-width:22px;padding:0;border-radius:50%;background:var(--w);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line-strong)}
+.tul-bar .w-dot:hover{box-shadow:0 0 0 2px var(--accent)}
+.tul-bar .w-dot span{display:none}
+.tul-bar .grp.warna{gap:5px}
 .tul-jd-form{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:8px 0}
 .tul-jd-form label{display:flex;gap:6px;align-items:center;font-size:13.5px}
 .tul-jd-form input[type=number]{width:70px}
@@ -607,6 +615,7 @@ body.web-open{overflow:hidden}
 .tul-gabung-row .st.baharu{background:var(--ok-soft);color:var(--ok)}
 .tul-gabung-row .st.ubah{background:var(--info-soft);color:var(--info)}
 .tul-gabung-row .st.sama{background:var(--surface-2);color:var(--muted)}
+.tul-gabung-row .st.format{background:var(--warn-soft);color:var(--warn)}
 .tul-gabung-row .tj{font-weight:600}
 .tul-gabung-row .mt{grid-column:2/-1;font-size:12px;color:var(--muted)}
 .tul-pre{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.5;max-height:40vh;overflow:auto;background:var(--surface-2);padding:8px;border-radius:8px;margin:6px 0}
