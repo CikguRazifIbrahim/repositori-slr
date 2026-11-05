@@ -8,7 +8,7 @@ import { initWeb } from './mod/web.js';
 import { initIsi } from './mod/isi.js';
 import { initBanding } from './mod/banding.js';
 import { initTulisan } from './mod/tulisan.js';
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -86,8 +86,8 @@ const GROUPS = [
       { k: 'jenisJurang', label: 'Jenis jurang', type: 'multi', opts: ['Konteks', 'Populasi', 'Teori', 'Kaedah', 'Empirikal'], wide: true }
     ] },
     { n: 10, title: 'Kritikan sendiri', fields: [
-      { k: 'kekuatan', label: 'Kekuatan', type: 'textarea', rows: 2 },
-      { k: 'kelemahan', label: 'Kelemahan', type: 'textarea', rows: 2, help: 'Contoh: bias kaedah sepunya, sampel kecil, dakwaan sebab-akibat daripada data keratan rentas.' },
+      { k: 'kekuatan', label: 'Kekuatan', type: 'textarea', rows: 2, wide: true },
+      { k: 'kelemahan', label: 'Kelemahan', type: 'textarea', rows: 2, wide: true, help: 'Contoh: bias kaedah sepunya, sampel kecil, dakwaan sebab-akibat daripada data keratan rentas.' },
       { k: 'mmat', label: 'Nota MMAT', type: 'textarea', rows: 4, wide: true, help: 'Lima kriteria bagi kategori reka bentuk berkenaan, jika penarafan formal diperlukan. Seret penjuru kanan bawah untuk membesarkan ruangan.' }
     ] }
   ] },
