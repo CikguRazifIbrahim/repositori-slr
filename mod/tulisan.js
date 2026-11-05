@@ -331,8 +331,8 @@ export function initTulisan(R) {
 
   function gabungSeksyen(n, id, sasaran) {
     const d = doc(n); const a = d.seksyen[id], b = d.seksyen[sasaran]; if (!a || !b || id === sasaran) return false;
-    const html = [htmlSeksyen(b), htmlSeksyen(a)].filter(h => h && h.trim()).join('');
-    tulisSeksyen(n, sasaran, { html }, { senyap: true, segera: true }); padamSeksyen(n, id); return true;
+    const html = [htmlSeksyen(b), htmlSeksyen(a)].filter(h => h && h.trim()).join(''); const ram = [b.ram || '', a.ram || ''].filter(h => h.trim()).join('');
+    tulisSeksyen(n, sasaran, { html, ram }, { senyap: true, segera: true }); padamSeksyen(n, id); return true;
   }
   async function gabungModal(n, id) {
     const d = doc(n); const s = d.seksyen[id]; const nb = nombor(n); const lain = senarai(n).filter(x => x !== id);
@@ -373,34 +373,45 @@ export function initTulisan(R) {
   function renderSenarai() {
     const el = $('#tulSenarai'); if (!el) return; const n = T.bab; const d = doc(n); const ids = senarai(n); const nb = nombor(n);
     const pj = d.pinjam ? `<div class="tul-pinjam">Bab ${n} dimuat turun sebagai Word pada ${esc(R.fmtTime(d.pinjam.masa))} (${esc(d.pinjam.fail || '')}) dan belum dimuat naik semula. Jika Prof Dr menaip dalam fail itu, muat naik dahulu sebelum menyunting di sini supaya tidak wujud dua versi. <button class="btn btn-sm" data-tulnaik="1">Muat naik Word</button> <button class="btn btn-sm" data-pinjamtutup="${n}" title="Fail Word itu tidak disunting; batalkan peringatan">Tidak disunting</button></div>` : '';
-    el.innerHTML = pj + (ids.length ? ids.map(id => { const s = d.seksyen[id]; const k = nb[id]; return `<div class="tul-item a${k.aras}${id === T.sek ? ' on' : ''}${(s.patah || 0) ? '' : ' kosong'}" data-sek="${esc(id)}" role="button" tabindex="0"><span class="tul-grip" title="Seret untuk menyusun semula" aria-hidden="true">⋮⋮</span><div class="tul-item-isi"><div class="tj"><span class="no">${esc(k.no)}</span> ${esc(s.tajuk || 'Tanpa tajuk')}</div><div class="mt">${s.patah || 0} patah${s.patah || s.masa && !(s.sumber && s.sumber.jenis === 'templat') ? ' · ' + (s.masa ? esc(R.fmtTime(s.masa)) : 'belum disunting') : ' · belum ditulis'}${s.sumber && s.sumber.jenis !== 'templat' ? ' · ' + esc(s.sumber.jenis === 'banding' ? 'daripada Banding' : s.sumber.jenis === 'word' ? 'daripada Word' : s.sumber.jenis === 'artikel' ? 'daripada rekod' : '') : ''}</div></div><span class="tul-aras"><button class="ab" data-aras="-1" data-id="${esc(id)}" title="Promosi (naik satu aras)"${k.aras > 1 ? '' : ' disabled'}>&#8592;</button><button class="ab" data-aras="1" data-id="${esc(id)}" title="Demosi (turun satu aras, di bawah seksyen sebelumnya)"${bolehDemosi(n, id) ? '' : ' disabled'}>&#8594;</button></span></div>`; }).join('') : `<div class="help">Bab ${n} belum ada seksyen. Klik "Seksyen baharu" untuk mula menulis, "Subtopik proposal" untuk memasukkan senarai subtopik, atau muat naik fail Word.</div>`);
+    el.innerHTML = pj + (ids.length ? ids.map(id => { const s = d.seksyen[id]; const k = nb[id]; return `<div class="tul-item a${k.aras}${id === T.sek ? ' on' : ''}${(s.patah || 0) ? '' : ' kosong'}" data-sek="${esc(id)}" role="button" tabindex="0"><span class="tul-grip" title="Seret untuk menyusun semula" aria-hidden="true">⋮⋮</span><div class="tul-item-isi"><div class="tj"><span class="no">${esc(k.no)}</span> ${esc(s.tajuk || 'Tanpa tajuk')}</div><div class="mt">${s.patah || 0} patah${s.ram && teksDariHtml(s.ram).trim() ? ' · <span class="tag ram" title="Ada bahan mentah dalam RAM">RAM</span>' : ''}${s.patah || s.masa && !(s.sumber && s.sumber.jenis === 'templat') ? ' · ' + (s.masa ? esc(R.fmtTime(s.masa)) : 'belum disunting') : ' · belum ditulis'}${s.sumber && s.sumber.jenis !== 'templat' ? ' · ' + esc(s.sumber.jenis === 'banding' ? 'daripada Banding' : s.sumber.jenis === 'word' ? 'daripada Word' : s.sumber.jenis === 'artikel' ? 'daripada rekod' : '') : ''}</div></div><span class="tul-aras"><button class="ab" data-aras="-1" data-id="${esc(id)}" title="Promosi (naik satu aras)"${k.aras > 1 ? '' : ' disabled'}>&#8592;</button><button class="ab" data-aras="1" data-id="${esc(id)}" title="Demosi (turun satu aras, di bawah seksyen sebelumnya)"${bolehDemosi(n, id) ? '' : ' disabled'}>&#8594;</button></span></div>`; }).join('') : `<div class="help">Bab ${n} belum ada seksyen. Klik "Seksyen baharu" untuk mula menulis, "Subtopik proposal" untuk memasukkan senarai subtopik, atau muat naik fail Word.</div>`);
   }
-  /* ---- editor teks kaya ---- */
-  const ED = { n: null, id: null, timer: null, kotor: false };
+  /* ---- editor teks kaya: dua pane, ASAL (teks akhir seksyen) dan RAM (kanvas sementara bahan mentah) ----
+     ASAL ialah kandungan yang masuk ke Word, kiraan patah, carian dan panel Semalam; RAM ialah ruang kerja kotor bagi seksyen yang sama
+     (disimpan dalam medan `ram` seksyen supaya kekal merentas peranti, tidak dieksport ke Word). Kedua-dua pane berkongsi alat format;
+     muat naik Word peringkat seksyen masuk ke RAM; butang Pindah menggerakkan teks, jadual dan rajah antara kedua-duanya. */
+  const ED = { n: null, id: null, timer: null, kotor: { asal: false, ram: false }, aktif: 'asal', julat: { asal: null, ram: null } };
+  const PANE = { asal: 'tulTeks', ram: 'tulRam' };
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
-  function editor() { return $('#tulTeks'); }
+  function editor(mana) { return $('#' + PANE[mana || ED.aktif]); }
+  function paneDari(node) { const a = $('#tulTeks'), r = $('#tulRam'); if (!node) return null; if (a && a.contains(node)) return 'asal'; if (r && r.contains(node)) return 'ram'; return null; }
   function serialisasi(ed) { return bersihHtml(ed.innerHTML); }
   function simpanEditor(segera) {
-    const ed = editor(); if (!ed || ED.id == null || !ED.kotor) return; ED.kotor = false; clearTimeout(ED.timer);
-    const html = serialisasi(ed); const pt = $('#tulPatah'); const teks = teksDariHtml(html); if (pt) pt.textContent = patah(teks) + ' patah perkataan';
-    tulisSeksyen(ED.n, ED.id, { html, teks }, { senyap: true, segera });
+    if (ED.id == null || (!ED.kotor.asal && !ED.kotor.ram)) return; clearTimeout(ED.timer); const patch = {};
+    if (ED.kotor.asal) { const ed = editor('asal'); if (ed) { const html = serialisasi(ed); const teks = teksDariHtml(html); patch.html = html; patch.teks = teks; const pt = $('#tulPatah'); if (pt) pt.textContent = patah(teks) + ' patah perkataan'; } }
+    if (ED.kotor.ram) { const ed = editor('ram'); if (ed) { const ram = serialisasi(ed); patch.ram = ram.trim() ? ram : ''; const pt = $('#tulRamPatah'); if (pt) pt.textContent = patah(teksDariHtml(ram)) + ' patah dalam RAM'; } }
+    ED.kotor.asal = false; ED.kotor.ram = false;
+    if (Object.keys(patch).length) { tulisSeksyen(ED.n, ED.id, patch, { senyap: true, segera }); renderSenarai(); renderBab(); }
   }
-  function tandaKotor() { ED.kotor = true; clearTimeout(ED.timer); ED.timer = setTimeout(() => simpanEditor(false), 450); setStatus('Menyimpan'); }
-  function flushEditor() { if (ED.kotor) simpanEditor(true); }
+  function tandaKotor(mana) { ED.kotor[mana || ED.aktif] = true; clearTimeout(ED.timer); ED.timer = setTimeout(() => simpanEditor(false), 450); setStatus('Menyimpan'); }
+  function flushEditor() { if (ED.kotor.asal || ED.kotor.ram) simpanEditor(true); }
   const selNod = () => { const sl = window.getSelection(); if (!sl || !sl.rangeCount) return null; let nd = sl.getRangeAt(0).startContainer; if (nd.nodeType === 3) nd = nd.parentNode; return nd; };
   function selDalam(pilih) { const nd = selNod(); const ed = editor(); const e = nd && nd.closest ? nd.closest(pilih) : null; return e && ed && ed.contains(e) && e !== ed ? e : null; }
   function letakKursor(node, hujung) { const r = document.createRange(); r.selectNodeContents(node); r.collapse(!hujung); const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(r); }
-  function pastikanFokus() { const ed = editor(); if (!ed) return; if (!ed.contains(selNod())) { ed.focus(); letakKursor(ed, true); } }
-  /* Blok aras atas (anak terus editor) yang mengandungi kursor; sisipan jadual dan rajah dibuat pada aras ini dengan DOM, bukan insertHTML,
+  function pastikanFokus() { const ed = editor(); if (!ed) return; if (!ed.contains(selNod())) { ed.focus(); const j = ED.julat[ED.aktif]; if (j && ed.contains(j.startContainer)) { const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(j); } else letakKursor(ed, true); } }
+  /* Blok aras atas (anak terus editor) yang mengandungi nod; sisipan jadual dan rajah dibuat pada aras ini dengan DOM, bukan insertHTML,
      kerana Chrome memecahkan jadual yang disisip melalui insertHTML di dalam perenggan. */
-  function blokSemasa() { const ed = editor(); let nd = selNod(); if (!ed || !nd || nd === ed || !ed.contains(nd)) return null; while (nd.parentNode && nd.parentNode !== ed) nd = nd.parentNode; return nd.parentNode === ed ? nd : null; }
-  function sisipBlok(html) {
-    const ed = editor(); if (!ed) return []; const tmp = el('div'); tmp.innerHTML = html; const nodes = Array.from(tmp.childNodes);
-    const ref = blokSemasa(); const kosong = ref && ref.tagName === 'P' && !ref.textContent.trim() && !ref.querySelector('img');
-    if (!ref) nodes.forEach(nd => ed.appendChild(nd)); else if (kosong) { nodes.forEach(nd => ed.insertBefore(nd, ref)); ref.remove(); } else { let selepas = ref; nodes.forEach(nd => { selepas.after(nd); selepas = nd; }); }
+  function blokAras(ed, nd) { if (!ed || !nd || nd === ed || !ed.contains(nd)) return null; while (nd.parentNode && nd.parentNode !== ed) nd = nd.parentNode; return nd.parentNode === ed ? nd : null; }
+  function blokSemasa() { return blokAras(editor(), selNod()); }
+  const blokKosong = ref => !!ref && ref.tagName === 'P' && !ref.textContent.trim() && !ref.querySelector('img');
+  function sisipBlokDi(ed, html, ref) {
+    const tmp = el('div'); tmp.innerHTML = html; const nodes = Array.from(tmp.childNodes); if (!nodes.length) return nodes;
+    if (!ref) { const ekor = ed.lastElementChild; nodes.forEach(nd => ed.appendChild(nd)); if (blokKosong(ekor)) ekor.remove(); }
+    else if (blokKosong(ref)) { nodes.forEach(nd => ed.insertBefore(nd, ref)); ref.remove(); }
+    else { let selepas = ref; nodes.forEach(nd => { selepas.after(nd); selepas = nd; }); }
     return nodes;
   }
-  function kemasKosong() { const ed = editor(); if (!ed) return; const kosong = !ed.textContent.trim() && !ed.querySelector('img,table'); ed.classList.toggle('kosong', kosong); if (!ed.childNodes.length) ed.innerHTML = '<p><br></p>'; }
+  function sisipBlok(html) { const ed = editor(); if (!ed) return []; return sisipBlokDi(ed, html, blokSemasa()); }
+  function kemasKosong(ed) { ed = ed || editor(); if (!ed) return; const kosong = !ed.textContent.trim() && !ed.querySelector('img,table'); ed.classList.toggle('kosong', kosong); if (!ed.childNodes.length) ed.innerHTML = '<p><br></p>'; }
   function jadualHtml(r, c, kepala) { let h = '<table><tbody>'; for (let i = 0; i < r; i++) { h += '<tr>'; for (let j = 0; j < c; j++) h += kepala && i === 0 ? '<th><br></th>' : '<td><br></td>'; h += '</tr>'; } return h + '</tbody></table><p><br></p>'; }
   function selCell() { return selDalam('td,th'); }
   function jadualOps(op) {
@@ -416,15 +427,16 @@ export function initTulisan(R) {
   }
   function padamJadual(tbl) { const p = el('p'); p.innerHTML = '<br>'; tbl.replaceWith(p); letakKursor(p, false); tandaKotor(); }
   async function sisipJadual() {
+    const mana = ED.aktif;
     const okk = await R.richModal('Sisip jadual', `<div class="tul-jd-form"><label>Baris <input id="tulJdBaris" type="number" min="1" max="60" value="3" class="modal-in"></label><label>Lajur <input id="tulJdLajur" type="number" min="1" max="12" value="3" class="modal-in"></label><label class="tul-cb"><input id="tulJdKepala" type="checkbox" checked> Baris pertama sebagai kepala jadual</label></div><p class="help">Jadual dikekalkan dalam fail Word yang dimuat turun (garis tunggal, langkau satu). Sel dibesarkan mengikut kandungan; Tab berpindah ke sel seterusnya.</p>`, 'Sisip', 'Batal');
     if (!okk) return; const v = R.richModal.values; const r = Math.max(1, Math.min(60, parseInt(v.tulJdBaris, 10) || 3)), c = Math.max(1, Math.min(12, parseInt(v.tulJdLajur, 10) || 3));
-    pastikanFokus(); const nodes = sisipBlok(jadualHtml(r, c, !!v.tulJdKepala)); const tbl = nodes.find(x => x.tagName === 'TABLE'); if (tbl) letakKursor(tbl.querySelector('th,td'), false); kemasKosong(); tandaKotor();
+    ED.aktif = mana; pastikanFokus(); const nodes = sisipBlok(jadualHtml(r, c, !!v.tulJdKepala)); const tbl = nodes.find(x => x.tagName === 'TABLE'); if (tbl) letakKursor(tbl.querySelector('th,td'), false); kemasKosong(); tandaKotor();
   }
   async function masukImej(files) {
-    const ed = editor(); if (!ed) return; const fs = Array.from(files || []).filter(f => /^image\//.test(f.type)); if (!fs.length) { toast('Pilih fail imej (PNG, JPG)', true); return; }
+    const mana = ED.aktif; const ed = editor(mana); if (!ed) return; const fs = Array.from(files || []).filter(f => /^image\//.test(f.type)); if (!fs.length) { toast('Pilih fail imej (PNG, JPG)', true); return; }
     for (const f of fs) {
       toast('Menyimpan rajah ' + f.name);
-      try { const r = await simpanImej(f, { n: ED.n, id: ED.id, nama: f.name }); pastikanFokus(); const nodes = sisipBlok(`<p><img data-imej="${r.id}" src="${r.dataUrl}" alt="${esc(f.name.replace(/\.[a-z0-9]+$/i, ''))}"></p><p><br></p>`); letakKursor(nodes[nodes.length - 1], false); kemasKosong(); tandaKotor(); }
+      try { const r = await simpanImej(f, { n: ED.n, id: ED.id, nama: f.name }); ED.aktif = mana; pastikanFokus(); const nodes = sisipBlok(`<p><img data-imej="${r.id}" src="${r.dataUrl}" alt="${esc(f.name.replace(/\.[a-z0-9]+$/i, ''))}"></p><p><br></p>`); letakKursor(nodes[nodes.length - 1], false); kemasKosong(); tandaKotor(); }
       catch (e) { console.warn('tulisan: rajah gagal', e); toast('Rajah gagal disimpan: ' + (e && e.message || e), true); }
     }
   }
@@ -436,13 +448,14 @@ export function initTulisan(R) {
      dibuka, dan heks ditetapkan mengikut tema terang atau gelap. */
   function pasangWarna(root) { if (!root) return; root.querySelectorAll('span, font').forEach(sp => { const kelas = sp.getAttribute('class') || ''; const gaya = sp.getAttribute('style') || ''; if (!/w-/.test(kelas) && !/color/i.test(gaya) && sp.tagName !== 'FONT') return; const w = warnaElemen(sp); if (w) { if (sp.tagName === 'FONT') { const e = el('span'); while (sp.firstChild) e.appendChild(sp.firstChild); sp.replaceWith(e); sp = e; } sp.removeAttribute('class'); sp.removeAttribute('color'); sp.style.color = heksTema(w); } else if (/color/i.test(gaya) || sp.tagName === 'FONT') { while (sp.firstChild) sp.parentNode.insertBefore(sp.firstChild, sp); sp.remove(); } }); }
   function kemasWarna() { pasangWarna(editor()); }
-  if (window.matchMedia) { try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => pasangWarna(editor())); } catch (e) {} }
+  if (window.matchMedia) { try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { pasangWarna(editor('asal')); pasangWarna(editor('ram')); }); } catch (e) {} }
   async function salinSeksyen() {
-    const ed = editor(); if (!ed) return; const html = serialisasi(ed).replace(/class="w-(merah|biru|hijau|oren|ungu|kelabu)"/g, (m, k) => `style="color:${heksWarna(k)}"`); const teks = teksDariHtml(html);
-    try { if (window.ClipboardItem && navigator.clipboard.write) { await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([teks], { type: 'text/plain' }) })]); } else await navigator.clipboard.writeText(teks); toast('Seksyen disalin (boleh ditampal ke Word dengan format)'); }
+    const ed = editor('asal'); if (!ed) return; const html = serialisasi(ed).replace(/class="w-(merah|biru|hijau|oren|ungu|kelabu)"/g, (m, k) => `style="color:${heksWarna(k)}"`); const teks = teksDariHtml(html);
+    try { if (window.ClipboardItem && navigator.clipboard.write) { await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([teks], { type: 'text/plain' }) })]); } else await navigator.clipboard.writeText(teks); toast('Seksyen (ASAL) disalin, boleh ditampal ke Word dengan format'); }
     catch (e) { try { await navigator.clipboard.writeText(teks); toast('Teks seksyen disalin'); } catch (er) { toast('Papan keratan tidak tersedia', true); } }
   }
   function tampal(e) {
+    const mana = paneDari(e.currentTarget); if (mana) ED.aktif = mana;
     const cd = e.clipboardData; if (!cd) return;
     const files = Array.from(cd.files || []).filter(f => /^image\//.test(f.type)); const html = cd.getData('text/html'); const teks = cd.getData('text/plain');
     if (files.length && !html) { e.preventDefault(); masukImej(files); return; }
@@ -459,42 +472,97 @@ export function initTulisan(R) {
   }
   /* Rajah yang ditampal sebagai data URL dipindahkan ke simpanan rajah di latar supaya dokumen bab kekal kecil. */
   async function naikImejTertunda() {
-    const ed = editor(); if (!ed) return; const imgs = Array.from(ed.querySelectorAll('img[src^="data:"]:not([data-imej])')); if (!imgs.length) return;
+    const mana = ED.aktif; const ed = editor(mana); if (!ed) return; const imgs = Array.from(ed.querySelectorAll('img[src^="data:"]:not([data-imej])')); if (!imgs.length) return;
     for (const im of imgs) { try { const blob = dataUrlKeBlob(im.getAttribute('src')); const r = await simpanImej(blob, { n: ED.n, id: ED.id, nama: im.getAttribute('alt') || '' }); im.setAttribute('data-imej', r.id); im.src = r.dataUrl; } catch (e) { console.warn('tulisan: rajah tampal gagal', e); } }
-    tandaKotor();
+    tandaKotor(mana);
   }
   function kekunci(e) {
     if (e.key === 'Tab') { const cell = selCell(); if (!cell) return; e.preventDefault(); const tr = cell.closest('tr'); let sasaran = e.shiftKey ? cell.previousElementSibling : cell.nextElementSibling; if (!sasaran) { const baris = e.shiftKey ? tr.previousElementSibling : tr.nextElementSibling; if (baris) sasaran = e.shiftKey ? baris.lastElementChild : baris.firstElementChild; else if (!e.shiftKey) { jadualOps('baris+'); return; } } if (sasaran) letakKursor(sasaran, false); }
   }
-  function kemasBar() { const bar = $('#tulBar'); if (!bar) return; const dalam = !!selCell(); bar.classList.toggle('jadual', dalam); }
-  document.addEventListener('selectionchange', () => { if (editor()) kemasBar(); });
-  function renderEditor() {
-    flushEditor();
-    const el2 = $('#tulEditor'); if (!el2) return; const n = T.bab; const d = doc(n); const s = T.sek ? d.seksyen[T.sek] : null;
-    if (!s || s.padam) { ED.n = null; ED.id = null; ED.kotor = false; el2.innerHTML = `<div class="tul-kosong"><h3>Pilih seksyen di sebelah kiri atau cipta seksyen baharu</h3><p>Setiap seksyen disimpan automatik ke awan beberapa saat selepas Prof Dr berhenti menaip, dan disegerakkan ke semua peranti. Editor berfungsi seperti Word: tebal, condong, garis bawah, superskrip, senarai, jadual dan rajah dikekalkan apabila dimuat turun sebagai Word, dan teks yang ditampal daripada Word mengekalkan formatnya. Fail Word juga boleh dimuat naik terus ke dalam satu seksyen.</p></div>`; return; }
-    ED.n = n; ED.id = T.sek; ED.kotor = false;
-    const k = nombor(n)[T.sek] || { aras: 1, no: n + '.?' };
-    el2.innerHTML = `<div class="tul-ed-head"><span class="tul-no" title="Nombor dikira automatik daripada kedudukan dan aras seksyen">${esc(k.no)}</span><input id="tulTajuk" class="tul-tajuk" placeholder="Tajuk seksyen, contohnya Kepimpinan digital dan pengurusan pengetahuan (nombor dijana automatik)" value="${esc(s.tajuk || '')}"><div class="tul-ed-acts"><button class="btn btn-sm" data-arased="-1" title="Promosi: naik satu aras (contoh 2.3.1 menjadi 2.4)"${k.aras > 1 ? '' : ' disabled'}>&#8592; Promosi</button><button class="btn btn-sm" data-arased="1" title="Demosi: turun satu aras di bawah seksyen sebelumnya (contoh 2.4 menjadi 2.3.1)"${bolehDemosi(n, T.sek) ? '' : ' disabled'}>Demosi &#8594;</button><button class="btn btn-sm" data-gerak="-1" title="Alih ke atas">Atas</button><button class="btn btn-sm" data-gerak="1" title="Alih ke bawah">Bawah</button><button class="btn btn-sm" data-salin="1" title="Salin seksyen ke papan keratan dengan format (boleh ditampal ke Word)">Salin</button><button class="btn btn-sm" data-gabung="${n}|${esc(T.sek)}" title="Tambah teks seksyen ini ke hujung seksyen lain, kemudian padam seksyen ini">Gabung</button><button class="btn btn-sm btn-danger" data-padamsek="1">Padam</button></div></div>
-      ${s.word && !(s.sumber && s.sumber.jenis === 'word') ? `<div class="tul-sumber">Dikemas kini daripada Word: ${esc(s.word.fail || '')} (${esc(R.fmtTime(s.word.masa || 0))})</div>` : ''}
-      ${s.sumber && s.sumber.jenis !== 'templat' ? `<div class="tul-sumber">${s.sumber.jenis === 'banding' ? `Ditulis daripada Banding Artikel: ${esc(s.sumber.label || '')} <button class="btn btn-sm" data-bukabanding="${esc(s.sumber.idA)}|${esc(s.sumber.idB)}">Buka Banding</button>` : s.sumber.jenis === 'artikel' ? `Berkaitan rekod ${esc(s.sumber.label || '')} <button class="btn btn-sm" data-bukarekod="${esc(s.sumber.id)}">Buka rekod</button>` : s.sumber.jenis === 'word' ? `Dimuat naik daripada Word: ${esc(s.sumber.fail || '')} (${esc(R.fmtTime(s.sumber.masa || 0))})` : ''}</div>` : ''}
-      <div id="tulBar" class="tul-bar" role="toolbar" aria-label="Format">
+  function kemasBar() { const nd = selNod(); const mana = paneDari(nd); ['asal', 'ram'].forEach(m => { const bar = $(m === 'asal' ? '#tulBar' : '#tulBarRam'); if (!bar) return; const cell = nd && nd.closest ? nd.closest('td,th') : null; bar.classList.toggle('jadual', !!(mana === m && cell && editor(m).contains(cell))); }); }
+  document.addEventListener('selectionchange', () => {
+    const nd = selNod(); const mana = paneDari(nd); if (!mana) return; ED.aktif = mana;
+    const sl = window.getSelection(); if (sl && sl.rangeCount) ED.julat[mana] = sl.getRangeAt(0).cloneRange();
+    kemasBar();
+  });
+  /* Pindah antara ASAL dan RAM: teks yang dipilih (seret) dipindahkan; jika kursor sahaja, blok (perenggan, jadual atau senarai) di kursor itu
+     dipindahkan; RAM tanpa kursor memindahkan keseluruhan kandungannya. Dalam sasaran, kandungan masuk pada kedudukan kursor terakhir
+     (sebaris jika satu perenggan, selepas blok jika lebih) atau di hujung. */
+  function pindah(dari, ke) {
+    const src = editor(dari), dst = editor(ke); if (!src || !dst) return;
+    const sl = window.getSelection(); let rg = sl && sl.rangeCount ? sl.getRangeAt(0) : null;
+    if (!rg || !src.contains(rg.commonAncestorContainer)) rg = ED.julat[dari] && src.contains(ED.julat[dari].commonAncestorContainer) ? ED.julat[dari] : null;
+    let html = ''; let apa = 'Teks yang dipilih'; let sebagaiBlok = false;
+    if (rg && !rg.collapsed) { const frag = rg.extractContents(); const tmp = el('div'); tmp.appendChild(frag); html = bersihHtml(tmp.innerHTML); }
+    else if (rg) { let nd = rg.startContainer; if (nd.nodeType === 3) nd = nd.parentNode; const blok = blokAras(src, nd); if (blok && !blokKosong(blok)) { html = bersihHtml(blok.outerHTML); blok.remove(); sebagaiBlok = true; apa = blok.tagName === 'TABLE' ? 'Jadual' : /^[UO]L$/.test(blok.tagName) ? 'Senarai' : 'Perenggan di kursor'; } }
+    if (!html.trim() && dari === 'ram' && !rg) { html = serialisasi(src); apa = 'Keseluruhan RAM'; sebagaiBlok = true; src.innerHTML = ''; }
+    if (!html.trim()) { toast(dari === 'asal' ? 'Pilih teks dalam ASAL (seret) atau letakkan kursor pada perenggan yang hendak dipindahkan' : 'RAM kosong atau tiada teks dipilih', true); return; }
+    Array.from(src.querySelectorAll('p')).forEach(p => { if (!p.textContent.trim() && !p.querySelector('img,br,table')) p.remove(); }); kemasKosong(src);
+    const tmp2 = el('div'); tmp2.innerHTML = html; const blok = Array.from(tmp2.children); const sebaris = !sebagaiBlok && blok.length === 1 && blok[0].tagName === 'P' && !blok[0].querySelector('img');
+    let jd = ED.julat[ke]; if (!jd || !dst.contains(jd.startContainer)) jd = null; let akhir = null;
+    const blokKursor = jd ? blokAras(dst, jd.startContainer.nodeType === 3 ? jd.startContainer.parentNode : jd.startContainer) : null;
+    if (jd && sebaris && blokKursor && blokKursor.tagName === 'P') {
+      /* sebaris pada kursor: ruang ditambah jika aksara sebelum atau selepas kursor bukan ruang (seperti tampal pintar Word) */
+      jd.collapse(false); const f = document.createDocumentFragment(); const anak = Array.from(blok[0].childNodes); const teksMasuk = blok[0].textContent;
+      const sebelum = (() => { const r2 = jd.cloneRange(); r2.setStart(blokKursor, 0); return r2.toString().slice(-1); })(); const selepas = (() => { const r2 = jd.cloneRange(); r2.setEnd(blokKursor, blokKursor.childNodes.length); return r2.toString().slice(0, 1); })();
+      if (sebelum && !/\s/.test(sebelum) && teksMasuk && !/^\s/.test(teksMasuk)) f.appendChild(document.createTextNode(' '));
+      anak.forEach(x => f.appendChild(x)); akhir = anak[anak.length - 1];
+      if (selepas && !/\s/.test(selepas) && teksMasuk && !/\s$/.test(teksMasuk)) { const sp = document.createTextNode(' '); f.appendChild(sp); akhir = sp; }
+      jd.insertNode(f);
+    } else {
+      let ref = null; if (jd) { let nd = jd.startContainer; if (nd.nodeType === 3) nd = nd.parentNode; ref = blokAras(dst, nd); }
+      const nodes = sisipBlokDi(dst, html, ref); akhir = nodes[nodes.length - 1];
+    }
+    kemasKosong(dst); pasangWarna(dst); pasangImej(dst); ED.kotor.asal = true; ED.kotor.ram = true; tandaKotor(ke);
+    dst.focus(); if (akhir) { try { if (akhir.nodeType === 3) { const r = document.createRange(); r.setStart(akhir, akhir.length); r.collapse(true); const s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(r); } else letakKursor(akhir, true); } catch (e) {} }
+    toast(`${apa} dipindahkan ke ${ke.toUpperCase()}`);
+  }
+  async function kosongkanRam() { const ed = editor('ram'); if (!ed) return; if (!ed.textContent.trim() && !ed.querySelector('img,table')) { toast('RAM sudah kosong'); return; } const okk = await R.confirmBox('Kosongkan RAM?', 'Semua bahan mentah dalam RAM seksyen ini akan dibuang. ASAL tidak disentuh.', 'Kosongkan'); if (!okk) return; ed.innerHTML = '<p><br></p>'; kemasKosong(ed); tandaKotor('ram'); toast('RAM dikosongkan'); }
+  function barHtml(mana) {
+    const ram = mana === 'ram';
+    return `<div id="${ram ? 'tulBarRam' : 'tulBar'}" class="tul-bar" data-ed="${mana}" role="toolbar" aria-label="Format ${ram ? 'RAM' : 'ASAL'}">
         <span class="grp"><button data-cmd="bold" title="Tebal (Ctrl+B)"><b>B</b></button><button data-cmd="italic" title="Condong (Ctrl+I)"><i>I</i></button><button data-cmd="underline" title="Garis bawah (Ctrl+U)"><u>U</u></button><button data-cmd="superscript" title="Superskrip, contohnya R<sup>2</sup>">x<sup>2</sup></button><button data-cmd="subscript" title="Subskrip, contohnya H<sub>1</sub>">x<sub>2</sub></button><button data-cmd="removeFormat" title="Buang format pada teks yang dipilih">Buang format</button></span>
         <span class="grp warna"><span class="lbl" title="Pilih teks (seret), kemudian klik warna; Asal membuang warna">Warna:</span>${Object.keys(WARNA).map(k => `<button class="w-dot" data-warna="${k}" style="--w:${WARNA[k][0]}" title="${k.charAt(0).toUpperCase() + k.slice(1)}: ${WARNA[k][2]}"><span></span></button>`).join('')}<button data-warna="asal" title="Warna asal (buang warna pada teks yang dipilih)">Asal</button></span>
         <span class="grp"><button data-cmd="insertUnorderedList" title="Senarai berbutir">&#8226; Senarai</button><button data-cmd="insertOrderedList" title="Senarai bernombor">1. Senarai</button></span>
-        <span class="grp"><button data-jadual="sisip" title="Sisip jadual pada kedudukan kursor">Jadual</button><button data-imejbtn="1" title="Sisip rajah (fail imej PNG atau JPG) pada kedudukan kursor">Rajah</button><button data-naikseksyen="1" class="naik" title="Baca fail Word (.docx) dan masukkan keseluruhan kandungannya, termasuk jadual dan rajah, ke dalam seksyen ini">Muat naik Word ke seksyen ini</button></span>
+        <span class="grp"><button data-jadual="sisip" title="Sisip jadual pada kedudukan kursor">Jadual</button><button data-imejbtn="1" title="Sisip rajah (fail imej PNG atau JPG) pada kedudukan kursor">Rajah</button>${ram ? '<button data-naikseksyen="1" class="naik" title="Baca fail Word (.docx) dan masukkan keseluruhan kandungannya, termasuk jadual dan rajah, ke dalam RAM seksyen ini">Muat naik Word ke RAM</button>' : ''}</span>
+        <span class="grp pindah">${ram ? '<button data-pindah="asal" class="naik" title="Pindahkan teks yang dipilih (atau blok di kursor, atau keseluruhan RAM jika tiada kursor) ke ASAL pada kedudukan kursor terakhir dalam ASAL">&#8592; Pindah ke ASAL</button><button data-kosongram="1" title="Buang semua kandungan RAM seksyen ini">Kosongkan RAM</button>' : '<button data-pindah="ram" class="naik" title="Pindahkan teks yang dipilih (atau blok di kursor) ke RAM untuk diolah">Pindah ke RAM &#8594;</button>'}</span>
         <span class="grp jd"><span class="lbl">Jadual:</span><button data-jadual="baris+" title="Tambah baris di bawah">+ Baris</button><button data-jadual="baris-" title="Tambah baris di atas">Baris di atas</button><button data-jadual="padambaris" title="Padam baris ini">&#8722; Baris</button><button data-jadual="lajur+" title="Tambah lajur di kanan">+ Lajur</button><button data-jadual="padamlajur" title="Padam lajur ini">&#8722; Lajur</button><button data-jadual="kepala" title="Jadikan atau batalkan baris ini sebagai kepala jadual">Kepala</button><button data-jadual="padamjadual" title="Padam keseluruhan jadual">Padam jadual</button></span>
+      </div>`;
+  }
+  function renderEditor() {
+    flushEditor();
+    const el2 = $('#tulEditor'); if (!el2) return; const n = T.bab; const d = doc(n); const s = T.sek ? d.seksyen[T.sek] : null;
+    if (!s || s.padam) { ED.n = null; ED.id = null; ED.kotor = { asal: false, ram: false }; el2.innerHTML = `<div class="tul-kosong"><h3>Pilih seksyen di sebelah kiri atau cipta seksyen baharu</h3><p>Setiap seksyen mempunyai dua ruang: <b>ASAL</b> di kiri ialah teks akhir seksyen (masuk ke Word, kiraan patah dan Semalam); <b>RAM</b> di kanan ialah kanvas sementara untuk bahan mentah daripada artikel, fail Word atau nota, yang diolah dahulu sebelum dipindahkan ke ASAL. Kedua-duanya disimpan automatik ke awan dan berkongsi alat format: tebal, condong, garis bawah, superskrip, warna, senarai, jadual dan rajah.</p></div>`; return; }
+    ED.n = n; ED.id = T.sek; ED.kotor = { asal: false, ram: false }; ED.julat = { asal: null, ram: null }; ED.aktif = 'asal';
+    const k = nombor(n)[T.sek] || { aras: 1, no: n + '.?' };
+    el2.innerHTML = `<div class="tul-ed-head"><span class="tul-no" title="Nombor dikira automatik daripada kedudukan dan aras seksyen">${esc(k.no)}</span><input id="tulTajuk" class="tul-tajuk" placeholder="Tajuk seksyen, contohnya Kepimpinan digital dan pengurusan pengetahuan (nombor dijana automatik)" value="${esc(s.tajuk || '')}"><div class="tul-ed-acts"><button class="btn btn-sm" data-arased="-1" title="Promosi: naik satu aras (contoh 2.3.1 menjadi 2.4)"${k.aras > 1 ? '' : ' disabled'}>&#8592; Promosi</button><button class="btn btn-sm" data-arased="1" title="Demosi: turun satu aras di bawah seksyen sebelumnya (contoh 2.4 menjadi 2.3.1)"${bolehDemosi(n, T.sek) ? '' : ' disabled'}>Demosi &#8594;</button><button class="btn btn-sm" data-gerak="-1" title="Alih ke atas">Atas</button><button class="btn btn-sm" data-gerak="1" title="Alih ke bawah">Bawah</button><button class="btn btn-sm" data-salin="1" title="Salin ASAL ke papan keratan dengan format (boleh ditampal ke Word)">Salin</button><button class="btn btn-sm" data-gabung="${n}|${esc(T.sek)}" title="Tambah teks seksyen ini ke hujung seksyen lain, kemudian padam seksyen ini">Gabung</button><button class="btn btn-sm btn-danger" data-padamsek="1">Padam</button></div></div>
+      ${s.word && !(s.sumber && s.sumber.jenis === 'word') ? `<div class="tul-sumber">Dikemas kini daripada Word: ${esc(s.word.fail || '')} (${esc(R.fmtTime(s.word.masa || 0))})</div>` : ''}
+      ${s.sumber && s.sumber.jenis !== 'templat' ? `<div class="tul-sumber">${s.sumber.jenis === 'banding' ? `Ditulis daripada Banding Artikel: ${esc(s.sumber.label || '')} <button class="btn btn-sm" data-bukabanding="${esc(s.sumber.idA)}|${esc(s.sumber.idB)}">Buka Banding</button>` : s.sumber.jenis === 'artikel' ? `Berkaitan rekod ${esc(s.sumber.label || '')} <button class="btn btn-sm" data-bukarekod="${esc(s.sumber.id)}">Buka rekod</button>` : s.sumber.jenis === 'word' ? `Dimuat naik daripada Word: ${esc(s.sumber.fail || '')} (${esc(R.fmtTime(s.sumber.masa || 0))})` : ''}</div>` : ''}
+      <div class="tul-dua">
+        <section class="tul-pane asal"><div class="tul-pane-h"><b>ASAL</b><span>Teks akhir seksyen: masuk ke Word, kiraan patah dan Semalam.</span></div>
+          ${barHtml('asal')}
+          <div id="tulTeks" class="tul-teks tul-kaya" contenteditable="true" spellcheck="true" data-placeholder="Teks akhir seksyen. Olah bahan mentah dalam RAM di sebelah kanan, kemudian pindahkan ke sini."></div>
+          <div class="tul-ed-foot"><span id="tulPatah">${s.patah || 0} patah perkataan</span><span id="tulStatus">${s.masa ? 'Disimpan ' + esc(R.fmtTime(s.masa)) : 'Belum disimpan'}</span>${s.sejarah && s.sejarah.length ? `<button class="btn btn-sm" data-sejarah="1">Versi sebelum muat naik (${s.sejarah.length})</button>` : ''}</div>
+        </section>
+        <section class="tul-pane ram"><div class="tul-pane-h"><b>RAM</b><span>Kanvas sementara bahan mentah seksyen ini: olah di sini, kemudian pindahkan ke ASAL. Tidak dieksport ke Word.</span></div>
+          ${barHtml('ram')}
+          <div id="tulRam" class="tul-teks tul-kaya" contenteditable="true" spellcheck="true" data-placeholder="Letakkan bahan mentah di sini: petikan artikel, fail Word (butang Muat naik Word ke RAM), jadual, rajah atau teks ASAL yang hendak diolah."></div>
+          <div class="tul-ed-foot"><span id="tulRamPatah">${patah(teksDariHtml(s.ram || ''))} patah dalam RAM</span></div>
+        </section>
       </div>
-      <div id="tulTeks" class="tul-teks tul-kaya" contenteditable="true" spellcheck="true" data-placeholder="Taip perenggan di sini seperti dalam Word. Enter memulakan perenggan baharu; tebal, condong, senarai, jadual dan rajah dikekalkan apabila dimuat turun sebagai Word."></div>
-      <input id="tulImejFail" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
-      <div class="tul-ed-foot"><span id="tulPatah">${s.patah || 0} patah perkataan</span><span id="tulStatus">${s.masa ? 'Disimpan ' + esc(R.fmtTime(s.masa)) : 'Belum disimpan'}</span>${s.sejarah && s.sejarah.length ? `<button class="btn btn-sm" data-sejarah="1">Versi sebelum muat naik (${s.sejarah.length})</button>` : ''}</div>`;
-    const ed = editor(); const html = htmlSeksyen(s); ed.innerHTML = html || '<p><br></p>'; kemasKosong(); pasangWarna(ed); pasangImej(ed);
-    ed.addEventListener('input', () => { kemasKosong(); tandaKotor(); });
-    ed.addEventListener('paste', tampal);
-    ed.addEventListener('keydown', kekunci);
-    ed.addEventListener('blur', () => { flushEditor(); renderSenarai(); renderBab(); });
-    const bar = $('#tulBar');
-    bar.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
-    bar.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.cmd) perintah(b.dataset.cmd); else if (b.dataset.warna) warnakan(b.dataset.warna); else if (b.dataset.jadual === 'sisip') sisipJadual(); else if (b.dataset.jadual) jadualOps(b.dataset.jadual); else if (b.dataset.imejbtn) $('#tulImejFail').click(); else if (b.dataset.naikseksyen) $('#tulFailSek').click(); });
+      <input id="tulImejFail" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>`;
+    const edA = editor('asal'); edA.innerHTML = htmlSeksyen(s) || '<p><br></p>'; kemasKosong(edA); pasangWarna(edA); pasangImej(edA);
+    const edR = editor('ram'); edR.innerHTML = (s.ram || '') || '<p><br></p>'; kemasKosong(edR); pasangWarna(edR); pasangImej(edR);
+    [['asal', edA], ['ram', edR]].forEach(([mana, ed]) => {
+      ed.addEventListener('focus', () => { ED.aktif = mana; });
+      ed.addEventListener('input', () => { ED.aktif = mana; kemasKosong(ed); tandaKotor(mana); });
+      ed.addEventListener('paste', tampal);
+      ed.addEventListener('keydown', e => { ED.aktif = mana; kekunci(e); });
+      ed.addEventListener('blur', () => { flushEditor(); renderSenarai(); renderBab(); });
+      const bar = $(mana === 'asal' ? '#tulBar' : '#tulBarRam');
+      bar.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+      bar.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; ED.aktif = mana; if (b.dataset.cmd) perintah(b.dataset.cmd); else if (b.dataset.warna) warnakan(b.dataset.warna); else if (b.dataset.jadual === 'sisip') sisipJadual(); else if (b.dataset.jadual) jadualOps(b.dataset.jadual); else if (b.dataset.imejbtn) $('#tulImejFail').click(); else if (b.dataset.naikseksyen) $('#tulFailSek').click(); else if (b.dataset.pindah) pindah(mana, b.dataset.pindah); else if (b.dataset.kosongram) kosongkanRam(); });
+    });
     $('#tulImejFail').addEventListener('change', e => { masukImej(e.target.files); e.target.value = ''; });
     $('#tulTajuk').addEventListener('input', e => { tulisSeksyen(n, T.sek, { tajuk: tanpaNombor(e.target.value) }, { senyap: true }); });
     $('#tulTajuk').addEventListener('change', () => renderSenarai());
@@ -516,7 +584,7 @@ export function initTulisan(R) {
   function renderCari() {
     const el = $('#tulCariHasil'); if (!el) return; const q = (T.cari || '').trim().toLowerCase();
     if (q.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
-    const hits = semuaSeksyen().map(x => { const t = (x.s.tajuk || '') + '\n' + (x.s.teks || ''); const i = t.toLowerCase().indexOf(q); if (i < 0) return null; const a = Math.max(0, i - 90), b = Math.min(t.length, i + q.length + 120); return { x, snip: (a > 0 ? '... ' : '') + t.slice(a, i) + '[[' + t.slice(i, i + q.length) + ']]' + t.slice(i + q.length, b) + (b < t.length ? ' ...' : '') }; }).filter(Boolean);
+    const hits = semuaSeksyen().map(x => { const t = (x.s.tajuk || '') + '\n' + (x.s.teks || '') + (x.s.ram ? '\n[RAM] ' + teksDariHtml(x.s.ram) : ''); const i = t.toLowerCase().indexOf(q); if (i < 0) return null; const a = Math.max(0, i - 90), b = Math.min(t.length, i + q.length + 120); return { x, snip: (a > 0 ? '... ' : '') + t.slice(a, i) + '[[' + t.slice(i, i + q.length) + ']]' + t.slice(i + q.length, b) + (b < t.length ? ' ...' : '') }; }).filter(Boolean);
     el.hidden = false;
     el.innerHTML = `<div class="help">${hits.length} seksyen mengandungi "${esc(q)}"</div>` + hits.map(h => `<button class="tul-link" data-buka="${h.x.n}|${esc(h.x.id)}"><b>${esc((nombor(h.x.n)[h.x.id] || {}).no || 'Bab ' + h.x.n)} ${esc(h.x.s.tajuk || 'Tanpa tajuk')}</b> <span>${esc(h.snip).replace(/\[\[/g, '<mark>').replace(/\]\]/g, '</mark>')}</span></button>`).join('');
   }
@@ -732,18 +800,17 @@ export function initTulisan(R) {
     let html; try { const ab = await f.arrayBuffer(); html = (await lib.mammoth.convertToHtml({ arrayBuffer: ab })).value; html = await warnaDariDocx(ab, html); } catch (e) { toast('Fail ' + f.name + ' tidak dapat dibaca sebagai Word: ' + (e && e.message || e), true); return; }
     const bersih = bersihHtml(html); const teks = teksDariHtml(bersih);
     if (!teks.trim() && !kiraTag(bersih, 'img')) { toast('Fail ' + f.name + ' tidak mengandungi teks yang dapat dibaca', true); return; }
-    const nP = kiraTag(bersih, 'p'), nJ = kiraTag(bersih, 'table'), nI = kiraTag(bersih, 'img'), nPt = patah(teks); const adaLama = (s.patah || 0) > 0 || kiraTag(htmlSeksyen(s), 'img') > 0; const nb = nombor(n)[id];
-    const okk = await R.richModal('Muat naik Word ke seksyen ini', `<p>Fail <b>${esc(f.name)}</b> dibaca: ${nP} perenggan, ${nJ} jadual, ${nI} rajah, ${nPt} patah perkataan. Keseluruhan kandungannya akan dimasukkan ke dalam seksyen <b>${esc(nb ? nb.no : '')} ${esc(s.tajuk || 'Tanpa tajuk')}</b>; tajuk seksyen dikekalkan dan tajuk di dalam fail menjadi perenggan tebal.</p><select id="tulCaraSek" class="modal-in"><option value="ganti"${adaLama ? '' : ' selected'}>Ganti kandungan seksyen ini${adaLama ? ' (' + (s.patah || 0) + ' patah sedia ada disimpan sebagai versi lama)' : ''}</option><option value="tambah"${adaLama ? ' selected' : ''}>Tambah di hujung kandungan sedia ada</option></select><p class="help">Rajah disimpan dalam simpanan rajah sistem (saiz dikecilkan) dan fail Word diarkibkan dalam folder Tulisan di Google Drive. Warna latar atau serlahan dalam Word tidak dikekalkan.</p>`, 'Masukkan', 'Batal');
+    const ramLama = s.ram || ''; const nP = kiraTag(bersih, 'p'), nJ = kiraTag(bersih, 'table'), nI = kiraTag(bersih, 'img'), nPt = patah(teks); const adaLama = !!teksDariHtml(ramLama).trim() || kiraTag(ramLama, 'img') > 0; const nb = nombor(n)[id];
+    const okk = await R.richModal('Muat naik Word ke RAM', `<p>Fail <b>${esc(f.name)}</b> dibaca: ${nP} perenggan, ${nJ} jadual, ${nI} rajah, ${nPt} patah perkataan. Keseluruhan kandungannya akan dimasukkan ke dalam <b>RAM</b> seksyen <b>${esc(nb ? nb.no : '')} ${esc(s.tajuk || 'Tanpa tajuk')}</b> untuk diolah; ASAL tidak disentuh. Tajuk di dalam fail menjadi perenggan tebal.</p><select id="tulCaraSek" class="modal-in"><option value="ganti"${adaLama ? '' : ' selected'}>Ganti kandungan RAM${adaLama ? ' (' + patah(teksDariHtml(ramLama)) + ' patah sedia ada dibuang)' : ''}</option><option value="tambah"${adaLama ? ' selected' : ''}>Tambah di hujung kandungan RAM sedia ada</option></select><p class="help">Rajah disimpan dalam simpanan rajah sistem (saiz dikecilkan) dan fail Word diarkibkan dalam folder Tulisan di Google Drive. Warna latar atau serlahan dalam Word tidak dikekalkan.</p>`, 'Masukkan', 'Batal');
     if (!okk) return; const cara = R.richModal.values.tulCaraSek; const masaKini = Date.now();
     if (nI) toast('Menyimpan ' + nI + ' rajah');
     const r = await naikImejDalamHtml(bersih, { n, id, nama: s.tajuk || f.name }, (i, j) => setStatus(`Menyimpan rajah ${i}/${j}`));
-    s.sejarah = [{ masa: s.masa || 0, html: htmlSeksyen(s) }].concat(s.sejarah || []).slice(0, 3);
-    const baru = cara === 'tambah' && adaLama ? htmlSeksyen(s) + r.html : r.html;
-    tulisSeksyen(n, id, { html: baru, word: { fail: f.name, masa: masaKini } }, { senyap: true, segera: true });
+    const baru = cara === 'tambah' && adaLama ? ramLama + r.html : r.html;
+    tulisSeksyen(n, id, { ram: baru, word: { fail: f.name, masa: masaKini } }, { senyap: true, segera: true });
     let drive = false;
     try { if (R.drive().hasToken()) { const nama = f.name.replace(/\.docx$/i, '') + '_seksyen_' + tarikhStr(masaKini) + '.docx'; const res = await R.drive().uploadAs(f, { subfolder: SUB, mime: MIME, name: nama }); if (res && res.id) { drive = true; d.fail = [{ id: res.id, nama, masa: masaKini, jenis: 'muatnaik', saiz: f.size, link: res.webViewLink || R.drive().link(res.id) }].concat(d.fail || []).slice(0, 60); d.masa = masaKini; await simpanAwan(n, { fail: d.fail, masa: d.masa }); } } } catch (e) { console.warn('tulisan: arkib Drive gagal', e); }
     T.bab = n; T.sek = id; renderSemua();
-    toast(`Kandungan ${f.name} dimasukkan ke seksyen: ${nPt} patah, ${nJ} jadual, ${nI - r.gagal} rajah${r.gagal ? ' (' + r.gagal + ' rajah gagal disimpan)' : ''}${drive ? '; fail diarkibkan di Drive' : ''}.`);
+    toast(`Kandungan ${f.name} dimasukkan ke RAM: ${nPt} patah, ${nJ} jadual, ${nI - r.gagal} rajah${r.gagal ? ' (' + r.gagal + ' rajah gagal disimpan)' : ''}${drive ? '; fail diarkibkan di Drive' : ''}.`);
   }
   async function sejarahModal(n, id) {
     const s = doc(n).seksyen[id]; const html = (s.sejarah || []).map((h, i) => { const t = teksSejarah(h); return `<details${i === 0 ? ' open' : ''}><summary>Versi ${i + 1}: ${esc(R.fmtTime(h.masa))}, ${patah(t)} patah</summary><pre class="tul-pre">${esc(t)}</pre><button class="btn btn-sm" data-pulih="${i}">Pulihkan versi ini</button></details>`; }).join('');
@@ -828,5 +895,5 @@ export function initTulisan(R) {
     $('#tulFailSek').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; muatNaikSeksyen(f); e.target.value = ''; });
     $('#tulCari').addEventListener('input', e => { T.cari = e.target.value; renderCari(); });
   }
-  return { show, muatTurun, muatNaik, muatNaikSeksyen, daripadaBanding, muatSemua, peringatan, huraiHtml, bersihHtml, teksDariHtml, htmlDariTeks, warnaDariDocx, padanWarna, WARNA, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, simpanEditor, TEMPLAT, state: T, BAB };
+  return { show, muatTurun, muatNaik, muatNaikSeksyen, daripadaBanding, muatSemua, peringatan, huraiHtml, bersihHtml, teksDariHtml, htmlDariTeks, warnaDariDocx, padanWarna, WARNA, pindah, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, simpanEditor, TEMPLAT, state: T, BAB };
 }

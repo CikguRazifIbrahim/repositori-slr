@@ -551,7 +551,8 @@ body.web-open{overflow:hidden}
 .tul-tab .m .pinjam{color:var(--warn)}
 .tul-tab.on{border-color:var(--accent-line);background:var(--accent-soft)}
 .tul-tab.on .b{color:var(--accent)}
-.tul-badan{display:grid;grid-template-columns:300px 1fr;gap:12px;align-items:start}
+#tulisan.view{max-width:none;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.tul-badan{display:grid;grid-template-columns:250px minmax(0,1fr);gap:10px;align-items:start}
 .tul-kiri{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;position:sticky;top:calc(var(--bar-h) + 8px)}
 .tul-kiri-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
 .tul-kiri-head h2{font-size:15px}
@@ -604,6 +605,19 @@ body.web-open{overflow:hidden}
 .tul-bar .w-dot:hover{box-shadow:0 0 0 2px var(--accent)}
 .tul-bar .w-dot span{display:none}
 .tul-bar .grp.warna{gap:5px}
+/* dua pane: ASAL dan RAM */
+.tul-dua{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start}
+.tul-pane{min-width:0}
+.tul-pane-h{display:flex;align-items:baseline;gap:8px;margin:4px 0 4px;font-size:12px;color:var(--muted);line-height:1.35}
+.tul-pane-h b{font-size:12px;letter-spacing:.1em;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 8px}
+.tul-pane.ram .tul-pane-h b{color:var(--warn);background:var(--warn-soft)}
+.tul-pane.ram .tul-kaya{background:color-mix(in srgb, var(--warn-soft) 28%, var(--surface))}
+.tul-dua .tul-bar button{padding:3px 6px;font-size:12px}
+.tul-dua .tul-bar .grp+.grp{padding-left:7px}
+.tul-dua .tul-bar{gap:3px 7px}
+.tul-dua .tul-kaya{font-size:16px;line-height:1.7}
+.tul-item .tag.ram{background:var(--warn-soft);color:var(--warn);font-size:10px;padding:0 5px;letter-spacing:.06em}
+@media (max-width:1100px){.tul-dua{grid-template-columns:1fr}}
 .tul-jd-form{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:8px 0}
 .tul-jd-form label{display:flex;gap:6px;align-items:center;font-size:13.5px}
 .tul-jd-form input[type=number]{width:70px}
