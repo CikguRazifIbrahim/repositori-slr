@@ -9,7 +9,8 @@ import { initIsi } from './mod/isi.js';
 import { initBanding } from './mod/banding.js';
 import { initTulisan } from './mod/tulisan.js';
 import { initArtikel } from './mod/artikel.js';
-const VERSION = '1.16.0';
+import { initSintesis } from './mod/sintesis.js';
+const VERSION = '1.17.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -590,7 +591,7 @@ function openFlip(id, idx, page) {
 
 /* ---------- rendering: record form ---------- */
 function buildForm() {
-  $('#form').innerHTML = GROUPS.map(g => `<section id="${g.id}" class="group"><h2>${g.letter}. ${esc(g.title)} <small>${esc(g.sub)}</small><span class="ai-wrap"><span class="ai-stat" data-aistat="${g.letter}" hidden></span><button type="button" class="btn btn-sm btn-ai" data-isi="${g.letter}" title="Claude membaca keseluruhan PDF artikel ini dan mengisi medan bahagian ${g.letter} yang masih kosong sebagai draf">Mohon Prof Dr Claude isikan</button></span></h2>${g.medan.map(m => `<div class="medan"><h3><b>${m.n}</b>${esc(m.title)}</h3><div class="fgrid">${m.fields.map(fieldHtml).join('')}</div></div>`).join('')}</section>`).join('');
+  $('#form').innerHTML = GROUPS.map(g => `<section id="${g.id}" class="group"><h2>${g.letter}. ${esc(g.title)} <small>${esc(g.sub)}</small><span class="ai-wrap"><span class="ai-stat" data-aistat="${g.letter}" hidden></span><button type="button" class="btn btn-sm btn-ai" data-isi="${g.letter}" title="Claude membaca keseluruhan PDF artikel ini dan mengisi medan bahagian ${g.letter} yang masih kosong sebagai draf">Mohon Prof Dr Claude isikan</button></span></h2>${g.medan.map(m => `<div class="medan"><h3><b>${m.n}</b>${esc(m.title)}</h3><div class="fgrid">${m.fields.map(fieldHtml).join('')}</div>${m.n === 12 ? '<div id="sintesisPanel" class="sin-panel"></div>' : ''}</div>`).join('')}</section>`).join('');
 }
 function fieldHtml(f) {
   const id = 'f_' + f.k; const wide = f.wide ? ' wide' : ''; const help = f.help ? `<div class="help">${esc(f.help)}</div>` : '';
@@ -613,7 +614,7 @@ function writeControl(k, v) {
   const s = v === null || v === undefined ? '' : String(v);
   if (el.value !== s) el.value = s;
 }
-function fillForm(d) { ALL_KEYS.forEach(k => writeControl(k, d[k])); renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); }
+function fillForm(d) { ALL_KEYS.forEach(k => writeControl(k, d[k])); renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); if (R.Sintesis) R.Sintesis.render(d); }
 function mergeIntoForm() {
   const d = S.docs.get(S.currentId); if (!d) return;
   const dirty = S.dirty[S.currentId] || new Set(); const active = document.activeElement;
@@ -623,7 +624,7 @@ function mergeIntoForm() {
     if (el && active === el) return;
     writeControl(k, d[k]);
   });
-  renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d);
+  renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); if (R.Sintesis) R.Sintesis.render(d);
 }
 function renderRecordHead(d) {
   const t = (d.penulis || 'Penulis belum diisi') + (d.tahun ? ' (' + d.tahun + ')' : '');
@@ -1010,7 +1011,7 @@ window.addEventListener('mouseup', () => { drag = null; stage.classList.remove('
 window.addEventListener('resize', () => { applySplitLayout(); scheduleRerender(); });
 
 /* ---------- export ---------- */
-const CSV_COLS = [['bil', 'Bil.'], ['status', 'Status bacaan'], ['penulis', 'Penulis'], ['tahun', 'Tahun'], ['tajuk', 'Tajuk'], ['rujukan', 'Rujukan APA 7'], ['doi', 'DOI'], ['jenis', 'Jenis sumber'], ['indeks', 'Pengindeksan'], ['kuartil', 'Kuartil'], ['negara', 'Negara'], ['peringkat', 'Peringkat pendidikan'], ['lokasi', 'Lokasi sekolah'], ['tema', 'Tema utama'], ['objektif', 'Objektif'], ['konstruk', 'Konstruk dan peranan'], ['definisi', 'Definisi konstruk'], ['teori', 'Teori dan sumber primer'], ['asasTeori', 'Asas teori'], ['rekaBentuk', 'Reka bentuk'], ['penilai', 'Siapa menilai siapa'], ['sampel', 'Sampel dan persampelan'], ['instrumen', 'Instrumen'], ['teknik', 'Teknik analisis'], ['perisian', 'Perisian dan prosedur'], ['dapatan', 'Dapatan utama'], ['cabaran', 'Cabaran'], ['implikasi', 'Kesimpulan dan implikasi'], ['batasan', 'Batasan dan cadangan pengarang'], ['jurang', 'Jurang'], ['jenisJurang', 'Jenis jurang'], ['kekuatan', 'Kekuatan'], ['kelemahan', 'Kelemahan'], ['mmat', 'Nota MMAT'], ['relevansi', 'Relevansi'], ['alasanRelevansi', 'Alasan relevansi'], ['jenisKesan', 'Kesan yang diuji'], ['padananKdPpo', 'Padanan KD ke PPO'], ['padananPpoKdg', 'Padanan PPO ke KDG'], ['bandingan', 'Bandingan silang'], ['bab', 'Bab'], ['subtopik', 'Subtopik'], ['jejak', 'Sumber primer untuk dijejak'], ['catatan', 'Catatan'], ['fail', 'Fail PDF'], ['failLink', 'Pautan Drive'], ['pautan', 'Pautan luar'], ['dicipta', 'Dicipta'], ['dikemaskini', 'Dikemas kini']];
+const CSV_COLS = [['bil', 'Bil.'], ['status', 'Status bacaan'], ['penulis', 'Penulis'], ['tahun', 'Tahun'], ['tajuk', 'Tajuk'], ['rujukan', 'Rujukan APA 7'], ['doi', 'DOI'], ['jenis', 'Jenis sumber'], ['indeks', 'Pengindeksan'], ['kuartil', 'Kuartil'], ['negara', 'Negara'], ['peringkat', 'Peringkat pendidikan'], ['lokasi', 'Lokasi sekolah'], ['tema', 'Tema utama'], ['objektif', 'Objektif'], ['konstruk', 'Konstruk dan peranan'], ['definisi', 'Definisi konstruk'], ['teori', 'Teori dan sumber primer'], ['asasTeori', 'Asas teori'], ['rekaBentuk', 'Reka bentuk'], ['penilai', 'Siapa menilai siapa'], ['sampel', 'Sampel dan persampelan'], ['instrumen', 'Instrumen'], ['teknik', 'Teknik analisis'], ['perisian', 'Perisian dan prosedur'], ['dapatan', 'Dapatan utama'], ['cabaran', 'Cabaran'], ['implikasi', 'Kesimpulan dan implikasi'], ['batasan', 'Batasan dan cadangan pengarang'], ['jurang', 'Jurang'], ['jenisJurang', 'Jenis jurang'], ['kekuatan', 'Kekuatan'], ['kelemahan', 'Kelemahan'], ['mmat', 'Nota MMAT'], ['relevansi', 'Relevansi'], ['alasanRelevansi', 'Alasan relevansi'], ['jenisKesan', 'Kesan yang diuji'], ['padananKdPpo', 'Padanan KD ke PPO'], ['padananPpoKdg', 'Padanan PPO ke KDG'], ['bandingan', 'Bandingan silang'], ['hubungan', 'Hubungan sintesis'], ['bab', 'Bab'], ['subtopik', 'Subtopik'], ['jejak', 'Sumber primer untuk dijejak'], ['catatan', 'Catatan'], ['fail', 'Fail PDF'], ['failLink', 'Pautan Drive'], ['pautan', 'Pautan luar'], ['dicipta', 'Dicipta'], ['dikemaskini', 'Dikemas kini']];
 function csvCell(v) { const s = String(v ?? '').replace(/\r\n|\r|\n/g, '\n'); return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function toCSV(entries) {
   const head = CSV_COLS.map(c => csvCell(c[1])).join(',');
@@ -1018,6 +1019,7 @@ function toCSV(entries) {
     let v = d[k];
     if (k === 'fail') v = (d.fail || []).map(f => f.nama).join('; ');
     else if (k === 'failLink') v = (d.fail || []).map(f => f.link || Drive.link(f.id)).join('; ');
+    else if (k === 'hubungan') v = R.Sintesis ? R.Sintesis.teksCsv(d) : '';
     else if (Array.isArray(v)) v = v.join('; ');
     else if (k === 'dicipta' || k === 'dikemaskini') v = v ? fmtTime(v) : '';
     return csvCell(v);
@@ -1254,5 +1256,6 @@ const Isi = initIsi(R); R.Isi = Isi;
 const Banding = initBanding(R); R.Banding = Banding;
 const Tulisan = initTulisan(R); R.Tulisan = Tulisan;
 const Artikel = initArtikel(R, initTulisan); R.Artikel = Artikel;
-if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, Artikel, S };
+const Sintesis = initSintesis(R); R.Sintesis = Sintesis;
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, Artikel, Sintesis, S };
 start();
