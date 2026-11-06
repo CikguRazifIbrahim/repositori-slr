@@ -10,7 +10,8 @@ import { initBanding } from './mod/banding.js';
 import { initTulisan } from './mod/tulisan.js';
 import { initArtikel } from './mod/artikel.js';
 import { initSintesis } from './mod/sintesis.js';
-const VERSION = '1.17.0';
+import { initKumpulan } from './mod/kumpulan.js';
+const VERSION = '1.18.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -127,7 +128,7 @@ function defaults() {
 const S = {
   user: null, docs: new Map(), gotDefinitive: false, view: 'papan', currentId: null,
   filters: {}, sort: 'dikemaskini', pending: {}, timers: {}, dirty: {}, lastError: null,
-  split: false, unsub: null, online: navigator.onLine, installPrompt: null, pendingUpload: null
+  split: false, unsub: null, online: navigator.onLine, installPrompt: null, pendingUpload: null, papar: 'kumpulan', lipat: {}
 };
 const searchCache = new WeakMap();
 
@@ -197,7 +198,7 @@ function goView(name) {
 /* ---------- local persistence (per device conveniences) ---------- */
 function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-function savePrefs() { lsSet('rslr_prefs', { filters: S.filters, sort: S.sort, split: S.split, view: S.view, currentId: S.currentId }); }
+function savePrefs() { lsSet('rslr_prefs', { filters: S.filters, sort: S.sort, split: S.split, view: S.view, currentId: S.currentId, papar: S.papar, lipat: S.lipat }); }
 
 /* ---------- adapters: Auth, DB (Firestore), Drive (Google Drive) ---------- */
 let Auth, DB, Drive;
@@ -563,6 +564,8 @@ function renderList() {
   }
   $('#hasilCount').textContent = arr.length === total ? `${total} artikel` : `${arr.length} daripada ${total} artikel`;
   if (!arr.length) { list.innerHTML = `<div class="empty"><h3>Tiada padanan</h3><p>Tiada artikel memenuhi tapisan semasa.</p><button class="btn" data-act="reset" style="margin-top:12px">Set semula tapisan</button></div>`; return; }
+  if (S.papar === 'kumpulan' && R.Kumpulan) { list.classList.add('berkumpulan'); list.innerHTML = R.Kumpulan.html(arr); return; }
+  list.classList.remove('berkumpulan');
   list.innerHTML = arr.map(([id, d]) => {
     const nF = (d.fail || []).length; const unread = (d.status || 'Belum dibaca') !== 'Selesai';
     const acts = `<div class="row-acts">${nF && unread ? `<button class="btn btn-sm" data-flip="${esc(id)}" title="Baca dalam flipbook terapung">Baca</button><button class="btn btn-sm" data-dl="${esc(id)}" title="Muat turun PDF ke peranti ini">Muat turun</button>` : ''}<button class="btn btn-sm" data-webrow="${esc(id)}" title="Web artikel: jaringan hubungan dengan artikel lain">Web</button></div>`;
@@ -1045,6 +1048,9 @@ $('#btnHome').addEventListener('click', () => { if (S.user) goPapan(); });
 $('#btnBack').addEventListener('click', goPapan);
 $('#btnNew').addEventListener('click', () => { const id = createArticle({}); renderList(); openRecord(id); $('#f_penulis').focus(); });
 $('#list').addEventListener('click', e => {
+  const lb = e.target.closest('[data-label]'); if (lb) { e.stopPropagation(); Kumpulan.label(lb.dataset.id, lb.dataset.label); return; }
+  const lp = e.target.closest('[data-lipat]'); if (lp) { e.stopPropagation(); Kumpulan.lipat(lp.dataset.lipat); return; }
+  if (e.target.closest('[data-terima-semua]')) { e.stopPropagation(); Kumpulan.terimaSemua(); return; }
   const wb = e.target.closest('[data-webrow]'); if (wb) { e.stopPropagation(); Web.open('r:' + wb.dataset.webrow); return; }
   const fl = e.target.closest('[data-flip]'); if (fl) { e.stopPropagation(); openFlip(fl.dataset.flip, 0); return; }
   const dl = e.target.closest('[data-dl]'); if (dl) { e.stopPropagation(); downloadPdf(dl.dataset.dl, 0); return; }
@@ -1075,14 +1081,15 @@ $('#driveChip').addEventListener('click', () => ensureDrive(true));
 $('#btnFilterToggle').addEventListener('click', () => $('#filters').classList.toggle('open'));
 $('#btnCloseLog').addEventListener('click', () => { $('#uploadLog').hidden = true; });
 const FILTER_IDS = { q: 'q', tema: 'fTema', relevansi: 'fRel', status: 'fStatus', peringkat: 'fPeringkat', jenis: 'fJenis', negara: 'fNegara', bab: 'fBab', padanan: 'fPadanan', tahunDari: 'fTahunDari', tahunHingga: 'fTahunHingga', pdf: 'fPdf' };
-function readFilters() { const f = {}; Object.entries(FILTER_IDS).forEach(([k, id]) => { f[k] = $('#' + id).value; }); S.filters = f; S.sort = $('#sort').value; savePrefs(); renderList(); }
-function writeFilters() { Object.entries(FILTER_IDS).forEach(([k, id]) => { $('#' + id).value = S.filters[k] || ''; }); $('#sort').value = S.sort || 'dikemaskini'; }
+function readFilters() { const f = {}; Object.entries(FILTER_IDS).forEach(([k, id]) => { f[k] = $('#' + id).value; }); S.filters = f; S.sort = $('#sort').value; S.papar = $('#papar').value === 'senarai' ? 'senarai' : 'kumpulan'; savePrefs(); renderList(); }
+function writeFilters() { Object.entries(FILTER_IDS).forEach(([k, id]) => { $('#' + id).value = S.filters[k] || ''; }); $('#sort').value = S.sort || 'dikemaskini'; $('#papar').value = S.papar === 'senarai' ? 'senarai' : 'kumpulan'; }
 function resetFilters() { S.filters = {}; writeFilters(); savePrefs(); renderList(); }
 let filterTimer = null;
 $('#filters').addEventListener('input', e => { clearTimeout(filterTimer); filterTimer = setTimeout(readFilters, e.target.id === 'q' ? 180 : 0); });
 $('#filters').addEventListener('submit', e => e.preventDefault());
 $('#btnReset').addEventListener('click', resetFilters);
 $('#sort').addEventListener('change', readFilters);
+$('#papar').addEventListener('change', readFilters);
 let dragDepth = 0;
 document.addEventListener('dragenter', e => { if (!hasFiles(e) || !S.user) return; dragDepth++; if (S.view === 'papan') $('#dropHint').hidden = false; else if (S.view === 'rekod') $('#uploadBox').classList.add('over'); });
 document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) { $('#dropHint').hidden = true; $('#uploadBox').classList.remove('over'); $$('#picks .pick.over').forEach(p => p.classList.remove('over')); } });
@@ -1209,7 +1216,7 @@ window.addEventListener('appinstalled', () => { $('#btnInstall').hidden = true; 
 async function start() {
   $('#menuVersi').textContent = 'Repositori SLR v' + VERSION;
   const prefs = lsGet('rslr_prefs', {});
-  S.filters = prefs.filters || {}; S.sort = prefs.sort || 'dikemaskini'; S.split = !!prefs.split;
+  S.filters = prefs.filters || {}; S.sort = prefs.sort || 'dikemaskini'; S.split = !!prefs.split; S.papar = prefs.papar === 'senarai' ? 'senarai' : 'kumpulan'; S.lipat = prefs.lipat && typeof prefs.lipat === 'object' ? prefs.lipat : {};
   writeFilters();
   const miss = configMissing();
   if (!TEST && miss.length) {
@@ -1246,7 +1253,7 @@ async function start() {
 const R = {
   $, $$, esc, toast, confirmBox, fmtTime, fmtBytes, lsGet, lsSet, saveFile, normDoi, TEMA, C, S, V,
   db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList,
-  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name)
+  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name), savePrefs
 };
 const Flip = initFlip(R); R.Flip = Flip;
 const Harian = initHarian(R); R.Harian = Harian;
@@ -1257,5 +1264,6 @@ const Banding = initBanding(R); R.Banding = Banding;
 const Tulisan = initTulisan(R); R.Tulisan = Tulisan;
 const Artikel = initArtikel(R, initTulisan); R.Artikel = Artikel;
 const Sintesis = initSintesis(R); R.Sintesis = Sintesis;
-if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, Artikel, Sintesis, S };
+const Kumpulan = initKumpulan(R); R.Kumpulan = Kumpulan;
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, Artikel, Sintesis, Kumpulan, S };
 start();

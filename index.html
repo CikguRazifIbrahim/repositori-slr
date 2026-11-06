@@ -553,6 +553,35 @@ body.web-open{overflow:hidden}
 .tul-tab.on{border-color:var(--accent-line);background:var(--accent-soft)}
 .tul-tab.on .b{color:var(--accent)}
 #tulisan.view,#artikel.view{max-width:none;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+/* Kumpulan label (Papan) */
+.list.berkumpulan{gap:12px}
+.kum{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:6px 8px 8px}
+.kum-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 4px 6px;position:sticky;top:calc(var(--bar-h) + 4px);background:var(--surface);z-index:3;border-radius:8px}
+.kum-head h3{font-size:14.5px;font-family:var(--font-display);margin:0}
+.kum-kira{font-size:12.5px;color:var(--muted)}
+.kum-lipat{border:1px solid var(--line);background:var(--surface-2);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--fg);font-size:13px;line-height:1}
+.kum-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+.kum.kd .kum-dot{background:var(--kd)} .kum.ppo .kum-dot{background:var(--ppo)} .kum.kdg .kum-dot{background:var(--kdg)} .kum.lain .kum-dot{background:var(--lain)}
+.kum.kd .kum-head h3{color:var(--kd)} .kum.ppo .kum-head h3{color:var(--ppo)} .kum.kdg .kum-head h3{color:var(--kdg)}
+.kum.tiada{border-style:dashed;border-color:var(--warn)}
+.kum.tiada .kum-head h3{color:var(--warn)}
+.kum-badan{display:flex;flex-direction:column;gap:5px}
+.row.padat{display:block;padding:7px 10px;border-radius:9px}
+.padat-baris{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:nowrap}
+.padat-baris .who{white-space:nowrap;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.padat-baris .tag{flex:none;font-size:11.5px;padding:1px 7px}
+.padat-tajuk{flex:1;min-width:0;font-size:14px;line-height:1.3;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:unset}
+.padat-chips{display:flex;gap:4px;flex:none}
+.row.padat .row-meta{flex:none;font-size:11.5px}
+.kum-label{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:12.5px}
+.kum-label .lbl{color:var(--muted);font-weight:600}
+.kum-cip{border:1px solid var(--line-strong);background:var(--surface-2);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--fg)}
+.kum-cip:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.kum-cip.cadang{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);box-shadow:0 0 0 2px var(--accent-line)}
+.kum-cadang{color:var(--muted)}
+.kum-cadang b{color:var(--accent)}
+.kum-cadang i{color:var(--warn);font-style:normal}
+@media (max-width:760px){.padat-baris{flex-wrap:wrap}.padat-tajuk{white-space:normal;flex-basis:100%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.padat-baris .who{max-width:none}.row.padat .row-meta{display:none}}
 /* Rantaian sintesis (medan 12) */
 .sin-panel{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2)}
 .sin-panel:empty{display:none}
@@ -949,6 +978,7 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
     <section class="hasil">
       <div class="hasil-head">
         <span class="count" id="hasilCount">Memuatkan</span>
+        <label>Paparan <select id="papar" title="Kumpulan label: artikel dikelompokkan mengikut Tema utama (KD, PPO, KDG, Lain), yang belum dilabel di atas; Senarai: paparan asal"><option value="kumpulan">Kumpulan label</option><option value="senarai">Senarai</option></select></label>
         <label>Susun <select id="sort"><option value="dikemaskini">Terkini dikemas kini</option><option value="bil">Bil. menaik</option><option value="bil-desc">Bil. menurun</option><option value="tahun">Tahun terbaharu</option><option value="penulis">Penulis A hingga Z</option><option value="relevansi">Relevansi tertinggi</option></select></label>
       </div>
       <div id="list" class="list"></div>
