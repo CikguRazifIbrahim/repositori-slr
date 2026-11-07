@@ -428,5 +428,5 @@ ${profil}`;
       }
     });
   }
-  return { show, refresh, banding, agen, indeksPantas, kelengkapan, laporanMd, dataPdf, muatTurunPdf, senaraiKonstruk, janaPeta, tetapKayu, renderPola, nama, rekod, isiSelect, teksRekod, muatSimpanan, SEK, DIMENSI, state: B };
+  return { show, refresh, banding, agen, indeksPantas, kelengkapan, laporanMd, dataPdf, muatTurunPdf, senaraiKonstruk, janaPeta, tetapKayu, renderPola, nama, rekod, isiSelect, teksRekod, muatSimpanan, muatPasangan, SEK, DIMENSI, state: B };
 }

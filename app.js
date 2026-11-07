@@ -11,7 +11,7 @@ import { initTulisan } from './mod/tulisan.js';
 import { initArtikel } from './mod/artikel.js';
 import { initSintesis } from './mod/sintesis.js';
 import { initKumpulan } from './mod/kumpulan.js';
-const VERSION = '1.18.1';
+const VERSION = '1.19.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';

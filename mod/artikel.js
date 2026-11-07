@@ -1,7 +1,7 @@
 /* Artikel Penerbitan: ruang menulis artikel jurnal dan persidangan daripada artikel yang sudah ada dalam repositori. Setiap artikel
    penerbitan mempunyai jenis (senarai jenis artikel akademik), sehingga 15 artikel sumber daripada repositori (dengan meter kelengkapan
-   Bahagian A hingga F dan butang ke rekod), soal jawab pasangan artikel (sehingga 10 soalan yang dijawab agen berdasarkan medan A hingga F
-   kedua-dua rekod, laporan Agen Banding sedia ada dan soalan terdahulu), dan seksyen dengan editor ASAL dan RAM yang sama seperti Tulisan
+   Bahagian A hingga F dan butang ke rekod), soal jawab yang merangkumi semua artikel sumber (sehingga 10 soalan yang dijawab agen berdasarkan medan A hingga F
+   setiap sumber, ringkasan laporan Agen Banding sedia ada antara sumber dan soalan terdahulu, dengan amaran kos sebelum setiap soalan), dan seksyen dengan editor ASAL dan RAM yang sama seperti Tulisan
    Tesis (kilang initTulisan dengan konfigurasi artikel: tiada Bab 1 hingga Bab 5, hanya seksyen). Simpanan: meta/penerbitan_indeks
    (senarai artikel) dan meta/penerbitan_<id> (seksyen, jenis, sumber, soalan), berserta salinan tempatan. */
 export function initArtikel(R, initTulisan) {
@@ -95,11 +95,11 @@ export function initArtikel(R, initTulisan) {
 
   /* ---- cadangan soalan pantas ---- */
   const CADANGAN = [
-    'Apakah pola persamaan dan perbezaan utama antara kedua-dua artikel dari segi objektif, konstruk dan kerangka teori?',
-    'Apakah limitasi yang berulang dalam kedua-dua kajian dan jurang yang sama yang boleh dijadikan justifikasi artikel saya?',
-    'Bagaimanakah kaedah, sampel dan instrumen kedua-dua kajian berbeza, dan apakah implikasinya kepada kebolehbandingan dapatan?',
-    'Adakah dapatan kedua-dua artikel selari atau bercanggah, dan apakah penjelasan yang munasabah berdasarkan konteks masing-masing?',
-    'Tulis satu perenggan sintesis yang memetik kedua-dua artikel bersama dalam gaya sorotan literatur.'
+    'Apakah pola persamaan dan perbezaan utama merentas semua artikel sumber dari segi objektif, konstruk dan kerangka teori?',
+    'Apakah limitasi yang berulang dan jurang yang sama merentas artikel-artikel sumber ini yang boleh dijadikan justifikasi artikel saya?',
+    'Bagaimanakah kaedah, sampel dan instrumen berbeza antara artikel-artikel sumber, dan apakah implikasinya kepada kebolehbandingan dapatan?',
+    'Artikel mana yang dapatannya selari dan mana yang bercanggah, dan apakah penjelasan yang munasabah berdasarkan konteks masing-masing?',
+    'Tulis satu perenggan sintesis yang memetik artikel-artikel sumber ini bersama dalam gaya sorotan literatur.'
   ];
 
   /* ---- indeks artikel penerbitan ---- */
@@ -135,7 +135,7 @@ export function initArtikel(R, initTulisan) {
     kosongTeks: () => 'Artikel ini belum ada seksyen. Klik "Seksyen baharu" untuk mula menulis, "Struktur lazim" untuk memasukkan seksyen yang lazim bagi jenis artikel ini, atau muat naik fail Word.',
     tiadaUnitTeks: 'Pilih artikel atau cipta artikel baharu dahulu.', tajukDocx: 'Artikel', footerDocx: 'Artikel Penerbitan, Repositori SLR',
     failDocx: (ids, st) => 'Artikel_' + slug((entri(ids[0]) || {}).tajuk) + '_' + st + '.docx',
-    tambahan: () => ({ jenis: '', sumber: [], soalan: [], pasangan: [] }),
+    tambahan: () => ({ jenis: '', sumber: [], soalan: [] }),
     onUnit: id => { A.id = id; R.lsSet(LS_SEMASA, id); renderPanel(); }
   };
   const Teks = initTulisan(R, cfg);
@@ -155,7 +155,7 @@ export function initArtikel(R, initTulisan) {
   function renderPanel() {
     const panel = $('#artPanel'), kosong = $('#artKosong'); if (!panel) return;
     const d = doc();
-    if (!d || !entri(A.id)) { panel.hidden = true; kosong.hidden = false; kosong.innerHTML = `<h3>${senaraiUnit().length ? 'Pilih artikel di atas' : 'Belum ada artikel penerbitan'}</h3><p>Setiap artikel mempunyai jenis, artikel sumber daripada repositori (sehingga ${HAD_SUMBER}), soal jawab pasangan artikel (sehingga ${HAD_SOALAN} soalan dijawab agen) dan seksyen dengan editor ASAL dan RAM seperti Tulisan Tesis. Tiada struktur bab yang tetap: tambah seksyen mengikut keperluan artikel.</p><button class="btn btn-primary" data-artbaru="1">Artikel baharu</button>`; return; }
+    if (!d || !entri(A.id)) { panel.hidden = true; kosong.hidden = false; kosong.innerHTML = `<h3>${senaraiUnit().length ? 'Pilih artikel di atas' : 'Belum ada artikel penerbitan'}</h3><p>Setiap artikel mempunyai jenis, artikel sumber daripada repositori (sehingga ${HAD_SUMBER}), soal jawab merentas semua artikel sumber (sehingga ${HAD_SOALAN} soalan dijawab agen) dan seksyen dengan editor ASAL dan RAM seperti Tulisan Tesis. Tiada struktur bab yang tetap: tambah seksyen mengikut keperluan artikel.</p><button class="btn btn-primary" data-artbaru="1">Artikel baharu</button>`; return; }
     kosong.hidden = true; panel.hidden = false;
     renderKepala(d); renderSumber(d); renderSoal(d);
   }
@@ -174,7 +174,7 @@ export function initArtikel(R, initTulisan) {
   /* ---- artikel sumber (sehingga 15) ---- */
   const Bd = () => R.Banding;
   /* Senarai sumber tidak ditapis secara automatik: rekod yang belum tiba daripada awan atau yang dipadam dipaparkan sebagai tidak ditemui
-     supaya senarai Prof Dr tidak hilang; sumberAda() hanya untuk pasangan soal jawab. */
+     supaya senarai Prof Dr tidak hilang; sumberAda() hanya untuk soal jawab. */
   function sumberSah(d) { if (!Array.isArray(d.sumber)) d.sumber = []; return d.sumber; }
   function sumberAda(d) { return sumberSah(d).filter(id => R.S.docs.has(id)); }
   function kelengkapanPenuh(rec) { const k = Bd().kelengkapan(rec); const semua = Bd().SEK.reduce((s, x) => s + x.fields.length, 0); const kosong = k.bahagian.reduce((s, b) => s + b.kosong.length, 0); return { k, peratus: semua ? Math.round(100 * (semua - kosong) / semua) : 0 }; }
@@ -200,98 +200,96 @@ export function initArtikel(R, initTulisan) {
     const d = doc(); if (!d) return; const sumber = sumberSah(d); const i = sumber.indexOf(id); if (i < 0) return;
     const r = R.S.docs.has(id) ? Bd().rekod(id) : null; const nQ = (d.soalan || []).filter(q => q.idA === id || q.idB === id).length;
     const okk = await R.confirmBox('Buang artikel sumber?', `${r ? Bd().nama(r) : 'Rekod yang tidak ditemui'} akan dibuang daripada senarai sumber artikel ini${nQ ? '; ' + nQ + ' soal jawab yang melibatkannya kekal tersimpan' : ''}. Rekod dalam repositori tidak dipadam.`, 'Buang');
-    if (!okk) return; sumber.splice(i, 1); if ((d.pasangan || []).includes(id)) d.pasangan = []; await simpanDoc({ sumber: d.sumber, pasangan: d.pasangan }); renderSumber(d); renderSoal(d); toast('Artikel sumber dibuang');
+    if (!okk) return; sumber.splice(i, 1); await simpanDoc({ sumber: d.sumber }); renderSumber(d); renderSoal(d); toast('Artikel sumber dibuang');
   }
 
-  /* ---- soal jawab pasangan artikel (sehingga 10 soalan) ---- */
-  function pasangan(d) { const s = sumberAda(d); let [a, b] = d.pasangan || []; if (!s.includes(a)) a = ''; if (!s.includes(b) || b === a) b = ''; if (!a) a = s.find(x => x !== b) || ''; if (!b) b = s.find(x => x !== a) || ''; d.pasangan = [a, b]; return d.pasangan; }
+  /* ---- soal jawab semua artikel sumber (sehingga 10 soalan) ----
+     Perbincangan merangkumi SEMUA artikel sumber artikel ini (sehingga 15): medan A hingga F setiap rekod dihantar dalam blok sistem
+     (dicache oleh API supaya soalan berturut-turut lebih murah), berserta ringkasan laporan Agen Banding sedia ada antara sumber (sehingga
+     lima) dan soal jawab terdahulu. Setiap soalan menampilkan amaran kos dengan anggaran token sebelum dihantar. */
+  const anggarToken = teks => Math.round(String(teks || '').length / 3.6);
+  const angka = n => Number(n || 0).toLocaleString('en-US');
+  function bahanSumber(d) { return sumberAda(d).map((id, i) => ({ id, i: i + 1, d: Bd().rekod(id) })); }
+  function teksSemuaSumber(d) { return bahanSumber(d).map(x => Bd().teksRekod(x.i, x.d)).join('\n\n'); }
+  async function laporanAntaraSumber(d) {
+    const s = sumberAda(d); if (s.length < 2) return []; let pas = [];
+    try { pas = await Bd().muatPasangan(); } catch (e) { pas = Bd().state.pasangan || []; }
+    const set = new Set(s); return (pas || []).filter(p => set.has(p.idA) && set.has(p.idB));
+  }
   function renderSoal(d) {
-    const el = $('#artSoal'); if (!el) return; const s = sumberAda(d); const [a, b] = pasangan(d); const soalan = d.soalan || [];
-    const opsi = pilih => `<option value="">Pilih</option>` + R.Kumpulan.pilihanHtml({ ids: s, pilih });
+    const el = $('#artSoal'); if (!el) return; const s = sumberAda(d); const soalan = d.soalan || [];
     const kira = $('#artSoalKira'); if (kira) kira.textContent = `(${soalan.length}/${HAD_SOALAN})`;
-    if (s.length < 2) { el.innerHTML = `<div class="help">Pilih sekurang-kurangnya dua artikel sumber di atas untuk memulakan soal jawab pasangan.</div>${renderJawapan(d)}`; return; }
+    if (!s.length) { el.innerHTML = `<div class="help">Pilih sekurang-kurangnya satu artikel sumber di atas; sesi soal jawab merangkumi semua artikel sumber artikel ini (sehingga ${HAD_SUMBER}).</div>${renderJawapan(d)}`; return; }
     const penuh = soalan.length >= HAD_SOALAN; const jumlahToken = soalan.reduce((t, q) => ({ masuk: t.masuk + ((q.token || {}).masuk || 0), keluar: t.keluar + ((q.token || {}).keluar || 0) }), { masuk: 0, keluar: 0 });
-    el.innerHTML = `<div class="art-pasangan"><label class="field"><span class="lbl">Artikel 1</span><select id="artPasA">${opsi(a)}</select></label><button id="btnArtTukar" class="btn btn-sm" title="Tukar kedudukan Artikel 1 dan Artikel 2">Tukar</button><label class="field"><span class="lbl">Artikel 2</span><select id="artPasB">${opsi(b)}</select></label></div>
+    const belum = s.map(id => ({ id, d: Bd().rekod(id), k: Bd().kelengkapan(Bd().rekod(id)) })).filter(x => !x.k.ok); const anggaran = anggarToken(teksSemuaSumber(d));
+    el.innerHTML = `<div class="art-skop"><b>Skop perbincangan:</b> ${s.length} daripada ${HAD_SUMBER} artikel sumber (medan A hingga F setiap rekod, bukan PDF); anggaran ${angka(anggaran)} token masuk bagi setiap soalan.${belum.length ? ` <span class="amaran">${belum.length} artikel belum lengkap A hingga F (${esc(belum.map(x => 'Bil. ' + (x.d.bil || '?') + ' ' + x.k.bahagian.filter(y => !y.ok).map(y => y.letter).join('')).join('; '))}); agen hanya menjawab daripada medan yang diisi.</span>` : ''}</div>
       <div id="artLaporan" class="art-laporan"></div>
       <div class="art-tanya"><div class="art-cadangan"><span class="lbl">Soalan pantas:</span>${CADANGAN.map((c, i) => `<button class="chip" data-cadangan="${i}" title="${esc(c)}">${esc(ringkas(c, 46))}</button>`).join('')}</div>
-        <textarea id="artSoalan" rows="3" placeholder="Taip soalan Prof Dr tentang pasangan ini, contohnya: apakah limitasi yang berulang dalam kedua-dua kajian dan jurang yang sama yang boleh saya isi?"${penuh ? ' disabled' : ''}></textarea>
-        <div class="art-tanya-acts"><button id="btnArtTanya" class="btn btn-ai"${penuh || A.busy ? ' disabled' : ''}>${A.busy ? 'Agen sedang menjawab' : 'Tanya agen (' + soalan.length + '/' + HAD_SOALAN + ')'}</button><span class="help">${penuh ? 'Had ' + HAD_SOALAN + ' soalan bagi artikel ini sudah dicapai; padam soalan lama untuk bertanya lagi.' : 'Setiap soalan ialah satu panggilan API dengan kunci API Prof Dr: medan A hingga F kedua-dua rekod (bukan PDF), laporan Banding sedia ada jika ada, dan soalan terdahulu pasangan ini dihantar bersama. Satu soalan pada satu masa; jawapan disusun mengikut soalan di bawah.'}${soalan.length ? ` Token setakat ini: masuk ${jumlahToken.masuk}, keluar ${jumlahToken.keluar}.` : ''}</span></div></div>
+        <textarea id="artSoalan" rows="3" placeholder="Taip soalan Prof Dr tentang ${s.length} artikel sumber ini, contohnya: apakah limitasi yang berulang merentas artikel-artikel ini dan jurang yang sama yang boleh saya isi?"${penuh ? ' disabled' : ''}></textarea>
+        <div class="art-tanya-acts"><button id="btnArtTanya" class="btn btn-ai"${penuh || A.busy ? ' disabled' : ''}>${A.busy ? 'Agen sedang menjawab' : 'Tanya agen (' + soalan.length + '/' + HAD_SOALAN + ')'}</button><span class="help">${penuh ? 'Had ' + HAD_SOALAN + ' soalan bagi artikel ini sudah dicapai; padam soalan lama untuk bertanya lagi.' : 'Setiap soalan ialah satu panggilan API dengan kunci API Prof Dr yang menghantar medan A hingga F semua artikel sumber, ringkasan laporan Banding sedia ada antara sumber (jika ada) dan soal jawab terdahulu; amaran kos dipaparkan sebelum setiap soalan dihantar. Jawapan disusun mengikut soalan di bawah.'}${soalan.length ? ` Token setakat ini: masuk ${angka(jumlahToken.masuk)}, keluar ${angka(jumlahToken.keluar)}.` : ''}</span></div></div>
       ${renderJawapan(d)}`;
-    $('#artPasA').addEventListener('change', ev => { d.pasangan = [ev.target.value, d.pasangan[1] === ev.target.value ? '' : d.pasangan[1]]; simpanDoc({ pasangan: d.pasangan }); renderSoal(d); });
-    $('#artPasB').addEventListener('change', ev => { d.pasangan = [d.pasangan[0] === ev.target.value ? '' : d.pasangan[0], ev.target.value]; simpanDoc({ pasangan: d.pasangan }); renderSoal(d); });
-    $('#btnArtTukar').addEventListener('click', () => { d.pasangan = [d.pasangan[1], d.pasangan[0]]; simpanDoc({ pasangan: d.pasangan }); renderSoal(d); });
     $('#btnArtTanya').addEventListener('click', () => tanya());
-    renderLaporan(d);
+    renderLaporanSumber(d);
   }
   const perenggan = t => String(t || '').replace(/\r/g, '').split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  const skopSoalan = q => q.nSumber ? `${q.nSumber} artikel sumber` : q.namaA ? `Artikel 1: ${q.namaA} lwn Artikel 2: ${q.namaB || ''}` : '';
   function renderJawapan(d) {
     const soalan = d.soalan || []; if (!soalan.length && !A.busy) return '';
-    return `<div id="artJawapan" class="art-jawapan">${soalan.map((q, i) => `<article class="art-jawab" data-q="${esc(q.id)}"><div class="art-jawab-h"><b>Soalan ${i + 1}</b><span class="pair">Artikel 1: ${esc(q.namaA || '')} lwn Artikel 2: ${esc(q.namaB || '')}</span><span class="meta">${esc(R.fmtTime(q.masa || 0))}${q.model ? ' · ' + esc(String(q.model).replace('claude-', '')) : ''}${q.token ? ' · token masuk ' + esc(q.token.masuk) + ', keluar ' + esc(q.token.keluar) : ''}</span></div><p class="soalan">${esc(q.soalan)}</p><div class="jawapan">${perenggan(q.jawapan).map(p => `<p>${esc(p)}</p>`).join('')}</div><div class="acts"><button class="btn btn-sm btn-primary" data-ram="${esc(q.id)}" title="Masukkan soalan dan jawapan ini ke dalam RAM seksyen yang sedang dibuka untuk diolah">Pindah ke RAM seksyen semasa</button><button class="btn btn-sm" data-salinq="${esc(q.id)}">Salin</button><button class="btn btn-sm btn-danger" data-padamq="${esc(q.id)}">Padam</button></div></article>`).join('')}${A.busy ? '<div class="art-jawab menunggu"><div class="help">Agen sedang membaca medan A hingga F kedua-dua artikel dan menyusun jawapan. Lazimnya kurang seminit.</div></div>' : ''}</div>`;
+    return `<div id="artJawapan" class="art-jawapan">${soalan.map((q, i) => `<article class="art-jawab" data-q="${esc(q.id)}"><div class="art-jawab-h"><b>Soalan ${i + 1}</b><span class="pair">${esc(skopSoalan(q))}</span><span class="meta">${esc(R.fmtTime(q.masa || 0))}${q.model ? ' · ' + esc(String(q.model).replace('claude-', '')) : ''}${q.token ? ' · token masuk ' + esc(angka(q.token.masuk)) + ', keluar ' + esc(angka(q.token.keluar)) : ''}</span></div><p class="soalan">${esc(q.soalan)}</p><div class="jawapan">${perenggan(q.jawapan).map(p => `<p>${esc(p)}</p>`).join('')}</div><div class="acts"><button class="btn btn-sm btn-primary" data-ram="${esc(q.id)}" title="Masukkan soalan dan jawapan ini ke dalam RAM seksyen yang sedang dibuka untuk diolah">Pindah ke RAM seksyen semasa</button><button class="btn btn-sm" data-salinq="${esc(q.id)}">Salin</button><button class="btn btn-sm btn-danger" data-padamq="${esc(q.id)}">Padam</button></div></article>`).join('')}${A.busy ? '<div class="art-jawab menunggu"><div class="help">Agen sedang membaca medan A hingga F semua artikel sumber dan menyusun jawapan. Lazimnya kurang seminit.</div></div>' : ''}</div>`;
   }
-  async function renderLaporan(d) {
-    const el = $('#artLaporan'); if (!el) return; const [a, b] = pasangan(d);
-    if (!a || !b || a === b) { el.innerHTML = '<div class="help">Pilih dua artikel yang berbeza.</div>'; return; }
-    const k = [a, b].sort().join('__');
-    if (A.laporanKunci !== k) { A.laporanKunci = k; A.laporan = null; el.innerHTML = '<div class="help">Menyemak laporan Agen Banding sedia ada bagi pasangan ini...</div>'; let lap = null; try { lap = await Bd().muatSimpanan(a, b); } catch (e) {} if (A.laporanKunci !== k) return; A.laporan = lap; }
-    const da = Bd().rekod(a), db = Bd().rekod(b); const ka = Bd().kelengkapan(da), kb = Bd().kelengkapan(db);
-    const amaran = (!ka.ok || !kb.ok) ? `<div class="art-amaran">Belum lengkap: ${[!ka.ok ? 'Artikel 1 Bahagian ' + ka.bahagian.filter(x => !x.ok).map(x => x.letter).join(', ') : '', !kb.ok ? 'Artikel 2 Bahagian ' + kb.bahagian.filter(x => !x.ok).map(x => x.letter).join(', ') : ''].filter(Boolean).join('; ')}. Agen hanya menjawab daripada medan yang diisi; lengkapkan rekod dahulu untuk jawapan yang jitu.</div>` : '';
-    if (!A.laporan) { el.innerHTML = amaran + `<div class="help">Belum ada laporan Agen Banding bagi pasangan ini. Soal jawab di bawah tetap boleh digunakan; jika mahu laporan penuh (profil, skor lapan dimensi, dimensi konstruk, perbandingan A hingga F), jana di menu Banding. <button class="btn btn-sm" data-bukabanding="${esc(a)}|${esc(b)}">Buka Banding</button></div>`; return; }
-    const l = A.laporan.laporan; const menang = l.lebihBerguna === 'Artikel 1' ? Bd().nama(da) : l.lebihBerguna === 'Artikel 2' ? Bd().nama(db) : 'Kedua-dua setara';
-    el.innerHTML = amaran + `<details class="art-lap"><summary><b>Laporan Agen Banding sedia ada</b> (dijana ${esc(R.fmtTime(A.laporan.masa || 0))}${A.laporan.model ? ', ' + esc(String(A.laporan.model).replace('claude-', '')) : ''}); baca di sini tanpa bertukar menu, dan agen soal jawab turut merujuknya.</summary>
-      <div class="art-lap-isi"><div class="band-dua profil"><div class="band-profil a"><b>Artikel 1: ${esc(Bd().nama(da))}</b><p>${esc(l.profil.a)}</p></div><div class="band-profil b"><b>Artikel 2: ${esc(Bd().nama(db))}</b><p>${esc(l.profil.b)}</p></div></div>
-      ${l.skor && l.skor.length ? `<table class="art-skor"><thead><tr><th>Dimensi penilaian</th><th>Artikel 1</th><th>Artikel 2</th></tr></thead><tbody>${l.skor.map(x => `<tr><td>${esc(x.dimensi)}<div class="ul">${esc(x.ulasan || '')}</div></td><td class="a">${esc(x.a)}</td><td class="b">${esc(x.b)}</td></tr>`).join('')}</tbody></table>` : ''}
-      ${(l.bahagian || []).map(x => { const s = Bd().SEK.find(y => y.letter === x.bahagian); return `<div class="band-sekagen"><h4>Bahagian ${esc(x.bahagian)}. ${esc(s ? s.title : '')}</h4><div class="tiga"><div><b>Persamaan</b>${esc(x.persamaan)}</div><div><b>Perbezaan</b>${esc(x.perbezaan)}</div><div><b>Penilaian</b>${esc(x.penilaian)}</div></div></div>`; }).join('')}
-      <div class="band-dua kk"><div><h4>Artikel 1</h4><p><b>Kekuatan.</b> ${esc(l.kekuatan.a)}</p><p><b>Kelemahan.</b> ${esc(l.kelemahan.a)}</p></div><div><h4>Artikel 2</h4><p><b>Kekuatan.</b> ${esc(l.kekuatan.b)}</p><p><b>Kelemahan.</b> ${esc(l.kelemahan.b)}</p></div></div>
-      <h4>Laporan keseluruhan</h4><p class="band-p">${esc(l.keseluruhan)}</p><h4>Refleksi terhadap kajian Prof Dr</h4><p class="band-p">${esc(l.refleksi)}</p><h4>Cadangan sitasi bersama</h4><p class="band-p">${esc(l.sitasi)}</p>
-      <div class="band-verdict"><b>Lebih berguna untuk kajian Prof Dr: ${esc(menang)}.</b> ${esc(l.sebab)}</div>
-      <div class="acts"><button class="btn btn-sm" data-bukabanding="${esc(a)}|${esc(b)}">Buka dalam Banding (carta dan PDF)</button><button class="btn btn-sm" data-lapram="1" title="Masukkan laporan keseluruhan, refleksi dan cadangan sitasi ke dalam RAM seksyen yang sedang dibuka">Pindah laporan ke RAM seksyen semasa</button></div></div></details>`;
+  async function renderLaporanSumber(d) {
+    const el = $('#artLaporan'); if (!el) return; const id = A.id; let lap = []; try { lap = await laporanAntaraSumber(d); } catch (e) {} if (A.id !== id || !$('#artLaporan')) return;
+    const namaId = x => R.S.docs.has(x) ? Bd().nama(Bd().rekod(x)) : 'Rekod tidak ditemui';
+    if (!lap.length) { $('#artLaporan').innerHTML = `<div class="help">Tiada laporan Agen Banding sedia ada antara artikel sumber ini. Jika mahu laporan kepala ke kepala bagi mana-mana pasangan (profil, skor, dimensi konstruk, perbandingan A hingga F), jana di menu Banding; laporan itu akan turut dirujuk oleh agen soal jawab di sini.</div>`; return; }
+    $('#artLaporan').innerHTML = `<details class="art-lap"><summary><b>${lap.length} laporan Agen Banding sedia ada antara artikel sumber</b>; agen soal jawab turut merujuk ringkasannya (sehingga lima laporan).</summary><div class="art-lap-isi"><ul class="art-lap-senarai">${lap.map(p => `<li>${esc(namaId(p.idA))} lwn ${esc(namaId(p.idB))} (dijana ${esc(R.fmtTime(p.masa || 0))}${p.lebihBerguna ? '; lebih berguna: ' + esc(p.lebihBerguna) : ''}) <button class="btn btn-sm" data-bukabanding="${esc(p.idA)}|${esc(p.idB)}">Buka dalam Banding</button></li>`).join('')}</ul></div></details>`;
   }
-  function ringkasLaporan(l) {
-    if (!l) return '';
-    const bah = (l.bahagian || []).map(x => `Bahagian ${x.bahagian}: persamaan: ${x.persamaan} Perbezaan: ${x.perbezaan} Penilaian: ${x.penilaian}`).join('\n');
-    const skor = (l.skor || []).map(x => `${x.dimensi}: Artikel 1 ${x.a}, Artikel 2 ${x.b} (${x.ulasan || ''})`).join('\n');
-    return `LAPORAN AGEN BANDING SEDIA ADA (dijana lebih awal; gunakan sebagai konteks, bukan sumber tunggal):\nProfil Artikel 1: ${l.profil.a}\nProfil Artikel 2: ${l.profil.b}\n${bah}\nSkor:\n${skor}\nKekuatan Artikel 1: ${l.kekuatan.a}\nKelemahan Artikel 1: ${l.kelemahan.a}\nKekuatan Artikel 2: ${l.kekuatan.b}\nKelemahan Artikel 2: ${l.kelemahan.b}\nKeseluruhan: ${l.keseluruhan}\nRefleksi: ${l.refleksi}\nSitasi: ${l.sitasi}\nLebih berguna: ${l.lebihBerguna}. ${l.sebab}`.slice(0, 9000);
+  function ringkasLaporan(lap) {
+    const l = lap && lap.laporan; if (!l) return ''; const na = R.S.docs.has(lap.idA) ? Bd().nama(Bd().rekod(lap.idA)) : 'Artikel A', nb = R.S.docs.has(lap.idB) ? Bd().nama(Bd().rekod(lap.idB)) : 'Artikel B';
+    return `LAPORAN AGEN BANDING SEDIA ADA (${na} sebagai Artikel 1 lwn ${nb} sebagai Artikel 2; dijana lebih awal, gunakan sebagai konteks sokongan):\nKeseluruhan: ${l.keseluruhan}\nRefleksi: ${l.refleksi}\nSitasi: ${l.sitasi}\nLebih berguna: ${l.lebihBerguna}. ${l.sebab}`.slice(0, 2200);
   }
-  function systemPrompt(profil, d) {
+  function systemPrompt(profil, d, bahan) {
     const j = JENIS_PETA[d.jenis]; const e = entri(A.id) || {};
-    return `Anda ialah Agen Soal Jawab Artikel Prof Dr Claude, pembantu penulisan artikel penerbitan kepada seorang calon PhD (dipanggil Prof Dr) di Universiti Pendidikan Sultan Idris. Prof Dr sedang menulis artikel penerbitan${j ? ' jenis "' + j.nama + '"' : ''}${e.tajuk ? ' bertajuk "' + e.tajuk + '"' : ''}. Tugas anda: menjawab SATU soalan Prof Dr tentang perbandingan DUA artikel sumber (Artikel 1 dan Artikel 2) berdasarkan medan ekstrak Bahagian A hingga F yang telah diisi dalam Repositori SLR (bukan teks penuh PDF), dan, jika disertakan, laporan Agen Banding sedia ada serta soalan dan jawapan terdahulu bagi pasangan yang sama.
+    return `Anda ialah Agen Soal Jawab Artikel Prof Dr Claude, pembantu penulisan artikel penerbitan kepada seorang calon PhD (dipanggil Prof Dr) di Universiti Pendidikan Sultan Idris. Prof Dr sedang menulis artikel penerbitan${j ? ' jenis "' + j.nama + '"' : ''}${e.tajuk ? ' bertajuk "' + e.tajuk + '"' : ''}. Tugas anda: menjawab SATU soalan Prof Dr tentang ${bahan.length} artikel sumber yang disenaraikan di bawah (Artikel 1 hingga Artikel ${bahan.length}) berdasarkan medan ekstrak Bahagian A hingga F yang telah diisi dalam Repositori SLR (bukan teks penuh PDF), dan, jika disertakan dalam mesej, ringkasan laporan Agen Banding sedia ada serta soalan dan jawapan terdahulu.
 
 Peraturan:
 1. Bahasa Melayu Malaysia baku, laras akademik; istilah Malaysia (guru besar, dapatan, kajian); jangan gunakan sempang em atau en.
-2. Sifar fabrikasi: hujah hanya daripada bahan yang diberi. Jika medan tidak memadai untuk menjawab, nyatakan "maklumat dalam rekod tidak memadai" dan namakan medan atau bahagian yang perlu dilengkapkan; jangan mengandaikan, mereka angka, nama atau rujukan.
-3. Namakan artikel sebagai Artikel 1 dan Artikel 2 secara konsisten, disertai Penulis (Tahun) apabila sesuai.
-4. Jawab terus dan jitu kepada soalan: dua hingga lima perenggan prosa yang padat, tanpa pengantar, tanpa penutup basa-basi, tanpa senarai berbutir kecuali soalan meminta senarai atau jadual.
-5. Jika soalan tentang pola, persamaan, perbezaan, limitasi berulang, jurang, kaedah atau konteks, susun jawapan mengikut aspek itu dan sokong setiap dakwaan dengan medan yang berkenaan (contohnya sampel, instrumen, dapatan, batasan).
+2. Sifar fabrikasi: hujah hanya daripada bahan yang diberi. Jika medan tidak memadai untuk menjawab, nyatakan "maklumat dalam rekod tidak memadai" dan namakan artikel serta bahagian yang perlu dilengkapkan; jangan mengandaikan, mereka angka, nama atau rujukan.
+3. Rujuk artikel dengan Penulis (Tahun) dan, jika perlu bagi kejelasan, nombornya (Artikel 3). Apabila membuat dakwaan merentas artikel, nyatakan artikel mana yang menyokongnya dan artikel mana yang tidak menyentuhnya.
+4. Jawab terus dan jitu kepada soalan: dua hingga enam perenggan prosa yang padat, tanpa pengantar, tanpa penutup basa-basi, tanpa senarai berbutir kecuali soalan meminta senarai atau jadual; jika soalan meminta jadual, gunakan jadual teks ringkas dengan satu baris bagi setiap artikel.
+5. Jika soalan tentang pola, persamaan, perbezaan, limitasi berulang, jurang, kaedah atau konteks, sintesiskan merentas SEMUA artikel sumber (bukan dua sahaja): kumpulkan artikel mengikut pola yang sama, namakan pengecualian, dan sokong setiap dakwaan dengan medan yang berkenaan (contohnya sampel, instrumen, dapatan, batasan).
 6. Akhiri dengan satu perenggan pendek bermula "Untuk artikel Prof Dr:" yang menyatakan cara jawapan ini boleh digunakan dalam artikel yang sedang ditulis (justifikasi jurang, sintesis, kaedah atau perbincangan).
-7. Jika soalan meminta perenggan sintesis, tulis perenggan itu dalam gaya sorotan literatur dengan sitasi Penulis (Tahun) dan nyatakan hubungan (selari, bercanggah atau melengkapi).
+7. Jika soalan meminta perenggan sintesis, tulis perenggan itu dalam gaya sorotan literatur dengan sitasi Penulis (Tahun), mengelompokkan artikel yang selari, menonjolkan yang bercanggah, dan menamakan jurang yang kekal.
 
 Profil kajian Prof Dr:
-${profil}`;
+${profil}
+
+ARTIKEL SUMBER (${bahan.length}):
+
+${bahan.map(x => Bd().teksRekod(x.i, x.d)).join('\n\n')}`;
   }
   async function tanya() {
-    const d = doc(); if (!d || A.busy) return; const [a, b] = pasangan(d); const ta = $('#artSoalan'); const q = ta ? ta.value.trim() : '';
-    if (!a || !b || a === b) { toast('Pilih dua artikel sumber yang berbeza untuk pasangan', true); return; }
+    const d = doc(); if (!d || A.busy) return; const s = sumberAda(d); const ta = $('#artSoalan'); const q = ta ? ta.value.trim() : '';
+    if (!s.length) { toast('Pilih artikel sumber dahulu', true); return; }
     if (!q) { toast('Taip soalan dahulu (atau klik satu soalan pantas)', true); if (ta) ta.focus(); return; }
-    if ((d.soalan || []).length >= HAD_SOALAN) { toast(`Had ${HAD_SOALAN} soalan bagi artikel ini sudah dicapai. Padam soalan lama untuk bertanya lagi.`, true); return; }
+    const n = (d.soalan || []).length; if (n >= HAD_SOALAN) { toast(`Had ${HAD_SOALAN} soalan bagi artikel ini sudah dicapai. Padam soalan lama untuk bertanya lagi.`, true); return; }
     const t = await R.Isi.tetapan();
     if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
-    if (!R.lsGet('rslr_artikel_faham', false)) {
-      const okk = await R.confirmBox('Agen Soal Jawab Artikel Prof Dr Claude', 'Setiap soalan dihantar sebagai satu panggilan ke API Anthropic menggunakan kunci API Prof Dr dan dicaj kepada akaun Anthropic Prof Dr (medan A hingga F kedua-dua rekod, laporan Banding sedia ada jika ada, dan soalan terdahulu pasangan ini; bukan PDF). Jawapan disimpan bersama artikel supaya tidak perlu ditanya semula. Maksimum ' + HAD_SOALAN + ' soalan bagi setiap artikel penerbitan.', 'Faham, teruskan', false);
-      if (!okk) return; R.lsSet('rslr_artikel_faham', true);
-    }
-    const da = Bd().rekod(a), db = Bd().rekod(b);
+    const bahan = bahanSumber(d); const dahulu = (d.soalan || []).slice(-4); let lapSenarai = []; try { lapSenarai = (await laporanAntaraSumber(d)).slice(0, 5); } catch (e) {}
+    const anggaran = anggarToken(systemPrompt(t.profil, d, bahan)) + anggarToken(dahulu.map(x => x.soalan + String(x.jawapan || '').slice(0, 1500)).join(' ')) + lapSenarai.length * 450 + anggarToken(q);
+    /* Amaran kos pada setiap soalan: ia melibatkan kos kewangan pada akaun Anthropic Prof Dr. */
+    const okk = await R.confirmBox(`Soalan ${n + 1} daripada ${HAD_SOALAN}: hantar ke agen?`, `Soalan ini akan menghantar medan A hingga F bagi ${s.length} artikel sumber${lapSenarai.length ? ', ringkasan ' + lapSenarai.length + ' laporan Banding sedia ada' : ''}${dahulu.length ? ' dan ' + dahulu.length + ' soal jawab terdahulu' : ''} ke API Anthropic menggunakan kunci API Prof Dr (anggaran ${angka(anggaran)} token masuk, model ${t.model.replace('claude-', '')}). Kosnya dicaj kepada akaun Anthropic Prof Dr; soalan yang jelas dan khusus memberi jawapan yang lebih berguna bagi kos yang sama. Baki selepas soalan ini: ${HAD_SOALAN - n - 1} soalan.`, 'Hantar soalan', false);
+    if (!okk) return;
     A.busy = true; renderSoal(d);
     try {
-      let lap = null; try { lap = await Bd().muatSimpanan(a, b); } catch (e) {}
-      const dahulu = (d.soalan || []).filter(x => (x.idA === a && x.idB === b) || (x.idA === b && x.idB === a)).slice(-4);
-      const teksDahulu = dahulu.length ? 'SOALAN DAN JAWAPAN TERDAHULU BAGI PASANGAN INI:\n' + dahulu.map((x, i) => `S${i + 1}: ${x.soalan}\nJ${i + 1}: ${String(x.jawapan || '').slice(0, 1500)}${x.idA !== a ? ' (nota: dalam soalan ini kedudukan Artikel 1 dan 2 adalah terbalik)' : ''}`).join('\n\n') : '';
-      const user = [Bd().teksRekod(1, da), Bd().teksRekod(2, db), lap ? ringkasLaporan(lap.laporan) : '', teksDahulu, 'SOALAN PROF DR: ' + q + '\n\nJawab mengikut peraturan.'].filter(Boolean).join('\n\n');
-      const res = await R.Isi.hantar(t, { kunciMod: 'artikel:' + t.model, system: systemPrompt(t.profil, d), content: [{ type: 'text', text: user }], hadToken: 3000 });
+      const lapTeks = []; for (const p of lapSenarai) { try { const lap = await Bd().muatSimpanan(p.idA, p.idB); if (lap) lapTeks.push(ringkasLaporan(lap)); } catch (e) {} }
+      const teksDahulu = dahulu.length ? 'SOALAN DAN JAWAPAN TERDAHULU BAGI ARTIKEL INI (konteks kesinambungan):\n' + dahulu.map((x, i) => `S${i + 1}: ${x.soalan}\nJ${i + 1}: ${String(x.jawapan || '').slice(0, 1500)}`).join('\n\n') : '';
+      const user = [lapTeks.join('\n\n'), teksDahulu, 'SOALAN PROF DR: ' + q + '\n\nJawab mengikut peraturan, merentas semua artikel sumber yang disenaraikan dalam arahan sistem.'].filter(Boolean).join('\n\n');
+      const res = await R.Isi.hantar(t, { kunciMod: 'artikel:' + t.model, system: systemPrompt(t.profil, d, bahan), content: [{ type: 'text', text: user }], hadToken: 4000 });
       const jawapan = String(res.text || (res.input && (res.input.jawapan || JSON.stringify(res.input))) || '').trim().replace(/\s*[—–]\s*/g, ', ');
       if (!jawapan) throw { code: 'kosong' };
-      const rec = { id: 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), idA: a, idB: b, namaA: Bd().nama(da), namaB: Bd().nama(db), soalan: q, jawapan, masa: Date.now(), model: t.model, token: res.usage || null };
+      const rec = { id: 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), sumber: s.slice(), nSumber: s.length, soalan: q, jawapan, masa: Date.now(), model: t.model, token: res.usage || null };
       d.soalan = (d.soalan || []).concat([rec]); await simpanDoc({ soalan: d.soalan });
-      if (ta) ta.value = ''; toast('Jawapan agen siap dan disimpan bersama artikel');
+      if (ta) ta.value = ''; toast('Jawapan agen siap dan disimpan bersama artikel' + (res.usage ? ' (token masuk ' + angka(res.usage.masuk) + ', keluar ' + angka(res.usage.keluar) + ')' : ''));
     } catch (e) { toast('Agen gagal: ' + (e && e.code === 'kosong' ? 'jawapan kosong diterima; cuba sekali lagi.' : R.Isi.msg(e)), true); }
     finally { A.busy = false; renderSoal(d); const el = $('#artJawapan'); if (el) el.lastElementChild && el.lastElementChild.scrollIntoView({ block: 'nearest' }); }
   }
@@ -308,23 +306,18 @@ ${profil}`;
   }
   function jawapanKeRam(id) {
     const d = doc(); if (!d) return; const i = (d.soalan || []).findIndex(x => x.id === id); if (i < 0) return; const q = d.soalan[i];
-    const html = `<p><strong>Soalan ${i + 1}: ${esc(q.soalan)}</strong></p>` + perenggan(q.jawapan).map(p => `<p>${esc(p)}</p>`).join('') + `<p><em>Jawapan agen, Artikel 1 ${esc(q.namaA || '')} lwn Artikel 2 ${esc(q.namaB || '')}, ${esc(R.fmtTime(q.masa || 0))}.</em></p>`;
+    const html = `<p><strong>Soalan ${i + 1}: ${esc(q.soalan)}</strong></p>` + perenggan(q.jawapan).map(p => `<p>${esc(p)}</p>`).join('') + `<p><em>Jawapan agen${skopSoalan(q) ? ' berdasarkan ' + esc(skopSoalan(q)) : ''}, ${esc(R.fmtTime(q.masa || 0))}.</em></p>`;
     keRam(html, 'Soal jawab ' + (i + 1));
-  }
-  function laporanKeRam() {
-    const l = A.laporan && A.laporan.laporan; if (!l) return; const d = doc(); const [a, b] = pasangan(d); const na = Bd().nama(Bd().rekod(a)), nb = Bd().nama(Bd().rekod(b));
-    const html = `<p><strong>Laporan Agen Banding: ${esc(na)} lwn ${esc(nb)}</strong></p><p>${esc(l.keseluruhan)}</p><p>${esc(l.refleksi)}</p><p>${esc(l.sitasi)}</p><p><em>Lebih berguna: ${esc(l.lebihBerguna)}. ${esc(l.sebab)}</em></p>`;
-    keRam(html, 'Laporan Banding');
   }
 
   /* ---- artikel baharu dan padam ---- */
   async function artikelBaru() {
     if (!A.indeks) await muatIndeks();
-    const okk = await R.richModal('Artikel baharu', `<label for="artTajukBaru">Tajuk kerja artikel</label><input id="artTajukBaru" class="modal-in" type="text" placeholder="Contohnya: Kepimpinan digital guru besar dan kompetensi digital guru: ulasan skop" autocomplete="off"><label for="artJenisBaru">Jenis artikel</label><select id="artJenisBaru" class="modal-in"><option value="">Pilih kemudian</option>${JENIS.map(([kump, items]) => `<optgroup label="${esc(kump)}">${items.map(([kod, nama]) => `<option value="${kod}">${esc(nama)}</option>`).join('')}</optgroup>`).join('')}</select><p class="help">Tajuk dan jenis boleh diubah bila-bila masa. Selepas dicipta, pilih artikel sumber daripada repositori, tanya agen tentang pasangan artikel, dan tulis seksyen dengan ASAL dan RAM.</p>`, 'Cipta', 'Batal');
+    const okk = await R.richModal('Artikel baharu', `<label for="artTajukBaru">Tajuk kerja artikel</label><input id="artTajukBaru" class="modal-in" type="text" placeholder="Contohnya: Kepimpinan digital guru besar dan kompetensi digital guru: ulasan skop" autocomplete="off"><label for="artJenisBaru">Jenis artikel</label><select id="artJenisBaru" class="modal-in"><option value="">Pilih kemudian</option>${JENIS.map(([kump, items]) => `<optgroup label="${esc(kump)}">${items.map(([kod, nama]) => `<option value="${kod}">${esc(nama)}</option>`).join('')}</optgroup>`).join('')}</select><p class="help">Tajuk dan jenis boleh diubah bila-bila masa. Selepas dicipta, pilih artikel sumber daripada repositori, tanya agen tentang semua artikel sumber itu, dan tulis seksyen dengan ASAL dan RAM.</p>`, 'Cipta', 'Batal');
     if (!okk) return null; const v = R.richModal.values || {}; const tajuk = String(v.artTajukBaru || '').trim() || 'Artikel tanpa tajuk'; const jenis = String(v.artJenisBaru || '');
     const id = idBaru(); const masa = Date.now(); A.indeks.senarai[id] = { id, tajuk, jenis, cipta: masa, masa };
     await simpanIndeks([id]);
-    const d = Teks.doc(id); d.tajuk = tajuk; d.jenis = jenis; d.masa = masa; Teks.simpanLokal(id, d); await Teks.simpanAwan(id, { jenis, tajuk, sumber: [], soalan: [], pasangan: [], masa });
+    const d = Teks.doc(id); d.tajuk = tajuk; d.jenis = jenis; d.masa = masa; Teks.simpanLokal(id, d); await Teks.simpanAwan(id, { jenis, tajuk, sumber: [], soalan: [], masa });
     A.id = id; R.lsSet(LS_SEMASA, id); Teks.state.bab = id; Teks.state.sek = null; Teks.renderSemua(); renderPanel();
     toast('Artikel "' + tajuk + '" dicipta' + (jenis && STRUKTUR[jenis] ? '. Klik "Struktur lazim" jika mahu seksyen lazim jenis ini dimasukkan' : ''));
     const k = $('#artKepala'); if (k) k.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -347,7 +340,6 @@ ${profil}`;
       const fl = e.target.closest('[data-flipart]'); if (fl) { R.openFlip(fl.dataset.flipart, 0); return; }
       const cd = e.target.closest('[data-cadangan]'); if (cd) { const ta = $('#artSoalan'); if (ta && !ta.disabled) { ta.value = CADANGAN[+cd.dataset.cadangan] || ''; ta.focus(); } return; }
       const rm = e.target.closest('[data-ram]'); if (rm) { jawapanKeRam(rm.dataset.ram); return; }
-      if (e.target.closest('[data-lapram]')) { laporanKeRam(); return; }
       const sq = e.target.closest('[data-salinq]'); if (sq) { const d = doc(); const q = d && (d.soalan || []).find(x => x.id === sq.dataset.salinq); if (!q) return; try { await navigator.clipboard.writeText('Soalan: ' + q.soalan + '\n\n' + q.jawapan); toast('Soal jawab disalin'); } catch (er) { toast('Papan keratan tidak tersedia', true); } return; }
       const pq = e.target.closest('[data-padamq]'); if (pq) { padamSoalan(pq.dataset.padamq); return; }
     });

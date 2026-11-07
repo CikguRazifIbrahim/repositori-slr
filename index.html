@@ -671,6 +671,10 @@ body.web-open{overflow:hidden}
 .art-pasangan{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:end;margin-bottom:10px}
 .art-pasangan select{width:100%}
 .art-laporan{margin-bottom:10px}
+.art-skop{font-size:13px;line-height:1.5;background:var(--surface-2);border-radius:8px;padding:8px 10px;margin-bottom:10px}
+.art-skop .amaran{color:var(--warn)}
+.art-lap-senarai{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6}
+.art-lap-senarai li{margin-bottom:4px}
 .art-amaran{background:var(--warn-soft);color:var(--fg);border:1px solid var(--warn);border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.45;margin-bottom:8px}
 .art-lap{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface-2)}
 .art-lap>summary{cursor:pointer;font-size:13.5px;line-height:1.4}
@@ -1062,7 +1066,7 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
 
 <main id="artikel" class="view" hidden>
   <div class="tul-head">
-    <div><h1>Artikel Penerbitan</h1><div class="sub">Ruang menulis artikel jurnal dan persidangan daripada artikel dalam repositori: pilih jenis artikel, kumpulkan sehingga 15 artikel sumber, tanya agen tentang pasangan artikel, dan tulis seksyen dengan ASAL dan RAM. Disimpan automatik ke awan.</div></div>
+    <div><h1>Artikel Penerbitan</h1><div class="sub">Ruang menulis artikel jurnal dan persidangan daripada artikel dalam repositori: pilih jenis artikel, kumpulkan sehingga 15 artikel sumber, tanya agen tentang semua artikel sumber itu sekali gus, dan tulis seksyen dengan ASAL dan RAM. Disimpan automatik ke awan.</div></div>
     <span class="spacer"></span>
     <div class="tul-acts">
       <button id="btnArtBaru" class="btn btn-primary" title="Cipta artikel penerbitan baharu">Artikel baharu</button>
@@ -1078,14 +1082,14 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
   <div id="artPanel" hidden>
     <section id="artKepala" class="art-kepala"></section>
     <details class="art-sek" id="artSumberWrap" open><summary>Artikel sumber daripada repositori <span id="artSumberKira"></span></summary><div id="artSumber"></div></details>
-    <details class="art-sek" id="artSoalWrap" open><summary>Soal jawab pasangan artikel <span id="artSoalKira"></span></summary><div id="artSoal"></div></details>
+    <details class="art-sek" id="artSoalWrap" open><summary>Soal jawab semua artikel sumber <span id="artSoalKira"></span></summary><div id="artSoal"></div></details>
     <div class="tul-cari"><input id="artCari" type="search" placeholder="Cari dalam semua artikel penerbitan, contohnya: jurang, PRISMA, Hassan" autocomplete="off"><div id="artCariHasil" class="tul-cari-hasil" hidden></div></div>
     <div class="tul-badan">
       <aside class="tul-kiri"><div class="tul-kiri-head"><h2>Seksyen</h2><div class="tul-kiri-acts"><button id="btnArtTemplat" class="btn btn-sm" title="Masukkan seksyen yang lazim bagi jenis artikel ini (pilihan; semuanya boleh diubah atau dipadam)">Struktur lazim</button><button id="btnArtSeksyen" class="btn btn-sm btn-primary">Seksyen baharu</button></div></div><div class="help tul-kiri-help">Tiada struktur tetap: tambah seksyen mengikut keperluan artikel. Pegang dan seret untuk menyusun semula; anak panah: promosi atau demosi aras; nombor dijana automatik.</div><div id="artSenarai" class="tul-senarai"></div></aside>
       <section id="artEditor" class="tul-editor"></section>
     </div>
   </div>
-  <div class="harian-note">Setiap artikel penerbitan disimpan dalam awan (meta/penerbitan) dan pada peranti, berserta jenis, senarai artikel sumber (maksimum 15, dikumpulkan mengikut status bacaan, dengan meter kelengkapan Bahagian A hingga F dan butang ke rekod) dan soal jawab pasangan (maksimum 10 soalan; setiap soalan satu panggilan API Anthropic dengan kunci API Prof Dr, menghantar medan A hingga F kedua-dua rekod, laporan Banding sedia ada dan soalan terdahulu pasangan itu, bukan PDF). Editor seksyen, ASAL dan RAM, warna, jadual, rajah, Word masuk dan keluar serta sejarah versi adalah sama seperti Tulisan Tesis.</div>
+  <div class="harian-note">Setiap artikel penerbitan disimpan dalam awan (meta/penerbitan) dan pada peranti, berserta jenis, senarai artikel sumber (maksimum 15, dikumpulkan mengikut status bacaan, dengan meter kelengkapan Bahagian A hingga F dan butang ke rekod) dan soal jawab yang merangkumi semua artikel sumber (maksimum 10 soalan; setiap soalan satu panggilan API Anthropic dengan kunci API Prof Dr, menghantar medan A hingga F semua artikel sumber, ringkasan laporan Banding sedia ada antara sumber dan soal jawab terdahulu, bukan PDF; amaran kos dengan anggaran token dipaparkan sebelum setiap soalan). Editor seksyen, ASAL dan RAM, warna, jadual, rajah, Word masuk dan keluar serta sejarah versi adalah sama seperti Tulisan Tesis.</div>
 </main>
 
 <main id="rekod" class="view" hidden>
