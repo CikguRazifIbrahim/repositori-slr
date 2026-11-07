@@ -83,5 +83,23 @@ export function initKumpulan(R) {
     toast(n + ' artikel dilabel mengikut cadangan'); R.renderList();
   }
   function lipat(kod) { R.S.lipat = R.S.lipat || {}; R.S.lipat[kod] = !R.S.lipat[kod]; R.savePrefs(); R.renderList(); }
-  return { html, cadang, kumpul, label, terimaSemua, lipat, URUTAN, NAMA, PENDEK };
+
+  /* ---- senarai juntai artikel yang dikongsi (Banding, Artikel sumber, pasangan soal jawab, Tambah hubungan sintesis): optgroup mengikut
+     pemboleh ubah (KD, PPO, KDG, Lain, kemudian Belum dilabel) dengan bilangan mengikut status; dalam setiap kumpulan Selesai dahulu,
+     kemudian Sedang dibaca dan Belum dibaca, mengikut Bil.; setiap baris membawa status, Bil., penulis, tahun, kelengkapan A hingga F
+     dan tajuk supaya semua maklumat kekal walaupun dikelompokkan. ---- */
+  const GLIF = { 0: '\u2714 Selesai', 1: '\u25D0 Sedang', 2: '\u25CB Belum' };
+  function pilihanHtml(o) {
+    o = o || {}; const kecuali = new Set(o.kecuali || []); const dipilih = new Set(o.dipilih || []); const lumpuh = new Set(o.lumpuh || []); const pilih = o.pilih || '';
+    const ids = (o.ids || Array.from(R.S.docs.keys())).filter(id => !kecuali.has(id) && R.S.docs.has(id));
+    const g = {}; URUTAN.forEach(k => { g[k] = []; }); ids.forEach(id => { const d = rekod(id); g[kodTema(d)].push([id, d]); });
+    const susun = ['kd', 'ppo', 'kdg', 'lain', 'tiada'];
+    return susun.filter(k => g[k].length).map(k => {
+      const items = g[k].sort((x, y) => pangkatStatus(x[1]) - pangkatStatus(y[1]) || (Number(x[1].bil) || 0) - (Number(y[1].bil) || 0));
+      const n = items.length, selesai = items.filter(x => pangkatStatus(x[1]) === 0).length, sedang = items.filter(x => pangkatStatus(x[1]) === 1).length;
+      const label = `${k === 'tiada' ? 'Belum dilabel' : NAMA[k]} (${n} artikel: ${selesai} selesai, ${sedang} sedang dibaca, ${n - selesai - sedang} belum dibaca)`;
+      return `<optgroup label="${esc(label)}">${items.map(([id, d]) => { const kl = R.Banding ? R.Banding.kelengkapan(d) : null; const lengkap = kl ? (kl.ok ? '[A hingga F lengkap]' : '[belum lengkap: ' + kl.bahagian.filter(b => !b.ok).map(b => b.letter).join('') + ']') : ''; return `<option value="${esc(id)}"${id === pilih ? ' selected' : ''}${lumpuh.has(id) || dipilih.has(id) ? ' disabled' : ''}>${GLIF[pangkatStatus(d)]} \u00b7 Bil. ${esc(d.bil || '?')} ${esc((d.penulis || 'Penulis belum diisi') + (d.tahun ? ' (' + d.tahun + ')' : ''))} ${lengkap} ${esc(String(d.tajuk || 'Tajuk belum diisi').slice(0, 70))}${dipilih.has(id) ? ' (sudah dipilih)' : ''}</option>`; }).join('')}</optgroup>`;
+    }).join('');
+  }
+  return { html, cadang, kumpul, label, terimaSemua, lipat, pilihanHtml, URUTAN, NAMA, PENDEK };
 }

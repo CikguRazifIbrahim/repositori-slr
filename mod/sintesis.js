@@ -99,10 +99,7 @@ export function initSintesis(R) {
 
   /* ---- tambah, sunting, buang ---- */
   function pilihanArtikel(pilih, kecuali) {
-    const K = [['Selesai', 'Selesai dibaca'], ['Sedang dibaca', 'Sedang dibaca'], ['Belum dibaca', 'Belum dibaca']]; const kumpulan = {}; K.forEach(([k]) => { kumpulan[k] = []; });
-    Array.from(R.S.docs.keys()).filter(id => id !== kecuali).map(id => [id, rekod(id)]).sort((x, y) => (x[1].bil || 0) - (y[1].bil || 0)).forEach(x => { const st = x[1].status || 'Belum dibaca'; (kumpulan[st] || (kumpulan[st] = [])).push(x); });
-    const semua = K.map(x => x[0]).concat(Object.keys(kumpulan).filter(k => !K.some(x => x[0] === k)));
-    return '<option value="">Pilih artikel</option>' + semua.map(k => { const items = kumpulan[k] || []; const label = (K.find(x => x[0] === k) || [k, k])[1]; return `<optgroup label="${esc(label)} (${items.length})">${items.map(([id, d]) => `<option value="${esc(id)}"${id === pilih ? ' selected' : ''}>Bil. ${esc(d.bil || '?')} ${esc(nama(d))}: ${esc(potong(d.tajuk, 70))}</option>`).join('')}</optgroup>`; }).join('');
+    return '<option value="">Pilih artikel</option>' + (R.Kumpulan ? R.Kumpulan.pilihanHtml({ pilih, kecuali: [kecuali] }) : Array.from(R.S.docs.keys()).filter(id => id !== kecuali).map(id => { const d = rekod(id); return `<option value="${esc(id)}"${id === pilih ? ' selected' : ''}>Bil. ${esc(d.bil || '?')} ${esc(nama(d))}</option>`; }).join(''));
   }
   async function modalHubungan(pra) {
     const id = R.S.currentId; if (!id) return; const d = rekod(id); const lama = pra && pra.id ? hubungan(d).find(h => h.id === pra.id) : null; const h = Object.assign({ ke: '', jenis: 'selari', aspek: [], nota: '' }, lama || {}, pra && !pra.id ? pra : {});

@@ -55,11 +55,8 @@ export function initBanding(R) {
   }
   const STATUS_KUMPULAN = [['Selesai', 'Selesai dibaca'], ['Sedang dibaca', 'Sedang dibaca'], ['Belum dibaca', 'Belum dibaca']];
   function isiSelect(sel, pilih, lain) {
-    const arr = senaraiPilihan(); const kumpulan = {}; STATUS_KUMPULAN.forEach(([k]) => { kumpulan[k] = []; });
-    arr.forEach(x => { const st = x[1].status || 'Belum dibaca'; (kumpulan[st] || (kumpulan[st] = [])).push(x); });
-    const opt = ([id, d]) => { const k = kelengkapan(d); return `<option value="${esc(id)}"${id === pilih ? ' selected' : ''}${id === lain ? ' disabled' : ''}>Bil. ${esc(d.bil || '?')} ${esc(nama(d))} ${k.ok ? '[A hingga F lengkap]' : '[belum lengkap: ' + k.bahagian.filter(b => !b.ok).map(b => b.letter).join('') + ']'} ${esc(String(d.tajuk || '').slice(0, 70))}</option>`; };
-    const semua = STATUS_KUMPULAN.map(x => x[0]).concat(Object.keys(kumpulan).filter(k => !STATUS_KUMPULAN.some(x => x[0] === k)));
-    sel.innerHTML = '<option value="">Pilih artikel daripada repositori</option>' + semua.map(k => { const items = kumpulan[k] || []; const label = (STATUS_KUMPULAN.find(x => x[0] === k) || [k, k])[1]; const lengkap = items.filter(x => kelengkapan(x[1]).ok).length; return `<optgroup label="${esc(label)} (${items.length} artikel, ${lengkap} lengkap A hingga F)">${items.length ? items.map(opt).join('') : '<option disabled>Tiada artikel</option>'}</optgroup>`; }).join('');
+    /* Dikelompokkan mengikut pemboleh ubah (Tema utama) dengan status bacaan dan kelengkapan dalam setiap baris (pembina dikongsi dalam mod/kumpulan.js). */
+    sel.innerHTML = '<option value="">Pilih artikel daripada repositori</option>' + (R.Kumpulan ? R.Kumpulan.pilihanHtml({ pilih, lumpuh: lain ? [lain] : [] }) : senaraiPilihan().map(([id, d]) => `<option value="${esc(id)}"${id === pilih ? ' selected' : ''}${id === lain ? ' disabled' : ''}>Bil. ${esc(d.bil || '?')} ${esc(nama(d))}</option>`).join(''));
   }
   function kad(id, sisi) {
     const el = $('#bandKad' + sisi.toUpperCase()); if (!el) return;
