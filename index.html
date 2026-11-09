@@ -148,6 +148,25 @@ button.chip{cursor:pointer}
 .hasil-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
 .hasil-head .count{font-weight:600;color:var(--muted)}
 .hasil-nota{font-size:12.5px;color:var(--muted);margin:-2px 0 8px;line-height:1.45}
+.kal{margin-top:6px;border:1px solid var(--line);border-radius:9px;padding:6px 6px 4px;background:var(--surface)}
+.kal-head{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px}
+.kal-bulan{font-weight:700;font-size:13px;font-family:var(--font-display);text-align:center;line-height:1.15}
+.kal-bulan small{display:block;font-weight:500;font-size:11px;color:var(--muted);font-family:var(--font)}
+.kal-nav{border:1px solid var(--line);background:var(--surface-2);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--fg);font-size:10px;line-height:1}
+.kal-nav:disabled{opacity:.35;cursor:default}
+.kal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.kal-nama span{font-size:10.5px;color:var(--muted);text-align:center;font-weight:600;padding:2px 0}
+.kal-sel{position:relative;border:1px solid transparent;background:none;border-radius:6px;min-height:30px;padding:2px 0;cursor:pointer;color:var(--fg);font:inherit;font-size:12.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.kal-sel.kosong{cursor:default}
+.kal-sel:disabled{color:var(--muted);opacity:.45;cursor:default}
+.kal-sel:not(:disabled):not(.kosong):hover{background:var(--surface-2);border-color:var(--line)}
+.kal-sel.ada{background:var(--accent-soft);color:var(--accent);font-weight:700;border-color:var(--accent-line)}
+.kal-sel.hariini .kal-no{text-decoration:underline;text-underline-offset:2px}
+.kal-sel.pilih{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.kal-sel.pilih .kal-n{color:var(--accent-ink);opacity:.9}
+.kal-n{font-size:9.5px;font-weight:700;margin-top:2px;color:var(--accent)}
+.kal-kaki{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:11.5px;color:var(--muted)}
+.kal-pilih{flex:1;text-align:center}
 .btn-link{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
 .hasil-head select{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:6px 8px;font-size:13.5px}
 .list{display:flex;flex-direction:column;gap:8px}
@@ -568,8 +587,6 @@ body.web-open{overflow:hidden}
 .kum.kd .kum-dot{background:var(--kd)} .kum.ppo .kum-dot{background:var(--ppo)} .kum.kdg .kum-dot{background:var(--kdg)} .kum.lain .kum-dot{background:var(--lain)}
 .kum.kd .kum-head h3{color:var(--kd)} .kum.ppo .kum-head h3{color:var(--ppo)} .kum.kdg .kum-head h3{color:var(--kdg)}
 .kum.tiada{border-style:dashed;border-color:var(--warn)}
-.kum.hari .kum-dot{background:var(--accent)} .kum.hari .kum-head h3{color:var(--accent)}
-.kum.hari.hariini{border-color:var(--accent-line);box-shadow:0 0 0 2px var(--accent-soft)}
 .row.padat .tag.tema{font-size:10.5px}
 .kum.tiada .kum-head h3{color:var(--warn)}
 .kum-badan{display:flex;flex-direction:column;gap:5px}
@@ -983,15 +1000,15 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
         <div class="field"><label for="fPadanan">Padanan laluan</label><select id="fPadanan"><option value="">Semua</option><option value="kd">KD ke PPO = YA</option><option value="ppo">PPO ke KDG = YA</option><option value="kedua">Kedua-dua = YA</option></select></div>
         <div class="field"><span class="lbl">Tahun</span><div class="two"><input id="fTahunDari" type="number" inputmode="numeric" placeholder="Dari" min="1900" max="2100"><input id="fTahunHingga" type="number" inputmode="numeric" placeholder="Hingga" min="1900" max="2100"></div></div>
         <div class="field"><label for="fPdf">Fail PDF</label><select id="fPdf"><option value="">Semua</option><option value="ada">Ada PDF</option><option value="tiada">Tiada PDF</option></select></div>
-        <div class="field"><label for="fNaik">Dimuat naik</label><select id="fNaik" title="Mengikut masa fail PDF dimuat naik ke Drive; rekod tanpa PDF mengikut masa dicipta"><option value="">Bila-bila masa</option><option value="hari">Hari ini</option><option value="3">3 hari lepas</option><option value="7">7 hari lepas</option><option value="14">14 hari lepas</option><option value="30">30 hari lepas</option><option value="90">90 hari lepas</option></select></div>
+        <div class="field"><label for="fNaik">Dimuat naik</label><select id="fNaik" title="Mengikut masa fail PDF dimuat naik ke Drive; rekod tanpa PDF mengikut masa dicipta"><option value="">Bila-bila masa</option><option value="hari">Hari ini</option><option value="3">3 hari lepas</option><option value="7">7 hari lepas</option><option value="14">14 hari lepas</option><option value="30">30 hari lepas</option><option value="90">90 hari lepas</option></select><div id="kalNaik" class="kal" aria-label="Kalendar muat naik: klik satu hari untuk menapis"></div></div>
         <button type="button" id="btnReset" class="btn">Set semula tapisan</button>
       </form>
     </aside>
     <section class="hasil">
       <div class="hasil-head">
         <span class="count" id="hasilCount">Memuatkan</span>
-        <label>Paparan <select id="papar" title="Kumpulan label: artikel dikelompokkan mengikut Tema utama (KD, PPO, KDG, Lain), yang belum dilabel di atas; Senarai: paparan asal; Tarikh muat naik: hari demi hari, hari terbaharu di atas"><option value="kumpulan">Kumpulan label</option><option value="senarai">Senarai</option><option value="tarikh">Tarikh muat naik</option></select></label>
-        <label>Susun <select id="sort"><option value="dikemaskini">Terkini dikemas kini</option><option value="naik" title="Mengikut masa fail PDF dimuat naik ke Drive; rekod tanpa PDF mengikut masa dicipta">Muat naik terbaharu</option><option value="naik-lama" title="Fail yang paling lama dimuat naik di atas">Muat naik terlama</option><option value="bil">Bil. menaik</option><option value="bil-desc">Bil. menurun</option><option value="tahun">Tahun terbaharu</option><option value="penulis">Penulis A hingga Z</option><option value="relevansi">Relevansi tertinggi</option></select></label>
+        <label>Paparan <select id="papar" title="Kumpulan label: artikel dikelompokkan mengikut Tema utama (KD, PPO, KDG, Lain), yang belum dilabel di atas; Senarai: paparan asal"><option value="kumpulan">Kumpulan label</option><option value="senarai">Senarai</option></select></label>
+        <label>Susun <select id="sort"><option value="dikemaskini">Terkini dikemas kini</option><option value="naik" title="Menurun mengikut masa fail PDF dimuat naik ke Drive (hari ini, semalam, dan seterusnya) dalam setiap kumpulan; rekod tanpa PDF mengikut masa dicipta">Tarikh muat naik, terbaharu dahulu</option><option value="naik-lama" title="Menaik mengikut masa muat naik: fail yang paling lama dimuat naik di atas">Tarikh muat naik, terlama dahulu</option><option value="bil">Bil. menaik</option><option value="bil-desc">Bil. menurun</option><option value="tahun">Tahun terbaharu</option><option value="penulis">Penulis A hingga Z</option><option value="relevansi">Relevansi tertinggi</option></select></label>
       </div>
       <div id="hasilNota" class="hasil-nota" hidden></div>
       <div id="list" class="list"></div>

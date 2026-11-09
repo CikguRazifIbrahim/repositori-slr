@@ -11,7 +11,8 @@ import { initTulisan } from './mod/tulisan.js';
 import { initArtikel } from './mod/artikel.js';
 import { initSintesis } from './mod/sintesis.js';
 import { initKumpulan } from './mod/kumpulan.js';
-const VERSION = '1.21.0';
+import { initKalendar } from './mod/kalendar.js';
+const VERSION = '1.22.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -199,7 +200,7 @@ function goView(name) {
 function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 function savePrefs() { lsSet('rslr_prefs', { filters: S.filters, sort: S.sort, split: S.split, view: S.view, currentId: S.currentId, papar: S.papar, lipat: S.lipat }); }
-const PAPARAN = ['kumpulan', 'senarai', 'tarikh'];
+const PAPARAN = ['kumpulan', 'senarai'];
 const paparSah = v => PAPARAN.includes(v) ? v : 'kumpulan';
 
 /* ---------- adapters: Auth, DB (Firestore), Drive (Google Drive) ---------- */
@@ -493,25 +494,30 @@ function searchText(d) {
 const REL_ORDER = { 'Tinggi': 0, 'Sederhana-Tinggi': 1, 'Sederhana': 2, 'Rendah': 3 };
 /* Masa muat naik: fail PDF terbaharu pada rekod; rekod tanpa PDF mengikut masa rekod dicipta. */
 function masaNaik(d) { let m = 0; (d.fail || []).forEach(f => { const t = Number(f.masa) || 0; if (t > m) m = t; }); return m || Number(d.dicipta) || 0; }
-const ikutNaik = () => S.sort === 'naik' || S.sort === 'naik-lama' || S.papar === 'tarikh' || !!(S.filters && S.filters.naik);
-const fmtJam = ts => { try { return new Date(ts).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return fmtTime(ts); } };
-function hadNaik(v) {
-  if (!v) return 0;
-  if (v === 'hari') { const t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); }
-  const n = parseInt(v, 10); return n > 0 ? now() - n * 86400000 : 0;
+const ikutNaik = () => S.sort === 'naik' || S.sort === 'naik-lama' || !!(S.filters && S.filters.naik);
+const HARI_NAMA = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
+const BULAN_NAMA = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
+const kunciTarikh = t => { const x = new Date(t); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+const ialahTarikh = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
+function teksTarikh(k) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k); if (!m) return k; const x = new Date(+m[1], +m[2] - 1, +m[3]); return `${HARI_NAMA[x.getDay()]}, ${+m[3]} ${BULAN_NAMA[+m[2] - 1]} ${m[1]}`; }
+/* Julat masa bagi tapisan Dimuat naik: julat relatif (hari ini, N hari lepas) atau satu tarikh tertentu daripada kalendar (YYYY-MM-DD). */
+function julatNaik(v) {
+  if (!v) return null;
+  if (v === 'hari') { const t = new Date(); t.setHours(0, 0, 0, 0); return [t.getTime(), Infinity]; }
+  if (ialahTarikh(v)) { const m = v.split('-'); const t = new Date(+m[0], +m[1] - 1, +m[2]).getTime(); return [t, t + 86400000]; }
+  const n = parseInt(v, 10); return n > 0 ? [now() - n * 86400000, Infinity] : null;
 }
 /* Teks masa pada baris senarai: masa muat naik apabila susunan atau tapisan muat naik aktif, jika tidak masa kemas kini. */
-function metaMasa(d, ringkas) {
+function metaMasa(d) {
   if (!ikutNaik()) return esc(fmtTime(d.dikemaskini));
   const t = masaNaik(d); const adaPdf = (d.fail || []).some(f => Number(f.masa));
   if (!t) return '<span class="meta-naik" title="Tiada masa muat naik atau masa cipta direkodkan">Tiada masa</span>';
-  // ringkas: dalam paparan Tarikh muat naik, kepala hari sudah menunjukkan tarikh, maka baris menunjukkan jam sahaja.
-  return `<span class="meta-naik" title="${adaPdf ? 'Masa fail PDF dimuat naik ke Drive' : 'Rekod tanpa PDF: masa rekod dicipta'}${ringkas ? ', ' + esc(fmtTime(t)) : ''}">${adaPdf ? 'Dimuat naik' : 'Dicipta'} ${esc(ringkas ? fmtJam(t) : fmtTime(t))}</span>`;
+  return `<span class="meta-naik" title="${adaPdf ? 'Masa fail PDF dimuat naik ke Drive' : 'Rekod tanpa PDF: masa rekod dicipta'}">${adaPdf ? 'Dimuat naik' : 'Dicipta'} ${esc(fmtTime(t))}</span>`;
 }
 function filteredEntries() {
-  const f = S.filters; const q = (f.q || '').trim().toLowerCase(); const had = hadNaik(f.naik);
+  const f = S.filters; const q = (f.q || '').trim().toLowerCase(); const julat = julatNaik(f.naik);
   let arr = Array.from(S.docs.entries()).filter(([id, d]) => {
-    if (had && masaNaik(d) < had) return false;
+    if (julat) { const t = masaNaik(d); if (t < julat[0] || t >= julat[1]) return false; }
     if (f.tema && d.tema !== f.tema) return false;
     if (f.relevansi && d.relevansi !== f.relevansi) return false;
     if (f.peringkat && d.peringkat !== f.peringkat) return false;
@@ -596,7 +602,6 @@ function renderList() {
   $('#hasilCount').textContent = arr.length === total ? `${total} artikel` : `${arr.length} daripada ${total} artikel`;
   if (!arr.length) { list.innerHTML = `<div class="empty"><h3>Tiada padanan</h3><p>Tiada artikel memenuhi tapisan semasa.</p><button class="btn" data-act="reset" style="margin-top:12px">Set semula tapisan</button></div>`; return; }
   if (S.papar === 'kumpulan' && R.Kumpulan) { list.classList.add('berkumpulan'); list.innerHTML = R.Kumpulan.html(arr); return; }
-  if (S.papar === 'tarikh' && R.Kumpulan) { list.classList.add('berkumpulan'); list.innerHTML = R.Kumpulan.htmlTarikh(arr); return; }
   list.classList.remove('berkumpulan');
   list.innerHTML = arr.map(([id, d]) => {
     const nF = (d.fail || []).length; const unread = (d.status || 'Belum dibaca') !== 'Selesai';
@@ -1142,19 +1147,24 @@ $('#btnCloseLog').addEventListener('click', () => { $('#uploadLog').hidden = tru
 const FILTER_IDS = { q: 'q', tema: 'fTema', relevansi: 'fRel', status: 'fStatus', peringkat: 'fPeringkat', jenis: 'fJenis', negara: 'fNegara', bab: 'fBab', padanan: 'fPadanan', tahunDari: 'fTahunDari', tahunHingga: 'fTahunHingga', pdf: 'fPdf', naik: 'fNaik' };
 function readFilters() {
   const f = {}; Object.entries(FILTER_IDS).forEach(([k, id]) => { f[k] = $('#' + id).value; }); S.filters = f; S.sort = $('#sort').value; S.papar = paparSah($('#papar').value);
-  // Paparan Tarikh muat naik bermakna urutan tarikh: Susun beralih kepada Muat naik terbaharu melainkan Muat naik terlama dipilih.
-  if (S.papar === 'tarikh' && S.sort !== 'naik' && S.sort !== 'naik-lama') { S.sort = 'naik'; $('#sort').value = 'naik'; }
-  savePrefs(); renderList(); notaPaparan();
+  pastikanPilihanTarikh(f.naik); $('#fNaik').value = f.naik || '';
+  savePrefs(); renderList(); notaPaparan(); if (R.Kalendar) R.Kalendar.render();
 }
-/* Nota kecil di bawah kepala senarai apabila susunan tarikh dipilih dalam paparan Kumpulan label (label dan status didahulukan di situ). */
+/* Pilihan Dimuat naik: julat tetap dalam senarai juntai, atau satu tarikh daripada kalendar (pilihan "Pada ..." ditambah sementara). */
+function pastikanPilihanTarikh(v) {
+  const sel = $('#fNaik'); Array.from(sel.options).forEach(o => { if (o.dataset.tarikh) o.remove(); });
+  if (ialahTarikh(v)) { const o = document.createElement('option'); o.value = v; o.dataset.tarikh = '1'; o.textContent = 'Pada ' + teksTarikh(v); sel.appendChild(o); }
+}
+function pilihTarikhNaik(v) { pastikanPilihanTarikh(v); $('#fNaik').value = v || ''; readFilters(); }
+/* Nota kecil di bawah kepala senarai apabila susunan atau tapisan tarikh muat naik aktif. */
 function notaPaparan() {
-  const n = $('#hasilNota'); if (!n) return;
-  const tarikh = S.sort === 'naik' || S.sort === 'naik-lama';
-  if (S.papar === 'kumpulan' && tarikh) { n.hidden = false; n.innerHTML = 'Dalam paparan Kumpulan label, artikel dikelompokkan mengikut label dan Selesai didahulukan; urutan tarikh hanya berlaku di dalam setiap kumpulan. Untuk urutan tarikh tulen (hari ini, semalam, dan seterusnya), pilih <button type="button" class="btn-link" data-papar="tarikh">Paparan: Tarikh muat naik</button>.'; }
-  else if (S.papar === 'tarikh') { n.hidden = false; n.textContent = S.sort === 'naik-lama' ? 'Hari terlama di atas; dalam setiap hari, fail yang paling awal dimuat naik dahulu. Rekod tanpa PDF mengikut masa dicipta.' : 'Hari terbaharu di atas; dalam setiap hari, fail yang terakhir dimuat naik dahulu. Rekod tanpa PDF mengikut masa dicipta.'; }
-  else { n.hidden = true; n.textContent = ''; }
+  const n = $('#hasilNota'); if (!n) return; const bah = [];
+  if (S.sort === 'naik' || S.sort === 'naik-lama') bah.push((S.papar === 'kumpulan' ? 'Dalam setiap kumpulan pemboleh ubah, artikel' : 'Artikel') + ' disusun ' + (S.sort === 'naik' ? 'menurun' : 'menaik') + ' mengikut tarikh muat naik (' + (S.sort === 'naik' ? 'terbaharu' : 'terlama') + ' dahulu' + (S.papar === 'kumpulan' ? ', status bacaan tidak didahulukan' : '') + '). Rekod tanpa PDF mengikut masa dicipta.');
+  const v = S.filters && S.filters.naik;
+  if (ialahTarikh(v)) bah.push('Tapisan: dimuat naik pada ' + teksTarikh(v) + ' sahaja. Klik tarikh itu sekali lagi pada kalendar, atau pilih "Bila-bila masa", untuk membuka semula.');
+  n.hidden = !bah.length; n.textContent = bah.join(' ');
 }
-function writeFilters() { Object.entries(FILTER_IDS).forEach(([k, id]) => { $('#' + id).value = S.filters[k] || ''; }); $('#sort').value = S.sort || 'dikemaskini'; $('#papar').value = paparSah(S.papar); notaPaparan(); }
+function writeFilters() { pastikanPilihanTarikh(S.filters.naik); Object.entries(FILTER_IDS).forEach(([k, id]) => { $('#' + id).value = S.filters[k] || ''; }); $('#sort').value = S.sort || 'dikemaskini'; $('#papar').value = paparSah(S.papar); notaPaparan(); if (R.Kalendar) R.Kalendar.render(); }
 function resetFilters() { S.filters = {}; writeFilters(); savePrefs(); renderList(); }
 let filterTimer = null;
 $('#filters').addEventListener('input', e => { clearTimeout(filterTimer); filterTimer = setTimeout(readFilters, e.target.id === 'q' ? 180 : 0); });
@@ -1162,7 +1172,6 @@ $('#filters').addEventListener('submit', e => e.preventDefault());
 $('#btnReset').addEventListener('click', resetFilters);
 $('#sort').addEventListener('change', readFilters);
 $('#papar').addEventListener('change', readFilters);
-$('#hasilNota').addEventListener('click', e => { const b = e.target.closest('[data-papar]'); if (!b) return; $('#papar').value = paparSah(b.dataset.papar); readFilters(); });
 let dragDepth = 0;
 document.addEventListener('dragenter', e => { if (!hasFiles(e) || !S.user) return; dragDepth++; if (S.view === 'papan') $('#dropHint').hidden = false; else if (S.view === 'rekod') $('#uploadBox').classList.add('over'); });
 document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) { $('#dropHint').hidden = true; $('#uploadBox').classList.remove('over'); $$('#picks .pick.over').forEach(p => p.classList.remove('over')); } });
@@ -1326,7 +1335,7 @@ async function start() {
 const R = {
   $, $$, esc, toast, confirmBox, fmtTime, fmtBytes, lsGet, lsSet, saveFile, normDoi, TEMA, C, S, V,
   db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList,
-  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name), savePrefs, masaNaik, metaMasa
+  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name), savePrefs, masaNaik, metaMasa, kunciTarikh, teksTarikh, ialahTarikh, pilihTarikhNaik, HARI_NAMA, BULAN_NAMA
 };
 const Flip = initFlip(R); R.Flip = Flip;
 const Harian = initHarian(R); R.Harian = Harian;
@@ -1338,5 +1347,6 @@ const Tulisan = initTulisan(R); R.Tulisan = Tulisan;
 const Artikel = initArtikel(R, initTulisan); R.Artikel = Artikel;
 const Sintesis = initSintesis(R); R.Sintesis = Sintesis;
 const Kumpulan = initKumpulan(R); R.Kumpulan = Kumpulan;
-if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, Artikel, Sintesis, Kumpulan, S };
+const Kalendar = initKalendar(R); R.Kalendar = Kalendar;
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, Artikel, Sintesis, Kumpulan, Kalendar, S };
 start();
