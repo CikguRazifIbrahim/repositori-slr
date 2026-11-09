@@ -11,7 +11,7 @@ import { initTulisan } from './mod/tulisan.js';
 import { initArtikel } from './mod/artikel.js';
 import { initSintesis } from './mod/sintesis.js';
 import { initKumpulan } from './mod/kumpulan.js';
-const VERSION = '1.20.0';
+const VERSION = '1.21.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -199,6 +199,8 @@ function goView(name) {
 function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 function savePrefs() { lsSet('rslr_prefs', { filters: S.filters, sort: S.sort, split: S.split, view: S.view, currentId: S.currentId, papar: S.papar, lipat: S.lipat }); }
+const PAPARAN = ['kumpulan', 'senarai', 'tarikh'];
+const paparSah = v => PAPARAN.includes(v) ? v : 'kumpulan';
 
 /* ---------- adapters: Auth, DB (Firestore), Drive (Google Drive) ---------- */
 let Auth, DB, Drive;
@@ -491,18 +493,20 @@ function searchText(d) {
 const REL_ORDER = { 'Tinggi': 0, 'Sederhana-Tinggi': 1, 'Sederhana': 2, 'Rendah': 3 };
 /* Masa muat naik: fail PDF terbaharu pada rekod; rekod tanpa PDF mengikut masa rekod dicipta. */
 function masaNaik(d) { let m = 0; (d.fail || []).forEach(f => { const t = Number(f.masa) || 0; if (t > m) m = t; }); return m || Number(d.dicipta) || 0; }
-const ikutNaik = () => S.sort === 'naik' || S.sort === 'naik-lama' || !!(S.filters && S.filters.naik);
+const ikutNaik = () => S.sort === 'naik' || S.sort === 'naik-lama' || S.papar === 'tarikh' || !!(S.filters && S.filters.naik);
+const fmtJam = ts => { try { return new Date(ts).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return fmtTime(ts); } };
 function hadNaik(v) {
   if (!v) return 0;
   if (v === 'hari') { const t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); }
   const n = parseInt(v, 10); return n > 0 ? now() - n * 86400000 : 0;
 }
 /* Teks masa pada baris senarai: masa muat naik apabila susunan atau tapisan muat naik aktif, jika tidak masa kemas kini. */
-function metaMasa(d) {
+function metaMasa(d, ringkas) {
   if (!ikutNaik()) return esc(fmtTime(d.dikemaskini));
   const t = masaNaik(d); const adaPdf = (d.fail || []).some(f => Number(f.masa));
   if (!t) return '<span class="meta-naik" title="Tiada masa muat naik atau masa cipta direkodkan">Tiada masa</span>';
-  return `<span class="meta-naik" title="${adaPdf ? 'Masa fail PDF dimuat naik ke Drive' : 'Rekod tanpa PDF: masa rekod dicipta'}">${adaPdf ? 'Dimuat naik' : 'Dicipta'} ${esc(fmtTime(t))}</span>`;
+  // ringkas: dalam paparan Tarikh muat naik, kepala hari sudah menunjukkan tarikh, maka baris menunjukkan jam sahaja.
+  return `<span class="meta-naik" title="${adaPdf ? 'Masa fail PDF dimuat naik ke Drive' : 'Rekod tanpa PDF: masa rekod dicipta'}${ringkas ? ', ' + esc(fmtTime(t)) : ''}">${adaPdf ? 'Dimuat naik' : 'Dicipta'} ${esc(ringkas ? fmtJam(t) : fmtTime(t))}</span>`;
 }
 function filteredEntries() {
   const f = S.filters; const q = (f.q || '').trim().toLowerCase(); const had = hadNaik(f.naik);
@@ -592,6 +596,7 @@ function renderList() {
   $('#hasilCount').textContent = arr.length === total ? `${total} artikel` : `${arr.length} daripada ${total} artikel`;
   if (!arr.length) { list.innerHTML = `<div class="empty"><h3>Tiada padanan</h3><p>Tiada artikel memenuhi tapisan semasa.</p><button class="btn" data-act="reset" style="margin-top:12px">Set semula tapisan</button></div>`; return; }
   if (S.papar === 'kumpulan' && R.Kumpulan) { list.classList.add('berkumpulan'); list.innerHTML = R.Kumpulan.html(arr); return; }
+  if (S.papar === 'tarikh' && R.Kumpulan) { list.classList.add('berkumpulan'); list.innerHTML = R.Kumpulan.htmlTarikh(arr); return; }
   list.classList.remove('berkumpulan');
   list.innerHTML = arr.map(([id, d]) => {
     const nF = (d.fail || []).length; const unread = (d.status || 'Belum dibaca') !== 'Selesai';
@@ -1135,8 +1140,21 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) sega
 $('#btnFilterToggle').addEventListener('click', () => $('#filters').classList.toggle('open'));
 $('#btnCloseLog').addEventListener('click', () => { $('#uploadLog').hidden = true; });
 const FILTER_IDS = { q: 'q', tema: 'fTema', relevansi: 'fRel', status: 'fStatus', peringkat: 'fPeringkat', jenis: 'fJenis', negara: 'fNegara', bab: 'fBab', padanan: 'fPadanan', tahunDari: 'fTahunDari', tahunHingga: 'fTahunHingga', pdf: 'fPdf', naik: 'fNaik' };
-function readFilters() { const f = {}; Object.entries(FILTER_IDS).forEach(([k, id]) => { f[k] = $('#' + id).value; }); S.filters = f; S.sort = $('#sort').value; S.papar = $('#papar').value === 'senarai' ? 'senarai' : 'kumpulan'; savePrefs(); renderList(); }
-function writeFilters() { Object.entries(FILTER_IDS).forEach(([k, id]) => { $('#' + id).value = S.filters[k] || ''; }); $('#sort').value = S.sort || 'dikemaskini'; $('#papar').value = S.papar === 'senarai' ? 'senarai' : 'kumpulan'; }
+function readFilters() {
+  const f = {}; Object.entries(FILTER_IDS).forEach(([k, id]) => { f[k] = $('#' + id).value; }); S.filters = f; S.sort = $('#sort').value; S.papar = paparSah($('#papar').value);
+  // Paparan Tarikh muat naik bermakna urutan tarikh: Susun beralih kepada Muat naik terbaharu melainkan Muat naik terlama dipilih.
+  if (S.papar === 'tarikh' && S.sort !== 'naik' && S.sort !== 'naik-lama') { S.sort = 'naik'; $('#sort').value = 'naik'; }
+  savePrefs(); renderList(); notaPaparan();
+}
+/* Nota kecil di bawah kepala senarai apabila susunan tarikh dipilih dalam paparan Kumpulan label (label dan status didahulukan di situ). */
+function notaPaparan() {
+  const n = $('#hasilNota'); if (!n) return;
+  const tarikh = S.sort === 'naik' || S.sort === 'naik-lama';
+  if (S.papar === 'kumpulan' && tarikh) { n.hidden = false; n.innerHTML = 'Dalam paparan Kumpulan label, artikel dikelompokkan mengikut label dan Selesai didahulukan; urutan tarikh hanya berlaku di dalam setiap kumpulan. Untuk urutan tarikh tulen (hari ini, semalam, dan seterusnya), pilih <button type="button" class="btn-link" data-papar="tarikh">Paparan: Tarikh muat naik</button>.'; }
+  else if (S.papar === 'tarikh') { n.hidden = false; n.textContent = S.sort === 'naik-lama' ? 'Hari terlama di atas; dalam setiap hari, fail yang paling awal dimuat naik dahulu. Rekod tanpa PDF mengikut masa dicipta.' : 'Hari terbaharu di atas; dalam setiap hari, fail yang terakhir dimuat naik dahulu. Rekod tanpa PDF mengikut masa dicipta.'; }
+  else { n.hidden = true; n.textContent = ''; }
+}
+function writeFilters() { Object.entries(FILTER_IDS).forEach(([k, id]) => { $('#' + id).value = S.filters[k] || ''; }); $('#sort').value = S.sort || 'dikemaskini'; $('#papar').value = paparSah(S.papar); notaPaparan(); }
 function resetFilters() { S.filters = {}; writeFilters(); savePrefs(); renderList(); }
 let filterTimer = null;
 $('#filters').addEventListener('input', e => { clearTimeout(filterTimer); filterTimer = setTimeout(readFilters, e.target.id === 'q' ? 180 : 0); });
@@ -1144,6 +1162,7 @@ $('#filters').addEventListener('submit', e => e.preventDefault());
 $('#btnReset').addEventListener('click', resetFilters);
 $('#sort').addEventListener('change', readFilters);
 $('#papar').addEventListener('change', readFilters);
+$('#hasilNota').addEventListener('click', e => { const b = e.target.closest('[data-papar]'); if (!b) return; $('#papar').value = paparSah(b.dataset.papar); readFilters(); });
 let dragDepth = 0;
 document.addEventListener('dragenter', e => { if (!hasFiles(e) || !S.user) return; dragDepth++; if (S.view === 'papan') $('#dropHint').hidden = false; else if (S.view === 'rekod') $('#uploadBox').classList.add('over'); });
 document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) { $('#dropHint').hidden = true; $('#uploadBox').classList.remove('over'); $$('#picks .pick.over').forEach(p => p.classList.remove('over')); } });
@@ -1270,7 +1289,7 @@ window.addEventListener('appinstalled', () => { $('#btnInstall').hidden = true; 
 async function start() {
   $('#menuVersi').textContent = 'Repositori SLR v' + VERSION;
   const prefs = lsGet('rslr_prefs', {});
-  S.filters = prefs.filters || {}; S.sort = prefs.sort || 'dikemaskini'; S.split = !!prefs.split; S.papar = prefs.papar === 'senarai' ? 'senarai' : 'kumpulan'; S.lipat = prefs.lipat && typeof prefs.lipat === 'object' ? prefs.lipat : {};
+  S.filters = prefs.filters || {}; S.sort = prefs.sort || 'dikemaskini'; S.split = !!prefs.split; S.papar = paparSah(prefs.papar); S.lipat = prefs.lipat && typeof prefs.lipat === 'object' ? prefs.lipat : {};
   writeFilters();
   const miss = configMissing();
   if (!TEST && miss.length) {

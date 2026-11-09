@@ -51,11 +51,13 @@ export function initKumpulan(R) {
     URUTAN.forEach(k => { g[k] = g[k].map((x, i) => [x, i]).sort((p, q) => pangkatStatus(p[0][1]) - pangkatStatus(q[0][1]) || p[1] - q[1]).map(x => x[0]); });
     return g;
   }
-  function barisPadat(id, d, kod) {
-    const nF = (d.fail || []).length; const c = kod === 'tiada' ? cadang(id) : null;
+  function barisPadat(id, d, kod, o) {
+    o = o || {}; const nF = (d.fail || []).length; const c = kod === 'tiada' ? cadang(id) : null;
+    const tema = o.tema && kod !== 'tiada' ? `<span class="tag tema ${kod}" title="${esc(NAMA[kod])}"><span>${PENDEK[kod]}</span></span>` : '';
+    const meta = R.metaMasa ? R.metaMasa(d, !!o.ringkas) : esc(R.fmtTime(d.dikemaskini));
     const label = kod === 'tiada' ? `<div class="kum-label"><span class="lbl">Label:</span>${['kd', 'ppo', 'kdg', 'lain'].map(k => `<button class="kum-cip ${k}${c && c.kod === k ? ' cadang' : ''}" data-label="${k}" data-id="${esc(id)}" title="${esc('Tetapkan Tema utama: ' + NAMA[k])}">${PENDEK[k]}</button>`).join('')}${c ? `<span class="kum-cadang">Cadangan: <b>${PENDEK[c.kod]}</b>${c.sebab.length ? ' (' + esc(c.sebab.join('; ')) + ')' : ''}${c.yakin ? '' : ' <i>kurang pasti</i>'}</span>` : '<span class="kum-cadang">Tiada cadangan; isi tajuk atau objektif dahulu, atau pilih label.</span>'}</div>` : '';
     return `<div class="row padat${kod === 'tiada' ? ' tiada' : ''}" role="button" tabindex="0" data-id="${esc(id)}">
-      <div class="padat-baris"><span class="bil">Bil. ${esc(d.bil || '?')}</span><span class="who">${esc(d.penulis || 'Penulis belum diisi')}${d.tahun ? ' (' + esc(d.tahun) + ')' : ''}</span><span class="tag ${d.status === 'Selesai' ? 's-selesai' : d.status === 'Sedang dibaca' ? 's-sedang' : 's-belum'}"><span>${esc(d.status || 'Belum dibaca')}</span></span><span class="row-title padat-tajuk" title="${esc(d.tajuk || '')}">${esc(d.tajuk || 'Tajuk belum diisi')}</span><span class="padat-chips">${d.relevansi ? `<span class="tag ${d.relevansi === 'Tinggi' ? 'r-tinggi' : d.relevansi === 'Sederhana-Tinggi' ? 'r-sed-tinggi' : d.relevansi === 'Sederhana' ? 'r-sed' : 'r-rendah'}"><span>${esc(d.relevansi)}</span></span>` : ''}${nF ? `<span class="tag pdf"><span>PDF</span></span>` : ''}</span><span class="row-meta">${R.metaMasa ? R.metaMasa(d) : esc(R.fmtTime(d.dikemaskini))}</span></div>${label}
+      <div class="padat-baris"><span class="bil">Bil. ${esc(d.bil || '?')}</span><span class="who">${esc(d.penulis || 'Penulis belum diisi')}${d.tahun ? ' (' + esc(d.tahun) + ')' : ''}</span><span class="tag ${d.status === 'Selesai' ? 's-selesai' : d.status === 'Sedang dibaca' ? 's-sedang' : 's-belum'}"><span>${esc(d.status || 'Belum dibaca')}</span></span>${tema}<span class="row-title padat-tajuk" title="${esc(d.tajuk || '')}">${esc(d.tajuk || 'Tajuk belum diisi')}</span><span class="padat-chips">${d.relevansi ? `<span class="tag ${d.relevansi === 'Tinggi' ? 'r-tinggi' : d.relevansi === 'Sederhana-Tinggi' ? 'r-sed-tinggi' : d.relevansi === 'Sederhana' ? 'r-sed' : 'r-rendah'}"><span>${esc(d.relevansi)}</span></span>` : ''}${nF ? `<span class="tag pdf"><span>PDF</span></span>` : ''}</span><span class="row-meta">${meta}</span></div>${label}
     </div>`;
   }
   function html(arr) {
@@ -65,6 +67,31 @@ export function initKumpulan(R) {
       const yakin = k === 'tiada' ? items.filter(([id]) => { const c = cadang(id); return c && c.yakin; }).length : 0;
       const tutup = !!lipat[k];
       return `<section class="kum ${k}${tutup ? ' tutup' : ''}" data-kum="${k}"><div class="kum-head"><button class="kum-lipat" data-lipat="${k}" aria-expanded="${tutup ? 'false' : 'true'}" title="${tutup ? 'Buka kumpulan' : 'Lipat kumpulan'}">${tutup ? '&#9656;' : '&#9662;'}</button><span class="kum-dot"></span><h3>${k === 'tiada' ? 'Belum dilabel' : esc(NAMA[k])}</h3><span class="kum-kira">${n} artikel · ${selesai} selesai · ${sedang} sedang dibaca · ${belum} belum</span><span class="spacer"></span>${k === 'tiada' && yakin ? `<button class="btn btn-sm btn-primary" data-terima-semua="1" title="Tetapkan Tema utama bagi setiap artikel yang cadangannya pasti">Terima ${yakin} cadangan yang pasti</button>` : ''}</div><div class="kum-badan"${tutup ? ' hidden' : ''}>${items.map(([id, d]) => barisPadat(id, d, k)).join('')}</div></section>`;
+    }).join('');
+  }
+
+  /* ---- paparan Tarikh muat naik: hari demi hari, hari terbaharu di atas (atau terlama di atas apabila Susun ialah Muat naik terlama),
+     tanpa mengira label dan status; dalam setiap hari, urutan mengikut pilihan Susun (lalai: muat naik terbaharu dahulu). ---- */
+  const HARI = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
+  const BULAN = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
+  const kunciHari = t => { const x = new Date(t); return x.getFullYear() * 10000 + (x.getMonth() + 1) * 100 + x.getDate(); };
+  function tajukHari(k) {
+    const y = Math.floor(k / 10000), m = Math.floor(k / 100) % 100, d = k % 100; const x = new Date(y, m - 1, d);
+    const hariIni = kunciHari(Date.now()); const semalam = kunciHari(Date.now() - 86400000);
+    const teks = `${HARI[x.getDay()]}, ${d} ${BULAN[m - 1]} ${y}`;
+    return k === hariIni ? 'Hari ini, ' + teks : k === semalam ? 'Semalam, ' + teks : teks;
+  }
+  function htmlTarikh(arr) {
+    const lipat = R.S.lipat || {}; const asc = R.S.sort === 'naik-lama'; const naik = R.masaNaik || (d => d.dikemaskini || 0);
+    const g = new Map();
+    arr.forEach(([id, d]) => { const t = naik(d); const k = t ? kunciHari(t) : 0; if (!g.has(k)) g.set(k, { k, items: [] }); g.get(k).items.push([id, d]); });
+    const hari = Array.from(g.values()).sort((a, b) => (a.k === 0) - (b.k === 0) || (asc ? a.k - b.k : b.k - a.k));
+    return hari.map(h => {
+      const k = h.k; const kunci = 'h' + k; const items = h.items; const n = items.length;
+      const selesai = items.filter(x => x[1].status === 'Selesai').length, sedang = items.filter(x => x[1].status === 'Sedang dibaca').length; const belum = n - selesai - sedang;
+      const tanpaPdf = items.filter(x => !(x[1].fail || []).some(f => Number(f.masa))).length; const tutup = !!lipat[kunci];
+      const hariIni = k && k === kunciHari(Date.now());
+      return `<section class="kum hari${hariIni ? ' hariini' : ''}${tutup ? ' tutup' : ''}" data-kum="${kunci}"><div class="kum-head"><button class="kum-lipat" data-lipat="${kunci}" aria-expanded="${tutup ? 'false' : 'true'}" title="${tutup ? 'Buka hari ini' : 'Lipat hari ini'}">${tutup ? '&#9656;' : '&#9662;'}</button><span class="kum-dot"></span><h3>${k ? esc(tajukHari(k)) : 'Tiada tarikh muat naik atau cipta'}</h3><span class="kum-kira">${n} artikel · ${selesai} selesai · ${sedang} sedang dibaca · ${belum} belum${tanpaPdf ? ` · ${tanpaPdf} tanpa PDF (mengikut masa dicipta)` : ''}</span></div><div class="kum-badan"${tutup ? ' hidden' : ''}>${items.map(([id, d]) => barisPadat(id, d, kodTema(d), { tema: true, ringkas: true })).join('')}</div></section>`;
     }).join('');
   }
 
@@ -101,5 +128,5 @@ export function initKumpulan(R) {
       return `<optgroup label="${esc(label)}">${items.map(([id, d]) => { const kl = R.Banding ? R.Banding.kelengkapan(d) : null; const lengkap = kl ? (kl.ok ? '[A hingga F lengkap]' : '[belum lengkap: ' + kl.bahagian.filter(b => !b.ok).map(b => b.letter).join('') + ']') : ''; return `<option value="${esc(id)}"${id === pilih ? ' selected' : ''}${lumpuh.has(id) || dipilih.has(id) ? ' disabled' : ''}>${GLIF[pangkatStatus(d)]} \u00b7 Bil. ${esc(d.bil || '?')} ${esc((d.penulis || 'Penulis belum diisi') + (d.tahun ? ' (' + d.tahun + ')' : ''))} ${lengkap} ${esc(String(d.tajuk || 'Tajuk belum diisi').slice(0, 70))}${dipilih.has(id) ? ' (sudah dipilih)' : ''}</option>`; }).join('')}</optgroup>`;
     }).join('');
   }
-  return { html, cadang, kumpul, label, terimaSemua, lipat, pilihanHtml, URUTAN, NAMA, PENDEK };
+  return { html, htmlTarikh, cadang, kumpul, label, terimaSemua, lipat, pilihanHtml, URUTAN, NAMA, PENDEK };
 }

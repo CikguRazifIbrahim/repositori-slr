@@ -147,6 +147,8 @@ button.chip{cursor:pointer}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .hasil-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
 .hasil-head .count{font-weight:600;color:var(--muted)}
+.hasil-nota{font-size:12.5px;color:var(--muted);margin:-2px 0 8px;line-height:1.45}
+.btn-link{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
 .hasil-head select{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:6px 8px;font-size:13.5px}
 .list{display:flex;flex-direction:column;gap:8px}
 .row{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;min-width:0}
@@ -566,6 +568,9 @@ body.web-open{overflow:hidden}
 .kum.kd .kum-dot{background:var(--kd)} .kum.ppo .kum-dot{background:var(--ppo)} .kum.kdg .kum-dot{background:var(--kdg)} .kum.lain .kum-dot{background:var(--lain)}
 .kum.kd .kum-head h3{color:var(--kd)} .kum.ppo .kum-head h3{color:var(--ppo)} .kum.kdg .kum-head h3{color:var(--kdg)}
 .kum.tiada{border-style:dashed;border-color:var(--warn)}
+.kum.hari .kum-dot{background:var(--accent)} .kum.hari .kum-head h3{color:var(--accent)}
+.kum.hari.hariini{border-color:var(--accent-line);box-shadow:0 0 0 2px var(--accent-soft)}
+.row.padat .tag.tema{font-size:10.5px}
 .kum.tiada .kum-head h3{color:var(--warn)}
 .kum-badan{display:flex;flex-direction:column;gap:5px}
 .row.padat{display:block;padding:7px 10px;border-radius:9px}
@@ -985,9 +990,10 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
     <section class="hasil">
       <div class="hasil-head">
         <span class="count" id="hasilCount">Memuatkan</span>
-        <label>Paparan <select id="papar" title="Kumpulan label: artikel dikelompokkan mengikut Tema utama (KD, PPO, KDG, Lain), yang belum dilabel di atas; Senarai: paparan asal"><option value="kumpulan">Kumpulan label</option><option value="senarai">Senarai</option></select></label>
+        <label>Paparan <select id="papar" title="Kumpulan label: artikel dikelompokkan mengikut Tema utama (KD, PPO, KDG, Lain), yang belum dilabel di atas; Senarai: paparan asal; Tarikh muat naik: hari demi hari, hari terbaharu di atas"><option value="kumpulan">Kumpulan label</option><option value="senarai">Senarai</option><option value="tarikh">Tarikh muat naik</option></select></label>
         <label>Susun <select id="sort"><option value="dikemaskini">Terkini dikemas kini</option><option value="naik" title="Mengikut masa fail PDF dimuat naik ke Drive; rekod tanpa PDF mengikut masa dicipta">Muat naik terbaharu</option><option value="naik-lama" title="Fail yang paling lama dimuat naik di atas">Muat naik terlama</option><option value="bil">Bil. menaik</option><option value="bil-desc">Bil. menurun</option><option value="tahun">Tahun terbaharu</option><option value="penulis">Penulis A hingga Z</option><option value="relevansi">Relevansi tertinggi</option></select></label>
       </div>
+      <div id="hasilNota" class="hasil-nota" hidden></div>
       <div id="list" class="list"></div>
     </section>
   </div>
