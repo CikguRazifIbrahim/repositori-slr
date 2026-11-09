@@ -11,7 +11,7 @@ import { initTulisan } from './mod/tulisan.js';
 import { initArtikel } from './mod/artikel.js';
 import { initSintesis } from './mod/sintesis.js';
 import { initKumpulan } from './mod/kumpulan.js';
-const VERSION = '1.19.0';
+const VERSION = '1.20.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -240,7 +240,7 @@ function makeTestAdapters() {
     async connect() { token = 't'; setDriveChip('ok'); return token; },
     connectRedirect() { token = 't'; setDriveChip('ok'); window.__redirected = true; },
     async about() { return { user: { emailAddress: 'ujian@contoh.my' }, storageQuota: { usage: '1048576', limit: '16106127360' } }; },
-    async upload(file, onProgress) { if (!token) throw { code: 'no_token' }; const buf = await file.arrayBuffer(); const id = 'f' + (++fn2); files.set(id, buf); onProgress && onProgress(1); return { id, name: file.name, size: buf.byteLength, webViewLink: 'https://drive.google.com/file/d/' + id + '/view' }; },
+    async upload(file, onProgress) { if (!token) throw { code: 'no_token' }; if (window.__RSLR_TEST_DRIVE_FAIL) { const e = window.__RSLR_TEST_DRIVE_FAIL; window.__RSLR_TEST_DRIVE_FAIL = null; if (e.code === 'token_expired') { token = null; setDriveChip('sambung'); } throw e; } const buf = await file.arrayBuffer(); const id = 'f' + (++fn2); files.set(id, buf); onProgress && onProgress(1); return { id, name: file.name, size: buf.byteLength, webViewLink: 'https://drive.google.com/file/d/' + id + '/view' }; },
     async download(id, onProgress) { if (!token) throw { code: 'no_token' }; const b = files.get(id); if (!b) throw { code: 'download', status: 404 }; onProgress && onProgress(1); return b.slice(0); },
     async remove(id) { files.delete(id); },
     async uploadAs(file, opts) { if (!token) throw { code: 'no_token' }; const buf = await file.arrayBuffer(); const id = 'f' + (++fn2); files.set(id, buf); const name = (opts && opts.name) || file.name; window.__uploadsAs = (window.__uploadsAs || []).concat([{ id, name, sub: opts && opts.subfolder, mime: opts && opts.mime, size: buf.byteLength }]); return { id, name, size: buf.byteLength, modifiedTime: new Date().toISOString(), webViewLink: 'https://drive.google.com/file/d/' + id + '/view' }; },
@@ -318,9 +318,17 @@ function makeDriveAdapter() {
   } catch (e) {}
   const gisReady = () => !!(window.google && window.google.accounts && window.google.accounts.oauth2);
   function hasToken() { return !!token && now() < exp - 30000; }
+  // Tetingkap kebenaran Google hanya dibenarkan pelayar sejurus selepas klik pengguna (pengaktifan sementara).
+  const tanpaKlik = () => !!(navigator.userActivation && navigator.userActivation.isActive === false);
+  function forget() { token = null; exp = 0; try { localStorage.removeItem('rslr_drive'); sessionStorage.removeItem('rslr_drive'); } catch (e) {} }
   function connect(interactive) {
     if (hasToken() && !interactive) return Promise.resolve(token);
     if (!gisReady()) { self.lastError = { code: 'gis_missing' }; return Promise.reject({ code: 'gis_missing' }); }
+    if (!interactive && tanpaKlik()) {
+      // Token tamat atau ditolak di luar klik pengguna: jangan buka tetingkap (pelayar akan menyekatnya); lapor supaya UI meminta satu klik.
+      forget(); self.lastError = { code: 'token_expired' }; setDriveChip('sambung');
+      return Promise.reject({ code: 'token_expired' });
+    }
     return new Promise((res, rej) => {
       const fail = e => { self.lastError = e; rej(e); };
       if (!client) client = window.google.accounts.oauth2.initTokenClient({ client_id: C.googleClientId, scope: SCOPE, callback: () => {} });
@@ -445,12 +453,13 @@ function makeDriveAdapter() {
   async function remove(id) { const r = await authed(`files/${encodeURIComponent(id)}`, { method: 'DELETE' }); if (!r.ok && r.status !== 404) throw { code: 'delete', status: r.status }; }
   async function safeText(r) { try { return (await r.text()).slice(0, 300); } catch (e) { return ''; } }
   return { ready: gisReady, hasToken, connect, connectRedirect, about, upload, uploadAs, listFolder, download, remove, link: id => `https://drive.google.com/file/d/${id}/view`,
-    get lastError() { return self.lastError; }, get justRedirected() { return !!self.justRedirected; }, redirectUri: self.redirectUri, tokenExpiry: () => exp, forget() { token = null; exp = 0; try { localStorage.removeItem('rslr_drive'); sessionStorage.removeItem('rslr_drive'); } catch (e) {} } };
+    get lastError() { return self.lastError; }, get justRedirected() { return !!self.justRedirected; }, redirectUri: self.redirectUri, tokenExpiry: () => exp, forget };
 }
 function driveMsg(e) {
   const c = e && e.code; const st = e && e.status;
   if (c === 'gis_missing') return 'skrip Google tidak dimuatkan. Semak talian internet dan muat semula.';
   if (c === 'no_token') return 'Google Drive belum disambung.';
+  if (c === 'token_expired') return 'sambungan Google Drive telah tamat tempoh. Klik "Sambung Drive" pada bar atas, kemudian cuba lagi.';
   if (c === 'popup_closed') return 'tetingkap kebenaran Google ditutup sebelum selesai.';
   if (c === 'popup_failed_to_open') return 'tetingkap kebenaran Google disekat. Benarkan pop-up untuk laman ini.';
   if (c === 'access_denied') return 'kebenaran Google Drive ditolak.';
@@ -480,9 +489,25 @@ function searchText(d) {
   return t;
 }
 const REL_ORDER = { 'Tinggi': 0, 'Sederhana-Tinggi': 1, 'Sederhana': 2, 'Rendah': 3 };
+/* Masa muat naik: fail PDF terbaharu pada rekod; rekod tanpa PDF mengikut masa rekod dicipta. */
+function masaNaik(d) { let m = 0; (d.fail || []).forEach(f => { const t = Number(f.masa) || 0; if (t > m) m = t; }); return m || Number(d.dicipta) || 0; }
+const ikutNaik = () => S.sort === 'naik' || S.sort === 'naik-lama' || !!(S.filters && S.filters.naik);
+function hadNaik(v) {
+  if (!v) return 0;
+  if (v === 'hari') { const t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); }
+  const n = parseInt(v, 10); return n > 0 ? now() - n * 86400000 : 0;
+}
+/* Teks masa pada baris senarai: masa muat naik apabila susunan atau tapisan muat naik aktif, jika tidak masa kemas kini. */
+function metaMasa(d) {
+  if (!ikutNaik()) return esc(fmtTime(d.dikemaskini));
+  const t = masaNaik(d); const adaPdf = (d.fail || []).some(f => Number(f.masa));
+  if (!t) return '<span class="meta-naik" title="Tiada masa muat naik atau masa cipta direkodkan">Tiada masa</span>';
+  return `<span class="meta-naik" title="${adaPdf ? 'Masa fail PDF dimuat naik ke Drive' : 'Rekod tanpa PDF: masa rekod dicipta'}">${adaPdf ? 'Dimuat naik' : 'Dicipta'} ${esc(fmtTime(t))}</span>`;
+}
 function filteredEntries() {
-  const f = S.filters; const q = (f.q || '').trim().toLowerCase();
+  const f = S.filters; const q = (f.q || '').trim().toLowerCase(); const had = hadNaik(f.naik);
   let arr = Array.from(S.docs.entries()).filter(([id, d]) => {
+    if (had && masaNaik(d) < had) return false;
     if (f.tema && d.tema !== f.tema) return false;
     if (f.relevansi && d.relevansi !== f.relevansi) return false;
     if (f.peringkat && d.peringkat !== f.peringkat) return false;
@@ -507,6 +532,8 @@ function filteredEntries() {
   arr.sort(([ia, a], [ib, b]) => {
     if (s === 'bil') return (Number(a.bil) || 0) - (Number(b.bil) || 0);
     if (s === 'bil-desc') return (Number(b.bil) || 0) - (Number(a.bil) || 0);
+    if (s === 'naik') return masaNaik(b) - masaNaik(a) || (b.dikemaskini || 0) - (a.dikemaskini || 0);
+    if (s === 'naik-lama') return masaNaik(a) - masaNaik(b) || (a.dikemaskini || 0) - (b.dikemaskini || 0);
     if (s === 'tahun') return (parseInt(b.tahun, 10) || 0) - (parseInt(a.tahun, 10) || 0) || cmpStr(a.penulis, b.penulis);
     if (s === 'penulis') return cmpStr(a.penulis, b.penulis) || (parseInt(a.tahun, 10) || 0) - (parseInt(b.tahun, 10) || 0);
     if (s === 'relevansi') return (REL_ORDER[a.relevansi] ?? 9) - (REL_ORDER[b.relevansi] ?? 9) || (b.dikemaskini || 0) - (a.dikemaskini || 0);
@@ -576,7 +603,7 @@ function renderList() {
         <div class="row-chips">${d.tema ? `<span class="tag tema ${temaClass(d.tema)}"><span>${esc(d.tema)}</span></span>` : ''}${d.relevansi ? `<span class="tag ${relClass(d.relevansi)}"><span>${esc(d.relevansi)}</span></span>` : ''}${d.peringkat ? `<span class="tag"><span>${esc(d.peringkat)}</span></span>` : ''}${d.negara ? `<span class="tag"><span>${esc(d.negara)}</span></span>` : ''}${(d.bab || []).length ? `<span class="tag"><span>${esc(d.bab.join(', '))}</span></span>` : ''}${nF ? `<span class="tag pdf"><span>PDF ${nF > 1 ? nF : ''}</span></span>` : ''}${d.indeks && nF && d.indeks.fail === d.fail[0].id ? `<span class="tag"><span>Diindeks</span></span>` : ''}</div>
         ${acts}
       </div>
-      <div class="row-meta">${esc(fmtTime(d.dikemaskini))}</div>
+      <div class="row-meta">${metaMasa(d)}</div>
     </div>`;
   }).join('');
 }
@@ -707,7 +734,8 @@ const ulog = { open() { $('#uploadLog').hidden = false; }, row(name, size) {
   const el = document.createElement('div'); el.className = 'urow'; el.innerHTML = `<span class="n"></span><span class="z"></span><span class="s">Menunggu</span><div class="p" hidden><span></span></div>`;
   el.querySelector('.n').textContent = name; el.querySelector('.z').textContent = size; $('#ulogRows').prepend(el);
   const bar = el.querySelector('.p'); const fill = bar.querySelector('span');
-  return { status(t) { el.className = 'urow'; el.querySelector('.s').textContent = t; }, progress(p) { bar.hidden = false; fill.style.width = Math.round(p * 100) + '%'; }, ok(t) { el.className = 'urow ok'; bar.hidden = true; el.querySelector('.s').textContent = t; }, fail(t) { el.className = 'urow bad'; bar.hidden = true; el.querySelector('.s').textContent = t; } };
+  return { status(t) { el.className = 'urow'; el.querySelector('.s').textContent = t; }, progress(p) { bar.hidden = false; fill.style.width = Math.round(p * 100) + '%'; }, ok(t) { el.className = 'urow ok'; bar.hidden = true; el.querySelector('.s').textContent = t; },
+    fail(t, action) { el.className = 'urow bad'; bar.hidden = true; const s = el.querySelector('.s'); s.textContent = t; if (action) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm btn-primary'; b.textContent = action.label; b.addEventListener('click', () => { b.disabled = true; Promise.resolve(action.fn()).then(ok => { if (ok) el.remove(); else b.disabled = false; }).catch(() => { b.disabled = false; }); }); s.appendChild(b); } } };
 } };
 const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
 const POPUP_CODES = ['popup_failed_to_open', 'popup_closed', 'popup', 'interaction_required', 'consent_required', 'login_required', 'gis_missing', 'request_failed', 'token_error'];
@@ -721,6 +749,8 @@ async function ensureDrive(interactive) {
   if (Drive.hasToken()) return true;
   try { await Drive.connect(!!interactive); return true; }
   catch (e) {
+    // Di luar klik pengguna tiada tetingkap boleh dibuka; biar pemanggil memaparkan butang "Sambung Drive" sendiri.
+    if (!interactive && e.code === 'token_expired') return false;
     if (!interactive && (POPUP_CODES.includes(e.code) || e.code === 'access_denied')) {
       try { await Drive.connect(true); return true; }
       catch (e2) { if (POPUP_CODES.includes(e2.code) && (isStandalone() || lsGet('rslr_drive_redirect_ok', false))) { await offerRedirect(e2); return false; } toast('Google Drive tidak dapat disambung: ' + driveMsg(e2), true); return false; }
@@ -778,8 +808,24 @@ async function uploadFiles(files, articleId) {
     files = p.files; articleId = p.articleId;
   }
   ulog.open();
-  for (const f of files) await uploadOne(f, articleId);
+  for (let i = 0; i < files.length; i++) {
+    const hasil = await uploadOne(files[i], articleId);
+    if (hasil === 'auth') {
+      // Sambungan Drive tamat semasa muat naik: simpan fail ini dan baki fail, teruskan selepas satu klik (tetingkap kebenaran dibenarkan pelayar).
+      S.pendingUpload = { files: files.slice(i), articleId }; setDriveChip('sambung');
+      toast(`Sambungan Google Drive tamat tempoh; ${files.length - i} fail menunggu. Klik untuk menyambung semula dan meneruskan muat naik.`, true, { label: 'Sambung Drive dan teruskan', fn: sambungTeruskan });
+      return;
+    }
+  }
 }
+/* Menyambung Drive dalam klik pengguna, kemudian meneruskan muat naik yang tertangguh. */
+async function sambungTeruskan() {
+  const p = S.pendingUpload;
+  const ok = await ensureDrive(true); if (!ok) return false;
+  if (p && p.files && p.files.length) { S.pendingUpload = null; await uploadFiles(p.files, p.articleId); }
+  return true;
+}
+const isAuthErr = e => !!e && (e.code === 'token_expired' || e.code === 'no_token' || e.status === 401 || POPUP_CODES.includes(e.code));
 async function uploadOne(file, articleId) {
   const row = ulog.row(file.name, fmtBytes(file.size));
   const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
@@ -803,7 +849,10 @@ async function uploadOne(file, articleId) {
     try { res = await Drive.upload(file, p => row.progress(p)); }
     catch (e) { err = e; if (attempt === 0 && (e.code === 'network' || (e.status && e.status >= 500))) await sleep(1500); else break; }
   }
-  if (!res || !res.id) { row.fail('Gagal: ' + driveMsg(err || { code: 'upload' })); return; }
+  if (!res || !res.id) {
+    if (isAuthErr(err)) { row.fail('Tertangguh: sambungan Google Drive tamat tempoh. Klik "Sambung Drive dan teruskan" atau cip "Sambung Drive" di bar atas; fail ini tidak hilang.', { label: 'Sambung Drive dan teruskan', fn: sambungTeruskan }); return 'auth'; }
+    row.fail('Gagal: ' + driveMsg(err || { code: 'upload' })); return;
+  }
   const entry = { id: res.id, nama: file.name, saiz: Number(res.size) || file.size, masa: now(), link: res.webViewLink || Drive.link(res.id) };
   try {
     if (articleId) {
@@ -1014,7 +1063,7 @@ window.addEventListener('mouseup', () => { drag = null; stage.classList.remove('
 window.addEventListener('resize', () => { applySplitLayout(); scheduleRerender(); });
 
 /* ---------- export ---------- */
-const CSV_COLS = [['bil', 'Bil.'], ['status', 'Status bacaan'], ['penulis', 'Penulis'], ['tahun', 'Tahun'], ['tajuk', 'Tajuk'], ['rujukan', 'Rujukan APA 7'], ['doi', 'DOI'], ['jenis', 'Jenis sumber'], ['indeks', 'Pengindeksan'], ['kuartil', 'Kuartil'], ['negara', 'Negara'], ['peringkat', 'Peringkat pendidikan'], ['lokasi', 'Lokasi sekolah'], ['tema', 'Tema utama'], ['objektif', 'Objektif'], ['konstruk', 'Konstruk dan peranan'], ['definisi', 'Definisi konstruk'], ['teori', 'Teori dan sumber primer'], ['asasTeori', 'Asas teori'], ['rekaBentuk', 'Reka bentuk'], ['penilai', 'Siapa menilai siapa'], ['sampel', 'Sampel dan persampelan'], ['instrumen', 'Instrumen'], ['teknik', 'Teknik analisis'], ['perisian', 'Perisian dan prosedur'], ['dapatan', 'Dapatan utama'], ['cabaran', 'Cabaran'], ['implikasi', 'Kesimpulan dan implikasi'], ['batasan', 'Batasan dan cadangan pengarang'], ['jurang', 'Jurang'], ['jenisJurang', 'Jenis jurang'], ['kekuatan', 'Kekuatan'], ['kelemahan', 'Kelemahan'], ['mmat', 'Nota MMAT'], ['relevansi', 'Relevansi'], ['alasanRelevansi', 'Alasan relevansi'], ['jenisKesan', 'Kesan yang diuji'], ['padananKdPpo', 'Padanan KD ke PPO'], ['padananPpoKdg', 'Padanan PPO ke KDG'], ['bandingan', 'Bandingan silang'], ['hubungan', 'Hubungan sintesis'], ['bab', 'Bab'], ['subtopik', 'Subtopik'], ['jejak', 'Sumber primer untuk dijejak'], ['catatan', 'Catatan'], ['fail', 'Fail PDF'], ['failLink', 'Pautan Drive'], ['pautan', 'Pautan luar'], ['dicipta', 'Dicipta'], ['dikemaskini', 'Dikemas kini']];
+const CSV_COLS = [['bil', 'Bil.'], ['status', 'Status bacaan'], ['penulis', 'Penulis'], ['tahun', 'Tahun'], ['tajuk', 'Tajuk'], ['rujukan', 'Rujukan APA 7'], ['doi', 'DOI'], ['jenis', 'Jenis sumber'], ['indeks', 'Pengindeksan'], ['kuartil', 'Kuartil'], ['negara', 'Negara'], ['peringkat', 'Peringkat pendidikan'], ['lokasi', 'Lokasi sekolah'], ['tema', 'Tema utama'], ['objektif', 'Objektif'], ['konstruk', 'Konstruk dan peranan'], ['definisi', 'Definisi konstruk'], ['teori', 'Teori dan sumber primer'], ['asasTeori', 'Asas teori'], ['rekaBentuk', 'Reka bentuk'], ['penilai', 'Siapa menilai siapa'], ['sampel', 'Sampel dan persampelan'], ['instrumen', 'Instrumen'], ['teknik', 'Teknik analisis'], ['perisian', 'Perisian dan prosedur'], ['dapatan', 'Dapatan utama'], ['cabaran', 'Cabaran'], ['implikasi', 'Kesimpulan dan implikasi'], ['batasan', 'Batasan dan cadangan pengarang'], ['jurang', 'Jurang'], ['jenisJurang', 'Jenis jurang'], ['kekuatan', 'Kekuatan'], ['kelemahan', 'Kelemahan'], ['mmat', 'Nota MMAT'], ['relevansi', 'Relevansi'], ['alasanRelevansi', 'Alasan relevansi'], ['jenisKesan', 'Kesan yang diuji'], ['padananKdPpo', 'Padanan KD ke PPO'], ['padananPpoKdg', 'Padanan PPO ke KDG'], ['bandingan', 'Bandingan silang'], ['hubungan', 'Hubungan sintesis'], ['bab', 'Bab'], ['subtopik', 'Subtopik'], ['jejak', 'Sumber primer untuk dijejak'], ['catatan', 'Catatan'], ['fail', 'Fail PDF'], ['failLink', 'Pautan Drive'], ['pautan', 'Pautan luar'], ['dimuatNaik', 'Dimuat naik'], ['dicipta', 'Dicipta'], ['dikemaskini', 'Dikemas kini']];
 function csvCell(v) { const s = String(v ?? '').replace(/\r\n|\r|\n/g, '\n'); return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function toCSV(entries) {
   const head = CSV_COLS.map(c => csvCell(c[1])).join(',');
@@ -1023,6 +1072,7 @@ function toCSV(entries) {
     if (k === 'fail') v = (d.fail || []).map(f => f.nama).join('; ');
     else if (k === 'failLink') v = (d.fail || []).map(f => f.link || Drive.link(f.id)).join('; ');
     else if (k === 'hubungan') v = R.Sintesis ? R.Sintesis.teksCsv(d) : '';
+    else if (k === 'dimuatNaik') { const m = (d.fail || []).reduce((x, f) => Math.max(x, Number(f.masa) || 0), 0); v = m ? fmtTime(m) : ''; }
     else if (Array.isArray(v)) v = v.join('; ');
     else if (k === 'dicipta' || k === 'dikemaskini') v = v ? fmtTime(v) : '';
     return csvCell(v);
@@ -1077,10 +1127,14 @@ $('#moreMenu').addEventListener('click', async e => {
   else exportData(x);
 });
 document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) $('#moreMenu').hidden = true; });
-$('#driveChip').addEventListener('click', () => ensureDrive(true));
+$('#driveChip').addEventListener('click', () => sambungTeruskan());
+/* Cip Drive mengikut hayat token: selepas tamat tempoh (kira-kira sejam) cip bertukar kepada "Sambung Drive" supaya klik seterusnya membuka tetingkap kebenaran dengan betul. */
+function segarChipDrive() { if (!S.user || !Drive.ready()) return; const c = $('#driveChip'); if (c.classList.contains('ok') && !Drive.hasToken()) setDriveChip('sambung'); }
+setInterval(segarChipDrive, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) segarChipDrive(); });
 $('#btnFilterToggle').addEventListener('click', () => $('#filters').classList.toggle('open'));
 $('#btnCloseLog').addEventListener('click', () => { $('#uploadLog').hidden = true; });
-const FILTER_IDS = { q: 'q', tema: 'fTema', relevansi: 'fRel', status: 'fStatus', peringkat: 'fPeringkat', jenis: 'fJenis', negara: 'fNegara', bab: 'fBab', padanan: 'fPadanan', tahunDari: 'fTahunDari', tahunHingga: 'fTahunHingga', pdf: 'fPdf' };
+const FILTER_IDS = { q: 'q', tema: 'fTema', relevansi: 'fRel', status: 'fStatus', peringkat: 'fPeringkat', jenis: 'fJenis', negara: 'fNegara', bab: 'fBab', padanan: 'fPadanan', tahunDari: 'fTahunDari', tahunHingga: 'fTahunHingga', pdf: 'fPdf', naik: 'fNaik' };
 function readFilters() { const f = {}; Object.entries(FILTER_IDS).forEach(([k, id]) => { f[k] = $('#' + id).value; }); S.filters = f; S.sort = $('#sort').value; S.papar = $('#papar').value === 'senarai' ? 'senarai' : 'kumpulan'; savePrefs(); renderList(); }
 function writeFilters() { Object.entries(FILTER_IDS).forEach(([k, id]) => { $('#' + id).value = S.filters[k] || ''; }); $('#sort').value = S.sort || 'dikemaskini'; $('#papar').value = S.papar === 'senarai' ? 'senarai' : 'kumpulan'; }
 function resetFilters() { S.filters = {}; writeFilters(); savePrefs(); renderList(); }
@@ -1253,7 +1307,7 @@ async function start() {
 const R = {
   $, $$, esc, toast, confirmBox, fmtTime, fmtBytes, lsGet, lsSet, saveFile, normDoi, TEMA, C, S, V,
   db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList,
-  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name), savePrefs
+  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name), savePrefs, masaNaik, metaMasa
 };
 const Flip = initFlip(R); R.Flip = Flip;
 const Harian = initHarian(R); R.Harian = Harian;
