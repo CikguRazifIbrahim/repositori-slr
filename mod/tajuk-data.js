@@ -16,7 +16,7 @@ export const MEDAN = {
   kuan: [
     M('pvBebas', 'Pemboleh ubah bebas (peramal)', 'contoh: kepimpinan digital guru besar', 1, 'pv'),
     M('pvSandar', 'Pemboleh ubah bersandar (hasil)', 'contoh: kompetensi digital guru', 1, 'pv'),
-    M('pvLain', 'Pengantara atau penyederhana, jika ada', 'contoh: pengurusan pengetahuan organisasi sebagai pengantara', 0, 'pv'),
+    M('pvLain', 'Pengantara (perantara) atau penyederhana, jika ada', 'contoh: pengurusan pengetahuan organisasi sebagai pengantara', 0, 'pv'),
     M('populasi', 'Populasi atau responden', 'contoh: guru sekolah rendah', 1, 'pop'),
     KONTEKS(0),
     M('reka', 'Reka bentuk dan kaedah analisis', 'contoh: tinjauan keratan rentas, pemodelan persamaan struktur', 0, 'reka'),
@@ -299,7 +299,7 @@ export const PERATURAN = {
   ],
   ms: [
     P('Huruf besar pada awal setiap perkataan kecuali kata sendi nama, kata hubung dan kata pemeri (contohnya yang, dan, dengan, di, dalam, antara, tentang, melalui, bagi, terhadap, untuk, daripada, kepada), dan huruf besar selepas titik bertindih; bagi kata ganda, hanya unsur pertama berhuruf besar.', 'dbphuruf'),
-    P('Guna "dalam kalangan" (bukan "di kalangan"), "terhadap" selepas kesan atau pengaruh (bukan "ke atas"), "antara ... dengan ..." bagi hubungan dua perkara ("dan" hanya apabila lebih daripada dua perkara disenaraikan) dan "pemboleh ubah" sebagai dua perkataan. Padanan Melayu bagi mediator ialah "pengantara".', 'dbpfrasa'),
+    P('Guna "dalam kalangan" (bukan "di kalangan"), "terhadap" selepas kesan atau pengaruh (bukan "ke atas"), "antara ... dengan ..." bagi hubungan dua perkara ("dan" hanya apabila lebih daripada dua perkara disenaraikan) dan "pemboleh ubah" sebagai dua perkataan. Padanan Melayu bagi mediator menurut Dewan Bahasa dan Pustaka ialah "pengantara"; "perantara" juga digunakan dalam jurnal, maka pilih satu dan gunakan secara tekal dalam seluruh manuskrip.', 'dbpfrasa'),
     P('Tajuk ditulis sepenuhnya dalam Bahasa Melayu baku dan lazimnya dibina pada kata nama (Pengaruh, Hubungan, Kesan, Peranan); nama ditulis penuh, dengan singkatan dalam kurungan jika perlu.', 'dbphuruf'),
     P('Artikel Bahasa Melayu dalam jurnal Malaysia perlu disertai tajuk Bahasa Inggeris.', 'mcc', 'jpm')
   ],
@@ -313,13 +313,13 @@ export const PERATURAN = {
   jenis: {
     'ul-payung': { ganti: true, senarai: [
       P('Namakan jenis ulasan dalam tajuk: "overview of reviews" mengikut PRIOR (butiran 1) atau "umbrella review" mengikut Manual JBI. Ikut garis panduan yang dinamakan oleh jurnal sasaran.', 'prior', 'jbipayung'),
-      P('Manual JBI menyarankan unsur soalan ulasan (populasi, intervensi atau fenomena, konteks) dalam tajuk, tajuk yang bukan soalan dan bukan kesimpulan, dan panjang sekitar 12 hingga 14 patah perkataan.', 'jbipayung')] },
+      P('Manual JBI meminta frasa "umbrella review" dalam tajuk bersama unsur soalan ulasan (populasi, intervensi atau fenomena, konteks), tajuk yang bukan soalan dan bukan kesimpulan, dan menyebut kelaziman bahawa tajuk tidak melebihi 12 hingga 14 patah perkataan.', 'jbipayung')] },
     'ul-realis': { ganti: true, senarai: [P('Namakan artikel dalam tajuk sebagai sintesis realis atau ulasan realis (RAMESES, butiran 1).', 'rameses')] },
     'ul-metasintesis': { ganti: true, senarai: [P('Tajuk mengenal pasti isu atau topik utama dan menandakan bahawa artikel ini suatu bentuk sintesis kualitatif, contohnya sintesis meta kualitatif atau meta-etnografi (piawaian APA bagi meta-analisis kualitatif).', 'jarsqual')] },
     'ul-bersepadu': { ganti: true, senarai: [P('Tiada garis panduan pelaporan yang menetapkan tajuk ulasan bersepadu. Sebagai amalan baik, nyatakan topik atau soalan dan namakan jenis ulasan, selaras dengan piawaian APA bagi artikel sintesis.', 'jarsquant')] },
     'ul-pantas': { ganti: true, senarai: [P('Belum ada garis panduan pelaporan muktamad bagi ulasan pantas; PRISMA 2020 digunakan sebagai asas. Menamakan artikel sebagai ulasan pantas ialah amalan baik, bukan butiran rasmi.', 'prisma2020')] },
     'ul-pemetaan': { ganti: true, senarai: [P('Tiada garis panduan pelaporan khusus bagi tajuk pemetaan sistematik dalam pendidikan. Sebagai amalan baik, namakan jenis kajian dan bina tajuk daripada konsep dan konteks, seperti ulasan skop.', 'prismascr')] },
-    'emp-eksperimen': { ganti: false, senarai: [P('Percubaan rawak: kenal pasti kajian sebagai percubaan rawak dalam tajuk (CONSORT 2025, butiran 1a). Kajian intervensi tanpa perawakan: nyatakan cara unit diagihkan dan populasi sasaran dalam tajuk atau abstrak (TREND, butiran 1).', 'consort', 'trend')] },
+    'emp-eksperimen': { ganti: false, senarai: [P('Percubaan rawak: kenal pasti kajian sebagai percubaan rawak (CONSORT 2025, butiran 1a), lazimnya dengan perkataan "rawak" dalam tajuk. Kajian intervensi tanpa perawakan: nyatakan cara unit diagihkan dan populasi sasaran dalam tajuk atau abstrak (TREND, butiran 1).', 'consort', 'trend')] },
     'met-replikasi': { ganti: false, senarai: [P('Bagi kajian replikasi, beri maklumat yang cukup dalam tajuk dan teks supaya pembaca tahu ia replikasi dan jenisnya (piawaian APA, Jadual 6).', 'jarsquant')] },
     'emp-kes': { ganti: false, senarai: [P('Tiada peraturan rasmi bagi tajuk kajian kes sains sosial; menamakan "kajian kes" sebagai pendekatan selaras dengan syor SRQR.', 'srqr')] },
     'met-protokol': { ganti: false, senarai: [P('Protokol ulasan: kenal pasti artikel sebagai protokol ulasan sistematik dalam tajuk (PRISMA-P, butiran 1a).', 'prismap')] }
