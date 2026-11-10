@@ -174,9 +174,9 @@ export const namaPola = k => { const p = POLA.find(x => x.k === String(k || '').
 export const TANPA_SOALAN = new Set(['ul-skop', 'ul-sistematik', 'ul-meta', 'ul-payung']);
 
 /* ---- panjang tajuk (patah perkataan) ----
-   Amalan semasa jurnal pendidikan dan sains sosial berbahasa Inggeris: kebanyakan tajuk 10 hingga 15 patah perkataan, sehingga 16 atau 17
-   masih lazim dalam jurnal pendidikan; melebihi 20 dikira terlalu panjang dan kurang daripada 6 lazimnya kurang maklumat bagi artikel
-   empirikal (Hyland dan Zou, 2022; Jiang dan Hyland, 2023; Fox dan Burns, 2015). Belum ada kajian setara bagi tajuk Bahasa Melayu, maka
+   Tajuk artikel berbahasa Inggeris kini lazimnya 11 hingga 15 patah perkataan (Jiang dan Hyland, 2023); dalam jurnal pendidikan terkemuka
+   puratanya 14.2, dengan 48 peratus antara 11 hingga 15 dan 35 peratus melebihi 15 (Hyland dan Zou, 2022). Sasaran aplikasi: 10 hingga 15,
+   kelonggaran hingga 17, amaran melebihi 17, gagal melebihi 20 atau kurang daripada 4 (Fox dan Burns, 2015, tentang tajuk yang sangat panjang). Belum ada kajian setara bagi tajuk Bahasa Melayu, maka
    julat yang sama digunakan sebagai panduan. APA Style tidak menetapkan had; had jurnal sasaran sentiasa mengatasi julat ini. */
 export const PANJANG = { min: 6, sasar: [10, 15], lazim: 17, had: 20 };
 
@@ -190,6 +190,7 @@ export const SUMBER = {
   jbisr: S('Tufanaru et al. (2024)', 'Tufanaru, C., Munn, Z., Aromataris, E., Campbell, J., & Hopp, L. (2024). Systematic reviews of effectiveness. In E. Aromataris, C. Lockwood, K. Porritt, B. Pilla, & Z. Jordan (Eds.), JBI manual for evidence synthesis. JBI.', 'https://doi.org/10.46658/JBIMES-24-03'),
   jbipayung: S('Aromataris et al. (2024)', 'Aromataris, E., Fernandez, R., Godfrey, C., Holly, C., Khalil, H., & Tungpunkom, P. (2024). Umbrella reviews. In E. Aromataris, C. Lockwood, K. Porritt, B. Pilla, & Z. Jordan (Eds.), JBI manual for evidence synthesis. JBI.', 'https://doi.org/10.46658/JBIMES-24-08'),
   prior: S('Gates et al. (2022)', 'Gates, M., Gates, A., Pieper, D., Fernandes, R. M., Tricco, A. C., Moher, D., Brennan, S. E., Li, T., Pollock, M., Lunny, C., Sepúlveda, D., McKenzie, J. E., Scott, S. D., Robinson, K. A., Matthias, K., Bougioukas, K. I., Fusar-Poli, P., Whiting, P., Moss, S. J., & Hartling, L. (2022). Reporting guideline for overviews of reviews of healthcare interventions: Development of the PRIOR statement. BMJ, 378, Article e070849.', 'https://doi.org/10.1136/bmj-2022-070849'),
+  stevens: S('Stevens et al. (2025)', 'Stevens, A., Hersi, M., Garritty, C., Hartling, L., Shea, B. J., Stewart, L. A., Welch, V. A., & Tricco, A. C. (2025). Rapid review method series: Interim guidance for the reporting of rapid reviews. BMJ Evidence-Based Medicine, 30(2), 118-123.', 'https://doi.org/10.1136/bmjebm-2024-112899'),
   rameses: S('Wong et al. (2013)', 'Wong, G., Greenhalgh, T., Westhorp, G., Buckingham, J., & Pawson, R. (2013). RAMESES publication standards: Realist syntheses. BMC Medicine, 11, Article 21.', 'https://doi.org/10.1186/1741-7015-11-21'),
   biblio: S('Montazeri et al. (2023)', 'Montazeri, A., Mohammadi, S., M.Hesari, P., Ghaemi, M., Riazi, H., & Sheikhi-Mobarakeh, Z. (2023). Preliminary guideline for reporting bibliometric reviews of the biomedical literature (BIBLIO): A minimum requirements. Systematic Reviews, 12, Article 239.', 'https://doi.org/10.1186/s13643-023-02410-2'),
   prismap: S('Moher et al. (2015)', 'Moher, D., Shamseer, L., Clarke, M., Ghersi, D., Liberati, A., Petticrew, M., Shekelle, P., Stewart, L. A., & PRISMA-P Group. (2015). Preferred reporting items for systematic review and meta-analysis protocols (PRISMA-P) 2015 statement. Systematic Reviews, 4, Article 1.', 'https://doi.org/10.1186/2046-4053-4-1'),
@@ -240,11 +241,11 @@ const P = (t, ...s) => ({ t, s });
 export const PERATURAN = {
   am: [
     P('Tajuk menyatakan dengan jelas apa yang dikaji dan memuat istilah utama yang dicari pembaca; fokus dan padat.', 'aera', 'apastyle'),
-    P('APA Style tidak menetapkan had panjang. Amalan semasa jurnal pendidikan dan sains sosial berbahasa Inggeris kebanyakannya 10 hingga 15 patah perkataan; melebihi 20 dikira terlalu panjang. Had jurnal sasaran mengatasi julat ini.', 'apastyle', 'hyland', 'jiang', 'fox'),
-    P('Bentuk dua bahagian (topik atau hubungan, titik bertindih, kemudian reka bentuk, konteks atau skop) ialah bentuk paling lazim dalam jurnal pendidikan dan sains sosial.', 'hudson', 'hyland'),
-    P('Guna istilah yang lazim bagi konstruk utama dan letakkan di awal tajuk. Elak jargon dan singkatan, kecuali singkatan itu sendiri istilah carian yang mantap bagi sesuatu kerangka, instrumen atau kaedah.', 'thelwall', 'martinez', 'heard'),
-    P('Nama negara, negeri atau tapak kajian diletakkan di hujung tajuk atau selepas titik bertindih, dan hanya apabila latar itu sebahagian daripada sumbangan artikel atau diminta jurnal. Jangan meluaskan dakwaan melebihi data.', 'abramo', 'burns'),
-    P('Elak jenaka, permainan kata, petikan dan frasa klise, terutama sebelum titik bertindih.', 'sagi', 'keating'),
+    P('APA Style tidak menetapkan had panjang. Tajuk artikel berbahasa Inggeris kini lazimnya 11 hingga 15 patah perkataan; dalam jurnal pendidikan terkemuka puratanya kira-kira 14 dan kira-kira satu pertiga melebihi 15. Sasaran di sini 10 hingga 15 dengan kelonggaran hingga 17, dan tajuk melebihi 20 ditanda terlalu panjang. Had jurnal sasaran mengatasi julat ini.', 'apastyle', 'jiang', 'hyland', 'fox'),
+    P('Bentuk dua bahagian (topik atau hubungan, titik bertindih, kemudian reka bentuk, konteks atau skop) ialah bentuk paling lazim dalam jurnal pendidikan: kira-kira 61 peratus tajuk pendidikan dan 53 peratus tajuk perniagaan dan pengurusan dalam data penilaian penyelidikan United Kingdom 2014 mempunyai titik bertindih. Ia kurang lazim dalam ekonomi dan psikologi.', 'hudson', 'hyland'),
+    P('Guna istilah yang lazim bagi konstruk utama; dalam beberapa sampel besar, istilah yang jarang digunakan dan jargon dikaitkan dengan sitasi yang lebih rendah. Elak singkatan, kecuali singkatan itu sendiri istilah carian yang mantap bagi sesuatu kerangka, instrumen atau kaedah.', 'thelwall', 'martinez', 'heard'),
+    P('Dalam beberapa kajian, artikel yang menamakan negara dalam tajuk menerima sitasi yang sedikit lebih rendah (kesannya kecil). Maka nama negara, negeri atau tapak kajian wajar diletakkan di hujung tajuk atau selepas titik bertindih, dan hanya apabila latar itu sebahagian daripada sumbangan artikel atau diminta jurnal. Jangan pula meluaskan dakwaan melebihi data.', 'abramo', 'burns'),
+    P('Elak jenaka, permainan kata, petikan dan frasa klise, terutama sebelum titik bertindih; dalam psikologi dan komunikasi, tajuk sebegini tidak menambah sitasi dan ada kalanya mengurangkannya.', 'sagi', 'keating'),
     P('Buang pembuka pengisi (contohnya "Satu kajian tentang", "A study of") dan kata sifat yang tidak menambah maklumat (contohnya baharu, novel, inovatif, komprehensif).', 'annesley', 'bahadoran', 'tnf'),
     P('Tajuk soalan dan tajuk yang menyatakan dapatan bukan pilihan lalai kerana buktinya bercampur. Jika tajuk soalan digunakan, pilih soalan terbuka dengan huraian yang jelas selepasnya.', 'jamali', 'wager'),
     P('Tajuk yang baik memudahkan artikel ditemui dan difahami. Kajian setakat ini tidak membuktikan bahawa mengubah ciri tajuk menaikkan sitasi; kesannya kecil berbanding jurnal, pengarang dan isi artikel.', 'kousha', 'pottier')
@@ -257,12 +258,12 @@ export const PERATURAN = {
   slr: [
     P('Namakan artikel sebagai ulasan sistematik dalam tajuk (PRISMA 2020, butiran 1). Label "ulasan", "ulasan literatur" atau "sintesis bukti" sahaja tidak memadai kerana tidak membezakan ulasan sistematik daripada ulasan lain.', 'prisma2020', 'prisma2020ee'),
     P('Tajuk membawa objektif atau soalan utama ulasan, lazimnya populasi dan intervensi atau topik. Boleh ditambah: "dengan meta-analisis", reka bentuk kajian yang dimasukkan, atau status kemas kini.', 'prisma2020ee'),
-    P('Jangan tulis tajuk ulasan sebagai soalan.', 'jbisr')
+    P('Manual JBI meminta tajuk ulasan sistematik tidak ditulis sebagai soalan.', 'jbisr')
   ],
   meta: [
     P('Nyatakan soalan kajian dan jenis sintesis, iaitu meta-analisis, dalam tajuk (piawaian APA bagi meta-analisis).', 'jarsquant'),
     P('Jika meta-analisis ini sebahagian daripada ulasan sistematik, kenal pasti artikel sebagai ulasan sistematik juga, contohnya "ulasan sistematik dan meta-analisis". Kedua-dua istilah itu tidak sama makna: meta-analisis hanya merujuk sintesis statistik.', 'prisma2020', 'prisma2020ee'),
-    P('Jangan tulis tajuk ulasan sebagai soalan.', 'jbisr')
+    P('Manual JBI meminta tajuk ulasan sistematik tidak ditulis sebagai soalan.', 'jbisr')
   ],
   biblio: [
     P('Namakan artikel sebagai ulasan atau analisis bibliometrik dalam tajuk, dan nyatakan isu atau topik yang dikaji serta tempoh yang diliputi (BIBLIO, butiran 1 dan 2). BIBLIO ialah garis panduan awal daripada bidang bioperubatan; di luar bidang itu ia amalan baik, bukan kewajipan.', 'biblio')
@@ -274,7 +275,7 @@ export const PERATURAN = {
     P('Tajuk mengenal pasti pemboleh ubah utama dan isu teori yang dikaji, hubungan antaranya, dan populasi yang dikaji (piawaian APA bagi kajian kuantitatif, Jadual 1).', 'jarsquant'),
     P('Bagi kajian pemodelan persamaan struktur, sebut mekanisme atau proses asas dalam model utama (contohnya peranan pengantara), bukan setiap pemboleh ubah (piawaian APA, Jadual 7).', 'jarsquant'),
     P('Istilah reka bentuk seperti "tinjauan" atau "keratan rentas" memadai jika muncul dalam tajuk atau abstrak (STROBE, butiran 1a; CROSS, butiran 1a).', 'strobe', 'cross'),
-    P('Padankan kata penghubung dengan reka bentuk: "kesan", "impak" dan "pengaruh" membawa makna sebab-akibat, sedangkan kajian keratan rentas menunjukkan hubungan. Dalam satu audit, kira-kira satu pertiga artikel pemerhatian menggunakan bahasa sebab-akibat dalam tajuk atau abstrak, dan sesetengah jurnal mengehadkan bahasa sebegini kepada percubaan rawak.', 'cofield', 'dahabreh')
+    P('Padankan kata penghubung dengan reka bentuk: "kesan", "impak" dan "pengaruh" membawa makna sebab-akibat, sedangkan kajian keratan rentas menunjukkan hubungan. Dalam satu audit jurnal obesiti dan pemakanan, kira-kira satu pertiga artikel pemerhatian menggunakan bahasa sebab-akibat dalam tajuk atau abstrak, dan sesetengah jurnal perubatan mengehadkan bahasa sebegini kepada percubaan rawak.', 'cofield', 'dahabreh')
   ],
   kual: [
     P('Tajuk mengenal pasti isu atau topik utama yang dikaji dan memberi gambaran ringkas tentang sifat kajian (piawaian APA bagi kajian kualitatif; SRQR, butiran S1).', 'jarsqual', 'srqr'),
@@ -317,8 +318,8 @@ export const PERATURAN = {
     'ul-realis': { ganti: true, senarai: [P('Namakan artikel dalam tajuk sebagai sintesis realis atau ulasan realis (RAMESES, butiran 1).', 'rameses')] },
     'ul-metasintesis': { ganti: true, senarai: [P('Tajuk mengenal pasti isu atau topik utama dan menandakan bahawa artikel ini suatu bentuk sintesis kualitatif, contohnya sintesis meta kualitatif atau meta-etnografi (piawaian APA bagi meta-analisis kualitatif).', 'jarsqual')] },
     'ul-bersepadu': { ganti: true, senarai: [P('Tiada garis panduan pelaporan yang menetapkan tajuk ulasan bersepadu. Sebagai amalan baik, nyatakan topik atau soalan dan namakan jenis ulasan, selaras dengan piawaian APA bagi artikel sintesis.', 'jarsquant')] },
-    'ul-pantas': { ganti: true, senarai: [P('Belum ada garis panduan pelaporan muktamad bagi ulasan pantas; PRISMA 2020 digunakan sebagai asas. Menamakan artikel sebagai ulasan pantas ialah amalan baik, bukan butiran rasmi.', 'prisma2020')] },
-    'ul-pemetaan': { ganti: true, senarai: [P('Tiada garis panduan pelaporan khusus bagi tajuk pemetaan sistematik dalam pendidikan. Sebagai amalan baik, namakan jenis kajian dan bina tajuk daripada konsep dan konteks, seperti ulasan skop.', 'prismascr')] },
+    'ul-pantas': { ganti: true, senarai: [P('Belum ada garis panduan pelaporan muktamad bagi ulasan pantas; panduan sementara menyarankan PRISMA 2020 sebagai asas. Menamakan artikel sebagai ulasan pantas ialah amalan baik, bukan butiran rasmi.', 'stevens', 'prisma2020')] },
+    'ul-pemetaan': { ganti: true, senarai: [P('Tiada garis panduan pelaporan khusus ditemui bagi tajuk pemetaan sistematik dalam pendidikan. Sebagai amalan baik, namakan jenis kajian dan bina tajuk daripada konsep dan konteks.')] },
     'emp-eksperimen': { ganti: false, senarai: [P('Percubaan rawak: kenal pasti kajian sebagai percubaan rawak (CONSORT 2025, butiran 1a), lazimnya dengan perkataan "rawak" dalam tajuk. Kajian intervensi tanpa perawakan: nyatakan cara unit diagihkan dan populasi sasaran dalam tajuk atau abstrak (TREND, butiran 1).', 'consort', 'trend')] },
     'met-replikasi': { ganti: false, senarai: [P('Bagi kajian replikasi, beri maklumat yang cukup dalam tajuk dan teks supaya pembaca tahu ia replikasi dan jenisnya (piawaian APA, Jadual 6).', 'jarsquant')] },
     'emp-kes': { ganti: false, senarai: [P('Tiada peraturan rasmi bagi tajuk kajian kes sains sosial; menamakan "kajian kes" sebagai pendekatan selaras dengan syor SRQR.', 'srqr')] },
@@ -347,8 +348,8 @@ export function semakTajuk(tajuk, o) {
   /* panjang */
   if (n < 4) out.push({ k: 'panjang', status: 'gagal', teks: `${n} patah perkataan: terlalu ringkas untuk menamakan topik, populasi dan jenis kajian.` });
   else if (n < P.min) out.push({ k: 'panjang', status: 'amaran', teks: `${n} patah perkataan: ringkas. Tajuk di bawah ${P.min} patah perkataan lazimnya kurang maklumat bagi artikel empirikal; pastikan topik, konteks dan jenis kajian masih jelas.` });
-  else if (n <= P.lazim) out.push({ k: 'panjang', status: 'ok', teks: `${n} patah perkataan (amalan lazim ${P.sasar[0]} hingga ${P.sasar[1]}; sehingga ${P.lazim} masih biasa dalam jurnal pendidikan).` });
-  else if (n <= P.had) out.push({ k: 'panjang', status: 'amaran', teks: `${n} patah perkataan: agak panjang (amalan lazim ${P.sasar[0]} hingga ${P.sasar[1]}). Buang kata yang tidak menambah makna dan semak had jurnal sasaran.` });
+  else if (n <= P.lazim) out.push({ k: 'panjang', status: 'ok', teks: `${n} patah perkataan (sasaran ${P.sasar[0]} hingga ${P.sasar[1]}; sehingga ${P.lazim} masih biasa dalam jurnal pendidikan).` });
+  else if (n <= P.had) out.push({ k: 'panjang', status: 'amaran', teks: `${n} patah perkataan: agak panjang (sasaran ${P.sasar[0]} hingga ${P.sasar[1]}). Buang kata yang tidak menambah makna dan semak had jurnal sasaran.` });
   else out.push({ k: 'panjang', status: 'gagal', teks: `${n} patah perkataan: terlalu panjang (melebihi ${P.had}). Pindahkan butiran kaedah atau lokasi ke abstrak.` });
   if (n > 15 && n <= P.lazim) out.push({ k: 'had15', status: 'info', teks: 'Beberapa jurnal Malaysia, contohnya Jurnal Pendidikan Malaysia dan Akademika, meminta tajuk tidak melebihi 15 patah perkataan; semak had jurnal sasaran.' });
   /* penanda jenis kajian */
