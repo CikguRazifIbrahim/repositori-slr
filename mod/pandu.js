@@ -662,7 +662,7 @@ ARAHAN ACUAN: rangka, cadangan dan semakan bagi folder ini mesti mengikut urutan
   async function modalPemboleh() {
     const cad = cadangPemboleh(); const teks = (P.t.pemboleh || []).map(v => v.nama + (v.alias ? ' | ' + v.alias : '')).join('\n');
     const ok = await R.richModal('Pemboleh ubah atau konstruk utama artikel', `<p>Satu baris bagi setiap pemboleh ubah. Selepas tanda | tulis padanan lain yang dikira sebagai sebutan yang sama (istilah Inggeris, singkatan), dipisahkan dengan koma.</p><textarea id="pdPvTeks" class="modal-in" rows="6" placeholder="Pengurusan pengetahuan digital | digital knowledge management, DKM&#10;Kepimpinan digital | digital leadership">${esc(teks)}</textarea>${cad.length ? `<p class="help">Cadangan daripada medan konstruk artikel sumber (taip yang berkenaan): ${esc(cad.join('; '))}.</p>` : ''}<p class="help">Meter "Pemboleh ubah" dalam setiap folder menyemak sama ada setiap pemboleh ubah ini disebut. Pendahuluan, Kajian Literatur, Perbincangan, Kesimpulan dan Abstrak mesti mencerminkan kesemuanya.</p>`, 'Simpan', 'Batal');
-    if (!ok) return; P.t.pemboleh = String(R.richModal.values.pdPvTeks || '').split('\n').map(l => { const [nama, ...al] = l.split('|'); return { nama: (nama || '').trim(), alias: al.join(',').trim() }; }).filter(x => x.nama).slice(0, 12); simpanT(true); render(); toast(P.t.pemboleh.length + ' pemboleh ubah disimpan');
+    if (!ok) return; P.t.pemboleh = String(R.richModal.values.pdPvTeks || '').split('\n').map(l => { const [nama, ...al] = l.split('|'); return { nama: (nama || '').trim(), alias: al.join(',').trim() }; }).filter(x => x.nama).slice(0, 12); simpanT(true); render(); if (C.onTetapan) C.onTetapan('pemboleh'); toast(P.t.pemboleh.length + ' pemboleh ubah disimpan');
   }
   async function modalGaya() {
     const g = gaya();
@@ -704,8 +704,8 @@ ARAHAN ACUAN: rangka, cadangan dan semakan bagi folder ini mesti mengikut urutan
     });
     root.addEventListener('change', e => {
       const el = e.target; const s = el.dataset && el.dataset.pdsel; if (!s) { if (el.dataset && el.dataset.pdin === 'sasaran') render(); return; }
-      if (s === 'bahasa') { P.t.bahasa = el.value === 'en' ? 'en' : 'ms'; simpanT(true); render(); toast('Bahasa manuskrip: ' + namaBahasa() + '. Tajuk seksyen sedia ada tidak diubah; cadangan agen akan ditulis dalam bahasa ini.'); }
-      else if (s === 'aras') { P.t.aras = el.value === 'scopus' ? 'scopus' : 'mycite'; simpanT(true); P.cache = {}; render(); toast('Jurnal sasaran: ' + (P.t.aras === 'scopus' ? 'berindeks Scopus atau WoS' : 'berindeks MyCite') + '. Agen menyemak mengikut piawaian ini.'); }
+      if (s === 'bahasa') { P.t.bahasa = el.value === 'en' ? 'en' : 'ms'; simpanT(true); render(); if (C.onTetapan) C.onTetapan('bahasa'); toast('Bahasa manuskrip: ' + namaBahasa() + '. Tajuk seksyen sedia ada tidak diubah; cadangan agen akan ditulis dalam bahasa ini.'); }
+      else if (s === 'aras') { P.t.aras = el.value === 'scopus' ? 'scopus' : 'mycite'; simpanT(true); P.cache = {}; render(); if (C.onTetapan) C.onTetapan('aras'); toast('Jurnal sasaran: ' + (P.t.aras === 'scopus' ? 'berindeks Scopus atau WoS' : 'berindeks MyCite') + '. Agen menyemak mengikut piawaian ini.'); }
       else if (s === 'acuan') { P.t.acuan = ['bina', 'sendiri', 'tiada'].includes(el.value) ? el.value : 'bina'; simpanT(true); P.cache = {}; if (P.t.acuan !== 'tiada') P.terbuka.add('acuanInduk'); render(); const ac = acuan(); toast(ac ? `Acuan: ${ac.pendek}. Folder, sasaran dan bimbingan agen mengikut artikel contoh ini.${P.t.sedia ? ' Seksyen sedia ada dikekalkan; klik Kemas kini folder jika notis muncul.' : ''}` : 'Acuan dimatikan: struktur umum digunakan.'); }
       else if (s === 'peta') { const k = el.dataset.k; if (!el.value) return; P.t.peta = P.t.peta || {}; P.t.peta[k] = el.value; simpanT(true); P.cache = {}; bukaFolder(k); toast('Folder dipadankan dengan seksyen yang dipilih'); }
     });
@@ -719,5 +719,5 @@ ARAHAN ACUAN: rangka, cadangan dan semakan bagi folder ini mesti mengikut urutan
 
   function onEditor() { kemasBar(); }
   function onTulis() { kemasHidup(); }
-  return { render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, state: P, Prisma, Output, D, ACUAN, POLA };
+  return { render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, D, ACUAN, POLA };
 }

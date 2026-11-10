@@ -668,8 +668,66 @@ body.web-open{overflow:hidden}
 .art-log[open]>summary{margin-bottom:8px}
 .art-kepala{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px}
 .art-kepala-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,400px) auto;gap:10px;align-items:end}
-.art-tajuk input{font-weight:700;font-size:16px}
+.art-tajuk input,.art-tajuk textarea{font-weight:700;font-size:16px}
+.art-tajuk textarea{min-height:0;resize:none;overflow:hidden;line-height:1.3;font-family:inherit}
 .art-jenis-ket{margin-top:8px}
+/* Pembantu Tajuk: semakan tajuk, pembayang dan soalan pandu, tetingkap timbul cadangan */
+.tj{margin-top:10px}
+.tj-bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-start}
+.tj-sm{flex:1 1 320px;min-width:0;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-size:12.5px}
+.tj-sm>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:6px 10px}
+.tj-sm>summary::-webkit-details-marker{display:none}
+.tj-sm>summary b{white-space:nowrap}
+.tj-nota{color:var(--muted);min-width:0}
+.tj-mbar{display:inline-block;width:72px;height:6px;border-radius:99px;background:var(--line);overflow:hidden;flex:none}
+.tj-mbar i{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .25s}
+.tj-sm .tj-mbar i{background:var(--muted)} .tj-sm.ok .tj-mbar i{background:var(--ok)} .tj-sm.amaran .tj-mbar i{background:var(--warn)} .tj-sm.gagal .tj-mbar i{background:var(--bad)}
+.tj-sm.gagal{border-color:var(--bad)} .tj-sm.amaran{border-color:var(--warn)}
+.tj-sm-senarai{list-style:none;margin:0;padding:2px 10px 8px;display:grid;gap:3px}
+.tj-sm-senarai li{padding-left:18px;position:relative}
+.tj-sm-senarai li::before{content:"";position:absolute;left:3px;top:.45em;width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.tj-sm-senarai li.ok::before{background:var(--ok)} .tj-sm-senarai li.amaran::before{background:var(--warn)} .tj-sm-senarai li.gagal::before{background:var(--bad)} .tj-sm-senarai li.info::before{background:var(--info)}
+.tj-bar-acts{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.tj-padanan{font-size:12.5px;margin-top:6px} .tj-padanan .lbl{color:var(--muted);font-weight:600} .tj-padanan-teks{font-style:italic}
+.tj-panel{margin-top:10px;border:1px solid var(--accent-line);border-radius:10px;padding:12px 14px;background:var(--surface);display:grid;gap:10px}
+.tj-ph,.tj-ph2{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline} .tj-ph b{font-size:15px;font-family:var(--font-display)} .tj-ph span,.tj-ph2 span{font-size:12.5px;color:var(--muted)} .tj-ph2 b{font-size:13.5px}
+.tj-f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tj-f .lbl{font-size:12px;font-weight:700;color:var(--muted)} .tj-f .lbl i{color:var(--accent);font-style:normal}
+.tj-f input,.tj-f textarea{width:100%;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:7px;padding:7px 9px;font-size:14px;font-family:inherit;min-width:0}
+.tj-f textarea{resize:vertical;line-height:1.45}
+.tj-f input:focus,.tj-f textarea:focus{border-color:var(--accent);outline:2px solid var(--accent-line);outline-offset:0}
+.tj-f.teras input{border-left:3px solid var(--accent)}
+.tj-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:8px 12px}
+.tj-cip{display:flex;flex-wrap:wrap;gap:5px;align-items:center} .tj-cip .lbl{font-size:12px;color:var(--muted);flex:1 1 100%}
+.tj-c{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:3px 10px;cursor:pointer;color:var(--fg);font:inherit;font-size:12px}
+.tj-c:hover{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+.tj-soalan{background:var(--warn-soft);border-radius:8px;padding:8px 10px;display:grid;gap:6px} .tj-soalan>b{color:var(--warn)} .tj-soalan input{width:100%}
+.tj-lengkap{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12.5px}
+.tj-acts{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end}
+.tj-semak-kotak{display:flex;gap:6px;align-items:center;font-size:12.5px;padding-bottom:7px}
+.tj-acts select{border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:7px;padding:6px 8px;font-size:13.5px;font-family:inherit}
+.tj-lipat{border:1px solid var(--line);border-radius:9px;font-size:13px} .tj-lipat>summary{cursor:pointer;padding:7px 10px;font-weight:700} .tj-lipat-isi{padding:0 12px 10px}
+.tj-lipat-isi .lbl{font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px}
+.tj-sesi{margin:0;padding-left:18px;display:grid;gap:4px}
+.tj-peraturan{margin:0 0 8px;padding-left:20px;display:grid;gap:4px} .tj-sit{color:var(--muted);font-size:12px}
+.tj-pola{margin:0 0 8px;padding-left:18px;display:grid;gap:4px} .tj-templat{display:block;color:var(--muted);font-size:12px;font-style:italic}
+.tj-sumber{margin:0;padding-left:18px;display:grid;gap:4px;font-size:12.5px;overflow-wrap:anywhere}
+.tj-pop{display:grid;gap:10px}
+.tj-kad-senarai{display:grid;gap:8px}
+.tj-kad{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--surface);text-align:left}
+.tj-kad:hover,.tj-kad:focus-visible{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);outline:none}
+.tj-kad.on{border-color:var(--accent);background:var(--accent-soft)}
+.tj-kad .no{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:13px}
+.tj-kad-isi{display:grid;gap:4px;min-width:0}
+.tj-t{font-weight:700;font-size:16px;line-height:1.3;color:var(--fg);overflow-wrap:anywhere}
+.tj-meta{font-size:12px;color:var(--muted)}
+.tj-sebab{font-size:13px;color:var(--fg)}
+.tj-pad{font-size:12.5px;color:var(--muted)} .tj-pad b{color:var(--fg)}
+.tj-tanda{display:flex;flex-wrap:wrap;gap:4px} .tj-tanda .tag{font-size:11px;padding:1px 7px} .tj-tanda .tag.ok{background:var(--ok-soft);color:var(--ok)} .tj-tanda .tag.amaran{background:var(--warn-soft);color:var(--warn)} .tj-tanda .tag.gagal{background:var(--bad-soft);color:var(--bad)}
+.tj-kad-acts{display:flex;flex-direction:column;gap:5px;align-items:stretch}
+.tj-pop-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tj-pop .tj-soalan .modal-in{margin:2px 0 4px}
+@media (max-width:640px){.tj-kad{grid-template-columns:auto minmax(0,1fr)}.tj-kad-acts{grid-column:1/-1;flex-direction:row}.tj-bar-acts{margin-left:0}.tj-t{font-size:15px}.tj-panel{padding:10px}}
 .art-sek{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin-bottom:10px}
 .art-sek>summary{cursor:pointer;font-weight:700;font-size:15px;font-family:var(--font-display);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .art-sek>summary span{font-weight:600;font-size:12.5px;color:var(--muted)}
@@ -1218,7 +1276,7 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
 
 <main id="artikel" class="view" hidden>
   <div class="tul-head">
-    <div><h1>Artikel Penerbitan</h1><div class="sub">Ruang menulis artikel jurnal dan persidangan daripada artikel dalam repositori: pilih jenis artikel, kumpulkan sehingga 15 artikel sumber, tanya agen tentang semua artikel sumber itu sekali gus, dan tulis seksyen dengan ASAL dan RAM. Disimpan automatik ke awan.</div></div>
+    <div><h1>Artikel Penerbitan</h1><div class="sub">Ruang menulis artikel jurnal dan persidangan daripada artikel dalam repositori: pilih jenis artikel, dapatkan cadangan tajuk daripada pembayang, kumpulkan sehingga 15 artikel sumber, tanya agen tentang semua artikel sumber itu sekali gus, dan tulis seksyen dengan ASAL dan RAM. Disimpan automatik ke awan.</div></div>
     <span class="spacer"></span>
     <div class="tul-acts">
       <button id="btnArtBaru" class="btn btn-primary" title="Cipta artikel penerbitan baharu">Artikel baharu</button>
@@ -1243,7 +1301,7 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
       <section id="artEditor" class="tul-editor"></section>
     </div>
   </div>
-  <div class="harian-note">Setiap artikel penerbitan disimpan dalam awan (meta/penerbitan) dan pada peranti, berserta jenis, senarai artikel sumber (maksimum 15, dikumpulkan mengikut status bacaan, dengan meter kelengkapan Bahagian A hingga F dan butang ke rekod) dan soal jawab yang merangkumi semua artikel sumber (maksimum 10 soalan; setiap soalan satu panggilan API Anthropic dengan kunci API Prof Dr, menghantar medan A hingga F semua artikel sumber, ringkasan laporan Banding sedia ada antara sumber dan soal jawab terdahulu, bukan PDF; amaran kos dengan anggaran token dipaparkan sebelum setiap soalan). Editor seksyen, ASAL dan RAM, warna, jadual, rajah, Word masuk dan keluar serta sejarah versi adalah sama seperti Tulisan Tesis.</div>
+  <div class="harian-note">Setiap artikel penerbitan disimpan dalam awan (meta/penerbitan) dan pada peranti, berserta jenis, senarai artikel sumber (maksimum 15, dikumpulkan mengikut status bacaan, dengan meter kelengkapan Bahagian A hingga F dan butang ke rekod) dan soal jawab yang merangkumi semua artikel sumber (maksimum 10 soalan; setiap soalan satu panggilan API Anthropic dengan kunci API Prof Dr, menghantar medan A hingga F semua artikel sumber, ringkasan laporan Banding sedia ada antara sumber dan soal jawab terdahulu, bukan PDF; amaran kos dengan anggaran token dipaparkan sebelum setiap soalan). Editor seksyen, ASAL dan RAM, warna, jadual, rajah, Word masuk dan keluar serta sejarah versi adalah sama seperti Tulisan Tesis. Pembantu tajuk di bawah medan Tajuk artikel: tulis pembayang dan jawab soalan pandu mengikut jenis artikel, agen mencadangkan tiga atau lima tajuk dalam tetingkap timbul (satu panggilan API yang kecil dengan amaran kos), klik satu cadangan untuk mengisi medan Tajuk, dan tajuk itu kekal boleh disunting bila-bila masa; meter Semakan tajuk menyemak tajuk rasmi tanpa agen dan tanpa kos.</div>
 </main>
 
 <main id="rekod" class="view" hidden>

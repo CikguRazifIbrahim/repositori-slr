@@ -5,6 +5,7 @@
    Tesis (kilang initTulisan dengan konfigurasi artikel: tiada Bab 1 hingga Bab 5, hanya seksyen). Simpanan: meta/penerbitan_indeks
    (senarai artikel) dan meta/penerbitan_<id> (seksyen, jenis, sumber, soalan), berserta salinan tempatan. */
 import { initPandu } from './pandu.js';
+import { initTajuk } from './tajuk.js';
 
 export function initArtikel(R, initTulisan) {
   const { $, $$, esc, toast } = R;
@@ -141,10 +142,18 @@ export function initArtikel(R, initTulisan) {
     onUnit: id => { A.id = id; R.lsSet(LS_SEMASA, id); renderPanel(); },
     onEditor: () => { if (Pandu) Pandu.onEditor(); }, onTulis: n => { if (Pandu && n === A.id) Pandu.onTulis(); }
   };
-  let Pandu = null;
+  let Pandu = null, Tajuk = null;
   const Teks = initTulisan(R, cfg);
   const doc = () => A.id ? Teks.doc(A.id) : null;
   async function simpanDoc(patch) { const d = doc(); if (!d) return; d.masa = Date.now(); Teks.simpanLokal(A.id, d); await Teks.simpanAwan(A.id, Object.assign({ masa: d.masa }, patch)); }
+  /* Tajuk rasmi artikel: ditaip oleh pemilik atau diisi daripada cadangan Pembantu Tajuk yang diklik; sentiasa boleh disunting. */
+  /* Medan Tajuk ialah kotak teks satu baris yang memanjang mengikut panjang tajuk, supaya tajuk yang panjang kelihatan sepenuhnya. */
+  function medanTajuk(t) { const el = $('#artTajukArt'); if (!el) return; if (t != null && el.value !== t) el.value = t; el.style.height = 'auto'; if (el.scrollHeight) el.style.height = (el.scrollHeight + 2) + 'px'; else el.style.height = ''; }
+  function tetapTajuk(t, segera) {
+    const en = entri(A.id), d = doc(); if (!en || !d) return; t = String(t == null ? '' : t); en.tajuk = t; en.masa = Date.now(); d.tajuk = t; clearTimeout(A.timerTajuk);
+    const simpan = () => { simpanIndeks([A.id]); simpanDoc({ tajuk: t }); Teks.renderBab(); Teks.renderSambung(); };
+    if (segera) simpan(); else A.timerTajuk = setTimeout(simpan, 600);
+  }
 
   /* ---- paparan ---- */
   async function show() {
@@ -154,25 +163,30 @@ export function initArtikel(R, initTulisan) {
     Teks.state.bab = A.id;
     if (!Teks.state.loaded) await Teks.muatSemua();
     for (const u of ada) if (!Teks.state.docs[u.id]) await Teks.muatBab(u.id);
-    Teks.show(); renderPanel();
+    Teks.show(); renderPanel(); medanTajuk();
   }
   function renderPanel() {
     const panel = $('#artPanel'), kosong = $('#artKosong'); if (!panel) return;
     const d = doc();
     if (!d || !entri(A.id)) { panel.hidden = true; kosong.hidden = false; kosong.innerHTML = `<h3>${senaraiUnit().length ? 'Pilih artikel di atas' : 'Belum ada artikel penerbitan'}</h3><p>Setiap artikel mempunyai jenis, artikel sumber daripada repositori (sehingga ${HAD_SUMBER}), soal jawab merentas semua artikel sumber (sehingga ${HAD_SOALAN} soalan dijawab agen) dan seksyen dengan editor ASAL dan RAM seperti Tulisan Tesis. Tiada struktur bab yang tetap: tambah seksyen mengikut keperluan artikel.</p><button class="btn btn-primary" data-artbaru="1">Artikel baharu</button>`; return; }
     kosong.hidden = true; panel.hidden = false;
-    renderKepala(d); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render();
+    renderKepala(d); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render(); if (Tajuk) Tajuk.render();
   }
   function renderKepala(d) {
     const el = $('#artKepala'); if (!el) return; const e = entri(A.id); const j = JENIS_PETA[d.jenis];
     el.innerHTML = `<div class="art-kepala-grid">
-      <label class="field art-tajuk"><span class="lbl">Tajuk artikel</span><input id="artTajukArt" type="text" value="${esc(e.tajuk || '')}" placeholder="Tajuk kerja artikel, boleh diubah bila-bila masa"></label>
+      <label class="field art-tajuk"><span class="lbl">Tajuk artikel</span><textarea id="artTajukArt" rows="1" spellcheck="false" placeholder="Tajuk artikel: taip sendiri, atau guna Pembantu tajuk di bawah; boleh disunting bila-bila masa">${esc(e.tajuk || '')}</textarea></label>
       <label class="field art-jenis"><span class="lbl">Jenis artikel</span><select id="artJenis"><option value="">Pilih jenis artikel</option>${JENIS.map(([kump, items]) => `<optgroup label="${esc(kump)}">${items.map(([kod, nama]) => `<option value="${kod}"${kod === d.jenis ? ' selected' : ''}>${esc(nama)}</option>`).join('')}</optgroup>`).join('')}</select></label>
       <div class="art-kepala-acts"><button class="btn btn-sm btn-danger" data-padamart="1" title="Buang artikel ini daripada senarai (seksyennya kekal tersimpan dalam awan)">Padam artikel</button></div>
     </div>
-    <div class="help art-jenis-ket">${j ? esc(j.kump) + ': ' + esc(j.ket) + ' ' : 'Pilih satu jenis; ia disimpan bersama artikel dan menentukan struktur lazim yang ditawarkan. '}Dicipta ${esc(R.fmtTime(e.cipta || 0))}${d.masa ? ', disunting ' + esc(R.fmtTime(d.masa)) : ''} · ${Teks.senarai(A.id).length} seksyen · ${Teks.jumlahPatah(A.id)} patah perkataan.</div>`;
-    $('#artTajukArt').addEventListener('input', ev => { const t = ev.target.value; const en = entri(A.id); if (!en) return; en.tajuk = t; en.masa = Date.now(); d.tajuk = t; clearTimeout(A.timerTajuk); A.timerTajuk = setTimeout(() => { simpanIndeks([A.id]); simpanDoc({ tajuk: t }); Teks.renderBab(); Teks.renderSambung(); }, 600); });
-    $('#artJenis').addEventListener('change', async ev => { const v = ev.target.value; const en = entri(A.id); if (!en) return; d.jenis = v; en.jenis = v; en.masa = Date.now(); await Promise.all([simpanIndeks([A.id]), simpanDoc({ jenis: v })]); Teks.renderBab(); renderKepala(d); if (Pandu) Pandu.render(); toast(v ? 'Jenis artikel: ' + namaJenis(v) : 'Jenis artikel dikosongkan'); });
+    <div class="help art-jenis-ket">${j ? esc(j.kump) + ': ' + esc(j.ket) + ' ' : 'Pilih satu jenis; ia disimpan bersama artikel dan menentukan struktur lazim yang ditawarkan. '}Dicipta ${esc(R.fmtTime(e.cipta || 0))}${d.masa ? ', disunting ' + esc(R.fmtTime(d.masa)) : ''} · ${Teks.senarai(A.id).length} seksyen · ${Teks.jumlahPatah(A.id)} patah perkataan.</div>
+    <div id="artTajukBantu" class="tj"></div>`;
+    const mt = $('#artTajukArt');
+    mt.addEventListener('input', ev => { const el = ev.target; if (/[\r\n]/.test(el.value)) el.value = el.value.replace(/\s*[\r\n]+\s*/g, ' '); medanTajuk(); tetapTajuk(el.value); if (Tajuk) Tajuk.onTajuk(); });
+    mt.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); ev.target.blur(); } });
+    medanTajuk();
+    $('#artJenis').addEventListener('change', async ev => { const v = ev.target.value; const en = entri(A.id); if (!en) return; d.jenis = v; en.jenis = v; en.masa = Date.now(); await Promise.all([simpanIndeks([A.id]), simpanDoc({ jenis: v })]); Teks.renderBab(); renderKepala(d); if (Pandu) Pandu.render(); if (Tajuk) Tajuk.onJenis(); toast(v ? 'Jenis artikel: ' + namaJenis(v) : 'Jenis artikel dikosongkan'); });
+    if (Tajuk) Tajuk.render();
   }
 
   /* ---- artikel sumber (sehingga 15) ---- */
@@ -317,14 +331,15 @@ ${bahan.map(x => Bd().teksRekod(x.i, x.d)).join('\n\n')}`;
   /* ---- artikel baharu dan padam ---- */
   async function artikelBaru() {
     if (!A.indeks) await muatIndeks();
-    const okk = await R.richModal('Artikel baharu', `<label for="artTajukBaru">Tajuk kerja artikel</label><input id="artTajukBaru" class="modal-in" type="text" placeholder="Contohnya: Kepimpinan digital guru besar dan kompetensi digital guru: ulasan skop" autocomplete="off"><label for="artJenisBaru">Jenis artikel</label><select id="artJenisBaru" class="modal-in"><option value="">Pilih kemudian</option>${JENIS.map(([kump, items]) => `<optgroup label="${esc(kump)}">${items.map(([kod, nama]) => `<option value="${kod}">${esc(nama)}</option>`).join('')}</optgroup>`).join('')}</select><p class="help">Tajuk dan jenis boleh diubah bila-bila masa. Selepas dicipta, pilih artikel sumber daripada repositori, tanya agen tentang semua artikel sumber itu, dan tulis seksyen dengan ASAL dan RAM.</p>`, 'Cipta', 'Batal');
-    if (!okk) return null; const v = R.richModal.values || {}; const tajuk = String(v.artTajukBaru || '').trim() || 'Artikel tanpa tajuk'; const jenis = String(v.artJenisBaru || '');
+    const okk = await R.richModal('Artikel baharu', `<label for="artTajukBaru">Tajuk kerja artikel</label><input id="artTajukBaru" class="modal-in" type="text" placeholder="Contohnya: Kepimpinan digital guru besar dan kompetensi digital guru: ulasan skop" autocomplete="off"><label for="artJenisBaru">Jenis artikel</label><select id="artJenisBaru" class="modal-in"><option value="">Pilih kemudian</option>${JENIS.map(([kump, items]) => `<optgroup label="${esc(kump)}">${items.map(([kod, nama]) => `<option value="${kod}">${esc(nama)}</option>`).join('')}</optgroup>`).join('')}</select><p class="help">Belum ada tajuk? Biarkan kosong dan pilih jenis artikel: selepas artikel dicipta, Pembantu tajuk di bawah medan Tajuk meminta pembayang dan mencadangkan tajuk untuk dipilih. Tajuk dan jenis boleh diubah bila-bila masa. Selepas itu, pilih artikel sumber daripada repositori, tanya agen tentang semua artikel sumber itu, dan tulis seksyen dengan ASAL dan RAM.</p>`, 'Cipta', 'Batal');
+    if (!okk) return null; const v = R.richModal.values || {}; const tanpaTajuk = !String(v.artTajukBaru || '').trim(); const tajuk = String(v.artTajukBaru || '').trim() || 'Artikel tanpa tajuk'; const jenis = String(v.artJenisBaru || '');
     const id = idBaru(); const masa = Date.now(); A.indeks.senarai[id] = { id, tajuk, jenis, cipta: masa, masa };
     await simpanIndeks([id]);
     const d = Teks.doc(id); d.tajuk = tajuk; d.jenis = jenis; d.masa = masa; Teks.simpanLokal(id, d); await Teks.simpanAwan(id, { jenis, tajuk, sumber: [], soalan: [], masa });
     A.id = id; R.lsSet(LS_SEMASA, id); Teks.state.bab = id; Teks.state.sek = null; Teks.renderSemua(); renderPanel();
     toast('Artikel "' + tajuk + '" dicipta' + (jenis && STRUKTUR[jenis] ? '. Klik "Struktur lazim" jika mahu seksyen lazim jenis ini dimasukkan' : ''));
     const k = $('#artKepala'); if (k) k.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (tanpaTajuk && Tajuk) Tajuk.buka();
     return id;
   }
   async function padamArtikel() {
@@ -351,6 +366,9 @@ ${bahan.map(x => Bd().teksRekod(x.i, x.d)).join('\n\n')}`;
   }
   function peringatan() { Teks.peringatan(); }
   /* Pandu Tulis: folder mengikut jenis artikel dan acuan artikel contoh, soal jawab, cadangan ke RAM, meter dan semakan (mod/pandu.js). */
-  Pandu = initPandu(R, { A, Teks, doc, entri, JENIS_PETA, STRUKTUR, sumberAda, HAD_SUMBER });
-  return { show, artikelBaru, padamArtikel, tambahSumber, buangSumber, tanya, padamSoalan, jawapanKeRam, renderPanel, muatIndeks, senaraiUnit, peringatan, JENIS, STRUKTUR, CADANGAN, HAD_SUMBER, HAD_SOALAN, Teks, Pandu, state: A };
+  Pandu = initPandu(R, { A, Teks, doc, entri, JENIS_PETA, STRUKTUR, sumberAda, HAD_SUMBER, onTetapan: () => { if (Tajuk) Tajuk.render(); } });
+  /* Pembantu Tajuk: pembayang tajuk, cadangan agen dalam tetingkap timbul dan semakan tajuk (mod/tajuk.js). */
+  Tajuk = initTajuk(R, { A, Teks, doc, entri, JENIS_PETA, sumberAda, HAD_SUMBER, Pandu, tetapTajuk, medanTajuk });
+  let timerSaiz = null; window.addEventListener('resize', () => { clearTimeout(timerSaiz); timerSaiz = setTimeout(() => medanTajuk(), 150); });
+  return { show, artikelBaru, padamArtikel, tambahSumber, buangSumber, tanya, padamSoalan, jawapanKeRam, renderPanel, muatIndeks, senaraiUnit, peringatan, JENIS, STRUKTUR, CADANGAN, HAD_SUMBER, HAD_SOALAN, Teks, Pandu, Tajuk, tetapTajuk, state: A };
 }
