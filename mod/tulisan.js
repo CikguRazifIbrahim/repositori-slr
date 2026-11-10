@@ -263,6 +263,7 @@ export function initTulisan(R, konfig) {
     simpanLokal(n, d); setStatus('Menyimpan');
     clearTimeout(T.timers[n + ':' + id]);
     T.timers[n + ':' + id] = setTimeout(async () => { const ok = await simpanAwan(n, { seksyen: { [id]: d.seksyen[id] }, susunan: d.susunan, log: d.log, masa: d.masa }); setStatus(ok ? 'Disimpan ' + R.fmtTime(Date.now()) : 'Disimpan pada peranti ini sahaja (awan menolak)'); if (!opts.senyap) { renderSenarai(); renderBab(); } }, opts.segera ? 0 : 1200);
+    if (cfg.onTulis) { try { cfg.onTulis(n, id); } catch (e) { console.warn('tulisan: onTulis', e); } }
   }
   function setStatus(t) { const el = $(I('Status')); if (el) el.textContent = t; }
 
@@ -586,6 +587,7 @@ export function initTulisan(R, konfig) {
     $(I('Tajuk')).addEventListener('input', e => { tulisSeksyen(n, T.sek, { tajuk: tanpaNombor(e.target.value) }, { senyap: true }); if (cfg.onTajukSeksyen) cfg.onTajukSeksyen(n, T.sek); });
     $(I('Tajuk')).addEventListener('change', () => renderSenarai());
     kemasBar();
+    if (cfg.onEditor) { try { cfg.onEditor(T.bab, T.sek); } catch (e) { console.warn('tulisan: onEditor', e); } }
   }
   function semuaSeksyen() { const out = []; unit().forEach(([n]) => senarai(n).forEach(id => out.push({ n, id, s: doc(n).seksyen[id] }))); return out; }
   function renderSambung() {
@@ -918,5 +920,5 @@ export function initTulisan(R, konfig) {
     $(I('Cari')).addEventListener('input', e => { T.cari = e.target.value; renderCari(); });
   }
   return { show, muatTurun, muatNaik, muatNaikSeksyen, daripadaBanding, muatSemua, muatBab, peringatan, huraiHtml, bersihHtml, teksDariHtml, htmlDariTeks, warnaDariDocx, padanWarna, WARNA, pindah, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, simpanEditor, flushEditor, TEMPLAT, state: T, BAB,
-    doc, senarai, adaUnit, simpanAwan, simpanLokal, tulisSeksyen, seksyenBaru, padamSeksyen, renderSemua, renderEditor, renderSenarai, renderBab, renderSambung, renderCari, jumlahPatah, htmlSeksyen, patah, buka, cfg };
+    doc, senarai, adaUnit, simpanAwan, simpanLokal, simpanImej, muatImej, tulisSeksyen, seksyenBaru, padamSeksyen, renderSemua, renderEditor, renderSenarai, renderBab, renderSambung, renderCari, jumlahPatah, htmlSeksyen, patah, buka, cfg };
 }

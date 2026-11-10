@@ -674,6 +674,132 @@ body.web-open{overflow:hidden}
 .art-sek>summary{cursor:pointer;font-weight:700;font-size:15px;font-family:var(--font-display);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .art-sek>summary span{font-weight:600;font-size:12.5px;color:var(--muted)}
 .art-sek[open]>summary{margin-bottom:10px}
+/* ---- Pandu Tulis (menu Artikel): folder, acuan artikel contoh, langkah, meter, Ruang PRISMA dan Ruang Output ---- */
+.pandu{font-size:14px;line-height:1.45}
+.pandu h4{margin:16px 0 6px;font-size:13.5px;font-family:var(--font-display);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pandu p{margin:6px 0}
+.pandu textarea,.pandu input[type=text]{width:100%}
+.pd-tetap{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;margin-bottom:10px}
+.pd-f{display:flex;flex-direction:column;gap:3px;min-width:0;position:relative}
+.pd-f .lbl{font-size:11.5px;font-weight:700;color:var(--muted)}
+.pd-f input[type=number]{width:140px}
+.pd-f .btn-link{position:absolute;right:0;top:-1px;font-size:11.5px}
+.pd-pv-senarai{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.pd-ac>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pd-ac select{max-width:300px}
+.pd-kosong{color:var(--muted);font-size:12.5px;font-style:italic}
+.pd-kemajuan{background:var(--surface-2);border-radius:10px;padding:10px 12px;margin-top:8px}
+.pd-kj-bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:6px}
+.pd-kj-bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.pd-kj-teks{font-size:12.5px;color:var(--muted)} .pd-kj-teks b{color:var(--fg)}
+.pd-kj-acts{margin-top:8px}
+.pd-notis{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px}
+.pd-notis .btn{margin:0 4px}
+.pd-sedia{border:1px dashed var(--line-strong);border-radius:10px;padding:12px 14px;margin-top:8px}
+.pd-sedia h3{margin:0 0 6px;font-size:15px}
+.pd-pratonton{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
+.pd-pra{background:var(--surface-2);border-radius:8px;padding:4px 9px;font-size:12.5px;font-weight:600}
+.pd-pra b{color:var(--accent);margin-right:3px} .pd-pra em{font-style:normal;color:var(--accent);font-size:11px;margin-left:4px}
+.pd-anak{color:var(--muted)}
+.pd-semak-awal,.pd-bahan,.ot-semak ul{list-style:none;padding:0;margin:8px 0;display:grid;gap:4px;font-size:13px}
+.pd-semak-awal li,.pd-bahan li,.ot-semak li{padding-left:22px;position:relative}
+.pd-semak-awal li::before,.pd-bahan li::before,.ot-semak li::before{content:"";position:absolute;left:4px;top:.42em;width:9px;height:9px;border-radius:50%;background:var(--warn)}
+.pd-semak-awal li.ok::before,.pd-bahan li.ok::before,.ot-semak li.ok::before{background:var(--ok)}
+.ot-semak li.tiada{color:var(--muted)} .ot-semak li.tiada::before{background:var(--line-strong)}
+.pd-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.pd-rel{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:10px 0}
+.pd-kad{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px;cursor:pointer;font:inherit;color:inherit;align-content:start}
+.pd-kad:hover{border-color:var(--accent-line)}
+.pd-kad.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.pd-kad .no{grid-row:span 2;width:24px;height:24px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-weight:700;font-size:12px}
+.pd-kad.siap .no{background:var(--ok);color:#fff} .pd-kad.draf .no{background:var(--accent);color:var(--accent-ink)} .pd-kad.bincang .no{background:var(--warn-soft);color:var(--warn)}
+.pd-kad .nm{font-weight:700;font-size:13px;line-height:1.25}
+.pd-kad .st{font-size:11.5px;color:var(--muted)}
+.pd-kad .mt{grid-column:1/-1;height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:4px}
+.pd-kad .mt i{display:block;height:100%;background:var(--accent)}
+.pd-kad .pt{grid-column:1/-1;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pd-kad.tiada{opacity:.65;border-style:dashed}
+.pd-folder{border-top:1px solid var(--line);padding-top:10px}
+.pd-fh{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.pd-fh h3{margin:0;font-size:16px;display:flex;gap:6px;align-items:center}
+.pd-fh-m{font-size:12px;color:var(--muted)} .pd-fh .spacer{flex:1}
+.pd-peta{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center} .pd-peta select{max-width:230px}
+.tag.pd-st.siap{background:var(--ok-soft);color:var(--ok)} .tag.pd-st.draf{background:var(--accent-soft);color:var(--accent)} .tag.pd-st.bincang{background:var(--warn-soft);color:var(--warn)} .tag.pd-bl{background:var(--warn-soft);color:var(--warn)}
+.pd-l{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--surface)}
+.pd-l>summary{cursor:pointer;padding:9px 12px;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap;list-style:none}
+.pd-l>summary::-webkit-details-marker{display:none}
+.pd-l>summary .no{width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:12px;flex:none}
+.pd-l>summary .no.ruang{background:var(--fg);color:var(--surface);border-radius:6px}
+.pd-l>summary .ring{font-weight:600;font-size:12px;color:var(--muted);margin-left:auto;text-align:right}
+.pd-l[open]>summary{border-bottom:1px solid var(--line)}
+.pd-l>:not(summary){margin-left:12px;margin-right:12px}
+.pd-l>summary+*{margin-top:10px} .pd-l>:last-child{margin-bottom:12px}
+.pd-ac-gulung{overflow-x:auto}
+.pd-acuan{border-color:var(--accent-line)} .pd-acuan>summary{background:var(--accent-soft);border-radius:9px} .pd-acuan[open]>summary{border-radius:9px 9px 0 0;border-bottom-color:var(--accent-line)}
+.pd-ruang>summary{background:var(--surface-2);border-radius:9px} .pd-ruang[open]>summary{border-radius:9px 9px 0 0}
+.pd-sumber{display:grid;gap:5px;margin:8px 0}
+.pd-sr{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:13px}
+.pd-sr.utama{border-color:var(--accent);background:var(--accent-soft)} .pd-sr.sekunder{border-color:var(--accent-line)}
+.pd-sr .nm{font-weight:700} .pd-sr .tj{flex:1 1 220px;min-width:0;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pd-sr-acts{display:flex;gap:5px;margin-left:auto}
+.pd-soalan,.pd-balas,.pd-tanya{display:grid;gap:8px;margin:8px 0}
+.pd-q{display:grid;gap:3px;font-size:13px} .pd-q>span{font-weight:600}
+.pd-balas{background:var(--warn-soft);border-radius:8px;padding:8px 10px} .pd-balas>b{color:var(--warn)}
+.pd-hasil{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--surface)}
+details.pd-hasil>summary{cursor:pointer;font-weight:600;font-size:13px}
+details.pd-hasil[open]>summary{margin-bottom:8px}
+.pd-hasil-h{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-size:12px;color:var(--muted)} .pd-hasil-h b{color:var(--fg);font-size:13.5px}
+.pd-teks p{margin:0 0 8px} .pd-teks .pd-pil,.pd-pil{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:0 6px;font-size:11.5px;font-weight:700;margin-right:5px}
+.pd-jadual-wrap{overflow:auto}
+.pd-jadual,.pd-ac-jadual{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0}
+.pd-jadual th,.pd-jadual td,.pd-ac-jadual th,.pd-ac-jadual td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}
+.pd-jadual th,.pd-ac-jadual thead th{background:var(--surface-2);font-size:11.5px}
+.pd-ac-jadual td small{display:block;color:var(--muted);font-size:11px}
+.pd-ac-jadual tbody th{background:var(--surface-2);white-space:nowrap}
+.pd-ac-bar{display:inline-block;width:54px;height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin-right:6px;vertical-align:middle} .pd-ac-bar i{display:block;height:100%;background:var(--accent)}
+.pd-ai-ruj{font-size:13px} .pd-ai-ruj a{font-weight:700;white-space:nowrap}
+.pd-ai-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 18px;margin:8px 0}
+.pd-ai-grid ul,.pd-ai-suai ul{margin:4px 0;padding-left:18px;font-size:13px;display:grid;gap:3px}
+.pd-ai-grid .elak b{color:var(--warn)}
+.pd-ac-sub{font-size:12.5px} .pd-ac-sub small{color:var(--muted)}
+.pd-ac-peta{margin:10px 0;padding-left:0;list-style:none;counter-reset:acp;display:grid;gap:7px}
+.pd-ac-peta>li{counter-increment:acp;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:7px 10px 7px 36px;position:relative}
+.pd-ac-peta>li::before{content:counter(acp);position:absolute;left:9px;top:8px;width:19px;height:19px;border-radius:50%;background:var(--surface-2);font-size:11px;font-weight:700;display:grid;place-items:center}
+.pd-ac-peta .h{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline} .pd-ac-peta .uk{margin-left:auto;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pd-ac-peta .cara{font-size:13px;margin-top:3px}
+.pd-ac-pola{margin-top:4px;font-size:12.5px} .pd-ac-pola>summary{cursor:pointer;color:var(--accent);font-weight:600} .pd-ac-pola ul{margin:4px 0 0;padding-left:18px;display:grid;gap:2px;font-style:italic}
+.pd-log{margin-top:8px;font-size:13px} .pd-log>summary{cursor:pointer;font-weight:600;color:var(--muted)}
+.pd-meter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-bottom:8px}
+.pd-meter{border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px}
+.pd-meter .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline} .pd-meter .h span{color:var(--muted);text-align:right}
+.pd-meter .mbar{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin:6px 0 4px} .pd-meter .mbar i{display:block;height:100%;border-radius:99px;background:var(--muted)}
+.pd-meter.ok .mbar i{background:var(--ok)} .pd-meter.amaran .mbar i{background:var(--warn)} .pd-meter.gagal .mbar i{background:var(--bad)}
+.pd-meter.gagal{border-color:var(--bad)} .pd-meter.amaran{border-color:var(--warn)}
+.pd-meter ul{margin:4px 0 0;padding-left:16px;display:grid;gap:2px} .pd-meter .nota{color:var(--muted);font-size:11.5px}
+.pd-tip,.pd-amaran-senarai{padding-left:20px;display:grid;gap:5px;font-size:13px}
+.pd-isu-row{border-left:3px solid var(--line-strong);padding:3px 8px;margin:4px 0;font-size:13px} .pd-skor{font-variant-numeric:tabular-nums}
+.pd-ruj{font-size:13px} .pd-th{font-weight:700;margin-top:8px} .pd-tujuan,.pd-nota{font-size:12.5px;color:var(--muted)}
+.pd-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 8px;margin-bottom:8px;position:sticky;z-index:6;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.pd-bar[hidden]{display:none}
+.pd-bar-f{display:flex;flex-direction:column;text-align:left;border:0;background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit} .pd-bar-f span{font-size:11px;color:var(--muted)}
+.pd-pil-m{display:inline-flex;gap:5px;align-items:center;font-size:11.5px;border:1px solid var(--line);border-radius:99px;padding:2px 8px;white-space:nowrap} .pd-pil-m i{width:8px;height:8px;border-radius:50%;background:var(--muted)} .pd-pil-m em{font-style:normal;color:var(--muted)}
+.pd-pil-m.ok i{background:var(--ok)} .pd-pil-m.amaran i{background:var(--warn)} .pd-pil-m.gagal i{background:var(--bad)}
+.pr-pang{display:grid;gap:8px} .pr-pg{display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(140px,1fr) 110px auto;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px} .pr-pg textarea{grid-column:1/-1;font-family:var(--font-mono);font-size:12.5px}
+.pr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.pr-f{display:flex;flex-direction:column;gap:3px;font-size:12.5px;font-weight:600} .pr-f input[type=number]{width:120px} .pr-f.auto{background:var(--surface-2);border-radius:8px;padding:6px 9px} .pr-f.auto b{font-size:17px;font-variant-numeric:tabular-nums}
+.pd-acts .pr-f{flex-direction:row;align-items:center;gap:6px} .pr-f.blok{margin-top:8px}
+.pr-tog{font-weight:600;font-size:12.5px;color:var(--muted);display:inline-flex;gap:5px;align-items:center}
+.pr-sebab{display:grid;gap:6px;justify-items:start} .pr-sb{display:grid;grid-template-columns:minmax(200px,1fr) 110px auto;gap:6px;width:100%}
+.pr-semak{border-radius:8px;padding:8px 12px;margin:10px 0;background:var(--surface-2);font-size:13px} .pr-semak.ok{background:var(--ok-soft);color:var(--ok)} .pr-semak.amaran{background:var(--warn-soft)} .pr-semak ul{margin:4px 0 0;padding-left:18px} .pr-semak li.isu{color:var(--bad);font-weight:600}
+.pr-rajah{overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px} .pr-rajah svg{max-width:100%;height:auto;display:block;margin:0 auto}
+.ot-tampal{border:2px dashed var(--accent-line);border-radius:10px;padding:16px;text-align:center;cursor:pointer;display:grid;gap:2px;background:var(--accent-soft);color:var(--accent)} .ot-tampal span{font-size:12px;color:var(--muted)} .ot-tampal:focus{outline:2px solid var(--accent);border-style:solid}
+.ot-semak{background:var(--surface-2);border-radius:8px;padding:8px 12px;margin:8px 0} .ot-semak ul{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.ot-senarai{display:grid;gap:10px} .ot-item{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.ot-h{display:grid;grid-template-columns:auto minmax(160px,1fr) minmax(150px,260px) 130px;gap:6px;align-items:center} .ot-k{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px} .ot-k input[type=text]{flex:1 1 240px;width:auto}
+.ot-guna{font-size:12px;display:inline-flex;gap:4px;align-items:center;color:var(--muted)}
+.ot-b{margin-top:6px;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:6px;background:#fff;color:#111} .ot-b img{max-width:100%;display:block} .ot-jadual table{border-collapse:collapse;font-size:12px;width:100%} .ot-jadual th,.ot-jadual td{border:1px solid #cbd5e1;padding:3px 6px;text-align:left}
+.pd-sumber,.ot-senarai,.pr-pang,.pd-soalan,.pd-balas,.pd-tanya,.pd-ac-peta{grid-template-columns:minmax(0,1fr)} .pd-sr,.ot-item,.pr-pg{min-width:0}
+@media (max-width:720px){.pr-pg,.ot-h,.pr-sb{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pd-l>summary .ring{margin-left:0;text-align:left;flex-basis:100%}.pd-sr .tj{flex-basis:100%;white-space:normal}.pd-sr-acts{margin-left:0;flex-wrap:wrap}.pd-ac-peta .uk{margin-left:0;flex-basis:100%}.pd-f input[type=number],.pd-ac select{max-width:100%}}
 .art-sumber-pilih{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 .art-sumber-pilih select{width:100%;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:7px;padding:7px 9px;font-size:14px}
 .art-sumber-senarai{display:flex;flex-direction:column;gap:6px}
@@ -1109,7 +1235,9 @@ body.tul-seret{cursor:grabbing;user-select:none;-webkit-user-select:none}
     <section id="artKepala" class="art-kepala"></section>
     <details class="art-sek" id="artSumberWrap" open><summary>Artikel sumber daripada repositori <span id="artSumberKira"></span></summary><div id="artSumber"></div></details>
     <details class="art-sek" id="artSoalWrap" open><summary>Soal jawab semua artikel sumber <span id="artSoalKira"></span></summary><div id="artSoal"></div></details>
+    <details class="art-sek" id="artPanduWrap" open><summary>Pandu Tulis: folder mengikut acuan artikel contoh, soal jawab, cadangan dan semakan <span id="artPanduKira"></span></summary><div id="artPandu" class="pandu"></div></details>
     <div class="tul-cari"><input id="artCari" type="search" placeholder="Cari dalam semua artikel penerbitan, contohnya: jurang, PRISMA, Hassan" autocomplete="off"><div id="artCariHasil" class="tul-cari-hasil" hidden></div></div>
+    <div id="artPanduBar" class="pd-bar" hidden></div>
     <div class="tul-badan">
       <aside class="tul-kiri"><div class="tul-kiri-head"><h2>Seksyen</h2><div class="tul-kiri-acts"><button id="btnArtTemplat" class="btn btn-sm" title="Masukkan seksyen yang lazim bagi jenis artikel ini (pilihan; semuanya boleh diubah atau dipadam)">Struktur lazim</button><button id="btnArtSeksyen" class="btn btn-sm btn-primary">Seksyen baharu</button></div></div><div class="help tul-kiri-help">Tiada struktur tetap: tambah seksyen mengikut keperluan artikel. Pegang dan seret untuk menyusun semula; anak panah: promosi atau demosi aras; nombor dijana automatik.</div><div id="artSenarai" class="tul-senarai"></div></aside>
       <section id="artEditor" class="tul-editor"></section>

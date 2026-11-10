@@ -4,6 +4,8 @@
    setiap sumber, ringkasan laporan Agen Banding sedia ada antara sumber dan soalan terdahulu, dengan amaran kos sebelum setiap soalan), dan seksyen dengan editor ASAL dan RAM yang sama seperti Tulisan
    Tesis (kilang initTulisan dengan konfigurasi artikel: tiada Bab 1 hingga Bab 5, hanya seksyen). Simpanan: meta/penerbitan_indeks
    (senarai artikel) dan meta/penerbitan_<id> (seksyen, jenis, sumber, soalan), berserta salinan tempatan. */
+import { initPandu } from './pandu.js';
+
 export function initArtikel(R, initTulisan) {
   const { $, $$, esc, toast } = R;
   const A = { indeks: null, id: null, busy: false, laporan: null, laporanKunci: '' };
@@ -136,8 +138,10 @@ export function initArtikel(R, initTulisan) {
     tiadaUnitTeks: 'Pilih artikel atau cipta artikel baharu dahulu.', tajukDocx: 'Artikel', footerDocx: 'Artikel Penerbitan, Repositori SLR',
     failDocx: (ids, st) => 'Artikel_' + slug((entri(ids[0]) || {}).tajuk) + '_' + st + '.docx',
     tambahan: () => ({ jenis: '', sumber: [], soalan: [] }),
-    onUnit: id => { A.id = id; R.lsSet(LS_SEMASA, id); renderPanel(); }
+    onUnit: id => { A.id = id; R.lsSet(LS_SEMASA, id); renderPanel(); },
+    onEditor: () => { if (Pandu) Pandu.onEditor(); }, onTulis: n => { if (Pandu && n === A.id) Pandu.onTulis(); }
   };
+  let Pandu = null;
   const Teks = initTulisan(R, cfg);
   const doc = () => A.id ? Teks.doc(A.id) : null;
   async function simpanDoc(patch) { const d = doc(); if (!d) return; d.masa = Date.now(); Teks.simpanLokal(A.id, d); await Teks.simpanAwan(A.id, Object.assign({ masa: d.masa }, patch)); }
@@ -157,7 +161,7 @@ export function initArtikel(R, initTulisan) {
     const d = doc();
     if (!d || !entri(A.id)) { panel.hidden = true; kosong.hidden = false; kosong.innerHTML = `<h3>${senaraiUnit().length ? 'Pilih artikel di atas' : 'Belum ada artikel penerbitan'}</h3><p>Setiap artikel mempunyai jenis, artikel sumber daripada repositori (sehingga ${HAD_SUMBER}), soal jawab merentas semua artikel sumber (sehingga ${HAD_SOALAN} soalan dijawab agen) dan seksyen dengan editor ASAL dan RAM seperti Tulisan Tesis. Tiada struktur bab yang tetap: tambah seksyen mengikut keperluan artikel.</p><button class="btn btn-primary" data-artbaru="1">Artikel baharu</button>`; return; }
     kosong.hidden = true; panel.hidden = false;
-    renderKepala(d); renderSumber(d); renderSoal(d);
+    renderKepala(d); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render();
   }
   function renderKepala(d) {
     const el = $('#artKepala'); if (!el) return; const e = entri(A.id); const j = JENIS_PETA[d.jenis];
@@ -168,7 +172,7 @@ export function initArtikel(R, initTulisan) {
     </div>
     <div class="help art-jenis-ket">${j ? esc(j.kump) + ': ' + esc(j.ket) + ' ' : 'Pilih satu jenis; ia disimpan bersama artikel dan menentukan struktur lazim yang ditawarkan. '}Dicipta ${esc(R.fmtTime(e.cipta || 0))}${d.masa ? ', disunting ' + esc(R.fmtTime(d.masa)) : ''} · ${Teks.senarai(A.id).length} seksyen · ${Teks.jumlahPatah(A.id)} patah perkataan.</div>`;
     $('#artTajukArt').addEventListener('input', ev => { const t = ev.target.value; const en = entri(A.id); if (!en) return; en.tajuk = t; en.masa = Date.now(); d.tajuk = t; clearTimeout(A.timerTajuk); A.timerTajuk = setTimeout(() => { simpanIndeks([A.id]); simpanDoc({ tajuk: t }); Teks.renderBab(); Teks.renderSambung(); }, 600); });
-    $('#artJenis').addEventListener('change', async ev => { const v = ev.target.value; const en = entri(A.id); if (!en) return; d.jenis = v; en.jenis = v; en.masa = Date.now(); await Promise.all([simpanIndeks([A.id]), simpanDoc({ jenis: v })]); Teks.renderBab(); renderKepala(d); toast(v ? 'Jenis artikel: ' + namaJenis(v) : 'Jenis artikel dikosongkan'); });
+    $('#artJenis').addEventListener('change', async ev => { const v = ev.target.value; const en = entri(A.id); if (!en) return; d.jenis = v; en.jenis = v; en.masa = Date.now(); await Promise.all([simpanIndeks([A.id]), simpanDoc({ jenis: v })]); Teks.renderBab(); renderKepala(d); if (Pandu) Pandu.render(); toast(v ? 'Jenis artikel: ' + namaJenis(v) : 'Jenis artikel dikosongkan'); });
   }
 
   /* ---- artikel sumber (sehingga 15) ---- */
@@ -192,7 +196,7 @@ export function initArtikel(R, initTulisan) {
     if (sumber.includes(id)) { toast('Artikel itu sudah ada dalam senarai sumber'); return; }
     if (sumber.length >= HAD_SUMBER) { toast(`Had ${HAD_SUMBER} artikel sumber bagi satu artikel penerbitan sudah dicapai. Buang satu artikel dahulu jika mahu menambah yang lain.`, true); renderSumber(d); return; }
     if (!R.S.docs.has(id)) { toast('Rekod itu tiada dalam repositori', true); return; }
-    sumber.push(id); await simpanDoc({ sumber: d.sumber }); renderSumber(d); renderSoal(d);
+    sumber.push(id); await simpanDoc({ sumber: d.sumber }); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render();
     const r = Bd().rekod(id); const k = Bd().kelengkapan(r);
     toast(`${Bd().nama(r)} ditambah sebagai sumber (${sumber.length}/${HAD_SUMBER})${k.ok ? '' : '. Rekod ini belum lengkap Bahagian ' + k.bahagian.filter(b => !b.ok).map(b => b.letter).join(', ') + '; lengkapkan dahulu melalui Buka rekod'}`, !k.ok);
   }
@@ -200,7 +204,7 @@ export function initArtikel(R, initTulisan) {
     const d = doc(); if (!d) return; const sumber = sumberSah(d); const i = sumber.indexOf(id); if (i < 0) return;
     const r = R.S.docs.has(id) ? Bd().rekod(id) : null; const nQ = (d.soalan || []).filter(q => q.idA === id || q.idB === id).length;
     const okk = await R.confirmBox('Buang artikel sumber?', `${r ? Bd().nama(r) : 'Rekod yang tidak ditemui'} akan dibuang daripada senarai sumber artikel ini${nQ ? '; ' + nQ + ' soal jawab yang melibatkannya kekal tersimpan' : ''}. Rekod dalam repositori tidak dipadam.`, 'Buang');
-    if (!okk) return; sumber.splice(i, 1); await simpanDoc({ sumber: d.sumber }); renderSumber(d); renderSoal(d); toast('Artikel sumber dibuang');
+    if (!okk) return; sumber.splice(i, 1); await simpanDoc({ sumber: d.sumber }); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render(); toast('Artikel sumber dibuang');
   }
 
   /* ---- soal jawab semua artikel sumber (sehingga 10 soalan) ----
@@ -346,5 +350,7 @@ ${bahan.map(x => Bd().teksRekod(x.i, x.d)).join('\n\n')}`;
     $('#btnArtBaru').addEventListener('click', () => artikelBaru());
   }
   function peringatan() { Teks.peringatan(); }
-  return { show, artikelBaru, padamArtikel, tambahSumber, buangSumber, tanya, padamSoalan, jawapanKeRam, renderPanel, muatIndeks, senaraiUnit, peringatan, JENIS, STRUKTUR, CADANGAN, HAD_SUMBER, HAD_SOALAN, Teks, state: A };
+  /* Pandu Tulis: folder mengikut jenis artikel dan acuan artikel contoh, soal jawab, cadangan ke RAM, meter dan semakan (mod/pandu.js). */
+  Pandu = initPandu(R, { A, Teks, doc, entri, JENIS_PETA, STRUKTUR, sumberAda, HAD_SUMBER });
+  return { show, artikelBaru, padamArtikel, tambahSumber, buangSumber, tanya, padamSoalan, jawapanKeRam, renderPanel, muatIndeks, senaraiUnit, peringatan, JENIS, STRUKTUR, CADANGAN, HAD_SUMBER, HAD_SOALAN, Teks, Pandu, state: A };
 }

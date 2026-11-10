@@ -12,7 +12,7 @@ import { initArtikel } from './mod/artikel.js';
 import { initSintesis } from './mod/sintesis.js';
 import { initKumpulan } from './mod/kumpulan.js';
 import { initKalendar } from './mod/kalendar.js';
-const VERSION = '1.22.0';
+const VERSION = '1.23.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
