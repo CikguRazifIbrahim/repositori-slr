@@ -10,9 +10,10 @@ import { initBanding } from './mod/banding.js';
 import { initTulisan } from './mod/tulisan.js';
 import { initArtikel } from './mod/artikel.js';
 import { initSintesis } from './mod/sintesis.js';
+import { initBengkel } from './mod/bengkel.js';
 import { initKumpulan } from './mod/kumpulan.js';
 import { initKalendar } from './mod/kalendar.js';
-const VERSION = '1.25.0';
+const VERSION = '1.26.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -180,11 +181,13 @@ function showBanner(text, kind, action) {
   if (text && action) { const btn = document.createElement('button'); btn.className = 'btn btn-sm'; btn.textContent = action.label; btn.addEventListener('click', action.fn); b.appendChild(btn); }
 }
 function showView(name) {
-  ['setup', 'login', 'papan', 'harian', 'peta', 'banding', 'tulisan', 'artikel', 'rekod'].forEach(v => { $('#' + v).hidden = v !== name; });
-  const inApp = name === 'papan' || name === 'harian' || name === 'peta' || name === 'banding' || name === 'tulisan' || name === 'artikel' || name === 'rekod';
+  ['setup', 'login', 'papan', 'harian', 'peta', 'banding', 'tulisan', 'artikel', 'bengkel', 'rekod'].forEach(v => { $('#' + v).hidden = v !== name; });
+  const inApp = name === 'papan' || name === 'harian' || name === 'peta' || name === 'banding' || name === 'tulisan' || name === 'artikel' || name === 'bengkel' || name === 'rekod';
   $('#barActions').hidden = !inApp;
   $('#nav').hidden = !inApp;
   $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.view === (name === 'rekod' ? 'papan' : name)));
+  /* pada skrin sempit reben boleh ditatal: pastikan butang menu semasa kelihatan */
+  const nv = $('#nav'), on = $('#nav button.on'); if (inApp && nv && on && nv.scrollWidth > nv.clientWidth + 1) nv.scrollLeft = Math.max(0, on.offsetLeft - nv.offsetLeft - (nv.clientWidth - on.offsetWidth) / 2);
 }
 function goView(name) {
   if (name === 'papan') { goPapan(); return; }
@@ -194,6 +197,7 @@ function goView(name) {
   if (name === 'banding') Banding.show();
   if (name === 'tulisan') Tulisan.show();
   if (name === 'artikel') Artikel.show();
+  if (name === 'bengkel') Bengkel.show();
 }
 
 /* ---------- local persistence (per device conveniences) ---------- */
@@ -1321,7 +1325,7 @@ async function start() {
     if (Drive.justRedirected && Drive.hasToken()) toast('Google Drive disambung melalui lencongan');
     setConn('cache'); S.gotDefinitive = false;
     const wantId = prefs.view === 'rekod' ? prefs.currentId : null;
-    const wantView = prefs.view === 'harian' || prefs.view === 'peta' || prefs.view === 'banding' || prefs.view === 'tulisan' || prefs.view === 'artikel' ? prefs.view : 'papan';
+    const wantView = prefs.view === 'harian' || prefs.view === 'peta' || prefs.view === 'banding' || prefs.view === 'tulisan' || prefs.view === 'artikel' || prefs.view === 'bengkel' ? prefs.view : 'papan';
     showView('papan'); renderList(); subscribe();
     if (wantView !== 'papan') goView(wantView);
     if (wantView !== 'tulisan') Tulisan.muatSemua().then(() => Tulisan.peringatan()).catch(() => {});
@@ -1346,7 +1350,8 @@ const Banding = initBanding(R); R.Banding = Banding;
 const Tulisan = initTulisan(R); R.Tulisan = Tulisan;
 const Artikel = initArtikel(R, initTulisan); R.Artikel = Artikel;
 const Sintesis = initSintesis(R); R.Sintesis = Sintesis;
+const Bengkel = initBengkel(R); R.Bengkel = Bengkel;
 const Kumpulan = initKumpulan(R); R.Kumpulan = Kumpulan;
 const Kalendar = initKalendar(R); R.Kalendar = Kalendar;
-if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, Artikel, Sintesis, Kumpulan, Kalendar, S };
+if (TEST) window.__RSLR = { R, Flip, Harian, Peta, Web, Isi, Banding, Tulisan, Artikel, Sintesis, Bengkel, Kumpulan, Kalendar, S };
 start();
