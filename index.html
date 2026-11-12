@@ -144,6 +144,10 @@ button.chip{cursor:pointer}
 .field input,.field select,.field textarea{width:100%;border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:7px 9px;font-size:14px;min-width:0}
 .field textarea{resize:vertical;min-height:72px;line-height:1.45}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);outline:2px solid var(--accent-line);outline-offset:0}
+.lain-wrap{display:flex;gap:6px;align-items:center;margin-top:2px}
+.lain-wrap input{flex:1;min-width:0}
+.lain-wrap.perlu input{border-color:var(--warn);background:color-mix(in srgb,var(--warn-soft) 35%,var(--surface))}
+.lain-kira{flex:none;font-size:11.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .hasil-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
 .hasil-head .count{font-weight:600;color:var(--muted)}
@@ -581,7 +585,7 @@ body.web-open{overflow:hidden}
 .tul-tab .m .pinjam{color:var(--warn)}
 .tul-tab.on{border-color:var(--accent-line);background:var(--accent-soft)}
 .tul-tab.on .b{color:var(--accent)}
-#tulisan.view,#artikel.view{max-width:none;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+#tulisan.view,#artikel.view,#bengkel.view{max-width:none;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
 /* Kumpulan label (Papan) */
 .list.berkumpulan{gap:12px}
 .kum{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:6px 8px 8px}
@@ -1254,6 +1258,86 @@ table.bs-elak{width:100%;border-collapse:collapse;font-size:13px;line-height:1.4
 @media (max-width:1300px){.bs-tetap{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:900px){.bs-tetap{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:520px){.bs-tetap{grid-template-columns:1fr}.bs-maju{grid-template-columns:repeat(2,minmax(0,1fr))}ol.bs-bedah li{grid-template-columns:minmax(0,1fr)}ol.bs-bedah li>.bs-fg,ol.bs-bedah li>*:not(.bs-fg){grid-column:1;grid-row:auto;justify-self:start}.bs-letak{flex-direction:column}.bs-pst-isi{grid-template-columns:minmax(0,1fr)}}
+/* menu Sintesis v1.27.0: paparan penuh lebar, beberapa sitasi pada satu kad, tetingkap Cadangan Sintesis dan Tulisan saya searas, warna lima golongan */
+@media (min-width:901px){#bengkel .tul-badan{grid-template-columns:200px minmax(0,1fr)}}
+#bengkel.bs-tanpa-senarai .tul-badan,#bengkel.bs-fokus .tul-badan{grid-template-columns:minmax(0,1fr)}
+#bengkel.bs-tanpa-senarai .tul-kiri,#bengkel.bs-fokus .tul-kiri{display:none}
+#bengkel.bs-fokus .tul-head,#bengkel.bs-fokus .tul-ed-head,#bengkel.bs-fokus .bs-atas,#bengkel.bs-fokus .harian-note{display:none}
+#bengkel.bs-fokus .bs-meja{margin-top:0;border-top:0;padding-top:0}
+.bs-tambah-sit{flex:none;white-space:nowrap}
+.bs-lain{display:flex;flex-direction:column;gap:4px;margin:-2px 0 6px}
+.bs-lain:empty{display:none}
+.bs-lain-b{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-left:36px}
+.bs-lain-b input{border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px;font-size:13.5px;background:var(--surface);color:var(--fg);min-width:0}
+.bs-lain-t{flex:none;font-size:11.5px;font-weight:700;color:var(--muted)}
+.bs-lain-b.dlm{margin-left:28px;padding:3px 6px 3px 8px;border-left:3px solid var(--warn);border-radius:0 6px 6px 0;background:color-mix(in srgb,var(--warn-soft) 45%,transparent)}
+.bs-lain-b.dlm .bs-lain-t{color:var(--warn)}
+.bs-x{flex:none;width:24px;height:24px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--muted);font-size:15px;line-height:1;padding:0;cursor:pointer}
+.bs-x:hover{color:var(--bad);border-color:var(--bad)}
+.bs-kad-f>.bs-pautan{flex:none;font-size:12px}
+.bs-isu{display:flex;flex-direction:column;gap:4px}
+.bs-isu-b{display:flex;flex-wrap:wrap;gap:4px}
+.bs-isu .bs-cip{font-size:12px;text-align:left;border-radius:8px;white-space:normal;color:var(--fg);background:var(--surface)}
+.bs-isu .bs-cip.utama,.bs-cip.utama{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.bs-cip.utama:hover{background:var(--accent);filter:brightness(1.08)}
+.bs-kes-cip{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 2px}
+.bs-kes-cip .chip{font-size:11.5px;padding:1px 8px}
+.bs-sit-t{margin-top:8px}
+.bs-sit-b{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px;align-items:start;margin-bottom:5px}
+.bs-sit-b>b{font-family:var(--font-display);font-size:12.5px;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 6px}
+.bs-sit-b .bs-am{margin:0}
+.bs-kecadang{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--surface-2)}
+.bs-meja{margin-top:12px;border-top:2px solid var(--line);padding-top:8px}
+.bs-meja-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.bs-meja-h .spacer{flex:1}
+.bs-dua2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:14px;row-gap:6px;align-items:stretch}
+.bs-dua2>.bs-c{min-width:0}
+.bs-dua2>.kiri{grid-column:1} .bs-dua2>.kanan{grid-column:2}
+.bs-dua2>.bs-c1{grid-row:1;margin:0;align-self:end} .bs-dua2>.bs-c2{grid-row:2;align-self:end} .bs-dua2>.bs-c3{grid-row:3;display:flex;flex-direction:column} .bs-dua2>.bs-c4{grid-row:4}
+.bs-dua2>.bs-c1 b{white-space:nowrap}
+.bs-dua2>.bs-c1.kiri b{color:var(--warn);background:var(--warn-soft)}
+#bsSayaBar{margin:0}
+#bsCadang>.bs-perenggan{flex:1;margin:0;min-height:300px}
+#bsCadang>.bs-am{margin:0 0 6px}
+.bs-perenggan.bs-kosong{font-family:var(--font-body);font-size:13.5px;line-height:1.5;color:var(--muted);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:8px;border-style:dashed}
+.bs-perenggan.bs-kosong p{margin:0}
+.bs-perenggan.bs-rangka{font-family:var(--font-body);font-size:14px;line-height:1.5;border-style:dashed;border-color:var(--warn)}
+.bs-perenggan.bs-contoh{counter-reset:bsay}
+.bs-perenggan.bs-contoh .bs-ay{border-bottom:0}
+.bs-perenggan.bs-contoh .bs-ay:hover{background:color-mix(in srgb,var(--surface-2) 70%,transparent)}
+.bs-perenggan.bs-contoh .bs-ay.on{background:var(--surface-2);box-shadow:0 0 0 2px var(--surface-2)}
+.bs-perenggan.bs-contoh .bs-ay.asing{background:var(--bad-soft)}
+.bs-perenggan.bs-contoh .bs-ay::before{counter-increment:bsay;content:counter(bsay);font-family:var(--font-body);font-size:10px;font-weight:700;vertical-align:super;line-height:0;color:var(--muted);margin-right:2px}
+.bs-ta-wrap{position:relative;flex:1;display:flex;min-height:300px;border-radius:8px;background:var(--surface)}
+.bs-ta-wrap>.bs-tulisan{flex:1;position:relative;background:transparent;line-height:1.85;resize:none;overflow:hidden;margin:0;min-height:0;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.bs-ta-latar{position:absolute;inset:0;border:1px solid transparent;border-radius:8px;padding:10px 12px;overflow:hidden;pointer-events:none;font-family:"Times New Roman",Times,"Source Sans 3",serif;font-size:16.5px;line-height:1.85;letter-spacing:normal;word-spacing:normal;text-align:left;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;color:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.bs-ta-wrap:not(.warna) .bs-ta-latar{visibility:hidden}
+.w-wacana{--wc:var(--w-biru)} .w-lapor{--wc:var(--w-hijau)} .w-istilah{--wc:var(--w-ungu)} .w-sitasi{--wc:var(--w-kelabu)} .w-pendirian{--wc:var(--w-oren)}
+mark.bs-w{background:color-mix(in srgb,var(--wc) 24%,transparent);color:inherit;border-radius:3px;box-shadow:inset 0 -2px 0 var(--wc);padding:0;margin:0}
+.bs-ta-latar mark.bs-w{color:transparent}
+.bs-legenda{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.bs-lg{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-strong);border-radius:999px;padding:2px 9px;font-size:12px;line-height:1.5;background:var(--surface);color:var(--fg);cursor:pointer;font-family:inherit}
+.bs-lg i{flex:none;width:14px;height:12px;border-radius:3px;background:color-mix(in srgb,var(--wc) 32%,transparent);box-shadow:inset 0 -3px 0 var(--wc)}
+.bs-lg b{font-weight:700;color:var(--muted)}
+.bs-lg:not(.on){opacity:.6;text-decoration:line-through}
+.bs-lg:not(.on) i{background:none;box-shadow:inset 0 0 0 1px var(--line-strong)}
+.bs-togol.on{border-color:var(--accent-line);background:var(--accent-soft)}
+.bs-sa{border-color:var(--accent-line);background:color-mix(in srgb,var(--accent-soft) 30%,var(--surface))}
+.bs-sa-b{margin-top:6px}
+.bs-sa-t{font-family:"Times New Roman",Times,"Source Sans 3",serif;font-size:15.5px;line-height:1.6;margin-top:2px;border-left:3px solid var(--accent-line);padding-left:8px;white-space:pre-wrap;overflow-wrap:anywhere}
+.bs-lipat>ol.bs-bedah{margin-top:6px;margin-bottom:0}
+table.bs-banding-w{border-collapse:collapse;font-size:12px;margin:6px 0;width:100%;table-layout:fixed}
+.bs-banding-w th,.bs-banding-w td{border:1px solid var(--line);padding:3px 6px;text-align:center}
+.bs-banding-w th{font-weight:600;background:var(--surface-2);line-height:1.25;overflow-wrap:anywhere}
+.bs-banding-w th i{display:block;margin:0 auto 2px;width:18px;height:6px;border-radius:2px;background:var(--wc)}
+.bs-banding-w td:first-child,.bs-banding-w th:first-child{text-align:left;font-weight:600}
+@media (max-width:1100px){
+  .bs-dua2{grid-template-columns:minmax(0,1fr)}
+  .bs-dua2>.kiri,.bs-dua2>.kanan{grid-column:1}
+  .bs-dua2>.kanan.bs-c1{grid-row:5;margin-top:10px} .bs-dua2>.kanan.bs-c2{grid-row:6} .bs-dua2>.kanan.bs-c3{grid-row:7} .bs-dua2>.kanan.bs-c4{grid-row:8}
+  #bsCadang>.bs-perenggan,.bs-ta-wrap{min-height:200px}
+}
+@media (max-width:520px){.bs-lain-b{padding-left:0}.bs-lain-b.dlm{margin-left:0}.bs-banding-w{font-size:11px}.bs-banding-w th,.bs-banding-w td{padding:2px 3px}}
 </style>
 </head>
 <body>
@@ -1338,7 +1422,7 @@ table.bs-elak{width:100%;border-collapse:collapse;font-size:13px;line-height:1.4
         <div class="field"><label for="fRel">Relevansi</label><select id="fRel"><option value="">Semua</option><option>Tinggi</option><option>Sederhana-Tinggi</option><option>Sederhana</option><option>Rendah</option></select></div>
         <div class="field"><label for="fStatus">Status bacaan</label><select id="fStatus"><option value="">Semua</option><option>Belum dibaca</option><option>Sedang dibaca</option><option>Selesai</option></select></div>
         <div class="field"><label for="fPeringkat">Peringkat pendidikan</label><select id="fPeringkat"><option value="">Semua</option><option>Sekolah Rendah</option><option>Sekolah Menengah</option><option>Pengajian Tinggi</option><option>Bukan Pendidikan</option><option>Pelbagai peringkat</option></select></div>
-        <div class="field"><label for="fJenis">Jenis sumber</label><select id="fJenis"><option value="">Semua</option><option>Empirikal</option><option>Ulasan sistematik</option><option>Ulasan skop</option><option>Meta-analisis</option><option>Konseptual</option><option>Laporan dasar</option><option>Instrumen dan pengesahan</option><option>Lain-lain</option></select></div>
+        <div class="field"><label for="fJenis">Jenis sumber</label><select id="fJenis"><option value="">Semua</option><option>Empirikal</option><option>Ulasan sistematik</option><option>Ulasan skop</option><option>Meta-analisis</option><option>Konseptual</option><option>Laporan dasar</option><option>Instrumen dan pengesahan</option><option>Prosiding</option><option>Lain-lain</option></select></div>
         <div class="field"><label for="fNegara">Negara</label><input id="fNegara" list="negaraList" placeholder="Semua"><datalist id="negaraList"></datalist></div>
         <div class="field"><label for="fBab">Dipetik dalam bab</label><select id="fBab"><option value="">Semua</option><option>Bab 1</option><option>Bab 2</option><option>Bab 3</option><option>Bab 4</option><option>Bab 5</option></select></div>
         <div class="field"><label for="fPadanan">Padanan laluan</label><select id="fPadanan"><option value="">Semua</option><option value="kd">KD ke PPO = YA</option><option value="ppo">PPO ke KDG = YA</option><option value="kedua">Kedua-dua = YA</option></select></div>
@@ -1466,9 +1550,10 @@ table.bs-elak{width:100%;border-collapse:collapse;font-size:13px;line-height:1.4
 
 <main id="bengkel" class="view" hidden>
   <div class="tul-head">
-    <div><h1>Sintesis</h1><div class="sub">Ruang berlatih mensintesis ayat daripada beberapa artikel. Tampal ayat berserta sumbernya ke kanvas BAHAN, nyatakan konteks perbincangan, dan pembantu menyemak kesesuaian bahan, memetakan idea, menunjukkan contoh serta mencadangkan tempat menulisnya. Prof Dr kemudian menulis semula dengan ayat sendiri, meminta semakan dan menghantarnya ke RAM. Disimpan automatik ke awan.</div></div>
+    <div><h1>Sintesis</h1><div class="sub">Ruang berlatih mensintesis ayat daripada beberapa artikel. Tampal ayat berserta sitasinya ke kanvas BAHAN (satu ayat boleh memikul beberapa sitasi), nyatakan konteks perbincangan, dan pembantu mengelaskan setiap ayat, menyemak sitasinya, memetakan idea serta menulis Cadangan Sintesis yang berwarna. Prof Dr menyalin cadangan itu ke Tulisan saya di sebelahnya, menyuntingnya menjadi ayat sendiri, meminta semakan dan menghantarnya ke RAM. Disimpan automatik ke awan.</div></div>
     <span class="spacer"></span>
     <div class="tul-acts">
+      <button class="btn" data-bs="senarai" id="bsBtnSenarai" aria-pressed="false" title="Sembunyikan atau tunjukkan senarai kerja sintesis di kiri supaya ruang kerja lebih lebar">Sembunyi senarai kerja</button>
       <button class="btn" data-bs="pstk" data-k="" title="Buka pustaka penanda wacana, kata kerja pelaporan dan istilah sintesis">Pustaka</button>
       <button class="btn" data-bs="kemajuan" title="Lihat rekod latihan dan tahap bantuan yang dicadangkan">Kemajuan saya</button>
     </div>
@@ -1478,7 +1563,7 @@ table.bs-elak{width:100%;border-collapse:collapse;font-size:13px;line-height:1.4
     <section id="bsEditor" class="tul-editor"></section>
   </div>
   <details class="bs-pustaka" id="bsPustakaWrap"><summary>Pustaka: penanda wacana, kata kerja pelaporan dan istilah sintesis <span class="help">klik frasa untuk memasukkannya ke Tulisan saya dan menyalinnya</span></summary><div id="bsPustaka"></div></details>
-  <div class="harian-note">Setiap kerja sintesis disimpan dalam awan (meta/bengkel) dan pada peranti: ayat bahan berserta sumbernya, konteks, lapan sesi pembantu yang terakhir dan Tulisan saya. Pembantu hanya menggunakan ayat yang ditampal; ia tidak menambah fakta atau sitasi, dan sitasi di luar bahan ditanda merah. Setiap permintaan ialah satu panggilan API Anthropic dengan kunci Prof Dr sendiri (menu tiga titik, Tetapan). Semakan kesesuaian awal, pengesan gaya laporan lawan sintesis dan Pustaka berjalan pada peranti tanpa token. Contoh pembantu ialah bahan belajar; teks akhir ialah tulisan Prof Dr sendiri.</div>
+  <div class="harian-note">Setiap kerja sintesis disimpan dalam awan (meta/bengkel) dan pada peranti: ayat bahan berserta sumbernya, konteks, lapan sesi pembantu yang terakhir dan Tulisan saya. Pembantu hanya menggunakan ayat yang ditampal; ia tidak menambah fakta atau sitasi, dan sitasi di luar bahan ditanda merah. Pembetulan sitasi pada kad (butang Tulis ganti) hanya menulis nama dan tahun yang benar-benar tertulis dalam teks ayat, dan boleh dibatalkan. Setiap permintaan lazimnya satu panggilan API Anthropic dengan kunci Prof Dr sendiri (menu tiga titik, Tetapan); jika jawapan terpotong, aplikasi mengulang sekali. Semakan kesesuaian dan sitasi awal, warna dalam Tulisan saya, pengesan gaya laporan lawan sintesis dan Pustaka berjalan pada peranti tanpa token. Cadangan pembantu ialah bahan untuk disunting; teks rasmi ialah tulisan Prof Dr sendiri selepas disunting dan disemak.</div>
 </main>
 
 <main id="rekod" class="view" hidden>

@@ -55,7 +55,7 @@ export const TAHAP = [
   { n: 2, k: 'rangka', nama: 'Rangka untuk dilengkapkan', ringkas: 'Pembantu memberi peta idea dan rangka ayat berlompang; Prof Dr melengkapkannya.', butang: 'Minta rangka', ket: 'Pembantu tidak lagi menulis perenggan penuh. Prof Dr memilih penanda wacana dan melengkapkan setiap ayat, kemudian meminta semakan.' },
   { n: 3, k: 'semak', nama: 'Saya tulis dahulu', ringkas: 'Prof Dr menulis sintesis sendiri; pembantu hanya menyemak dan memberi maklum balas.', butang: 'Semak tulisan saya', ket: 'Tahap berdikari. Pembantu menilai sama ada tulisan itu sintesis atau laporan, menyemak kesetiaan kepada sumber, dan mencadangkan pembaikan tanpa menulis semula perenggan.' }
 ];
-export const HAD = { bahan: 10, aksaraBahan: 1500, konteks: 1200, tulisan: 6000, sesi: 8, minPatahTulisan: 15 };
+export const HAD = { bahan: 10, aksaraBahan: 1500, konteks: 1200, tulisan: 6000, sesi: 8, minPatahTulisan: 15, sumberAyat: 6 };
 
 /* ---- glosari istilah sintesis ---- */
 export const GLOSARI = [
@@ -97,6 +97,9 @@ export function pecahAyat(teks) {
 }
 const tanpaDiakritik = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 const KATA_BUANG = new Set(['et', 'al', 'dan', 'and', 'rakan', 'rakan-rakan', 'lihat', 'juga', 'contohnya', 'see', 'also', 'cf', 'eg', 'ie', 'cth', 'seperti', 'dalam', 'in', 'menurut', 'bagi', 'kajian', 'oleh', 'according', 'to', 'the', 'a', 'study', 'by', 'dapatan', 'research']);
+/* Perkataan berhuruf besar yang lazim mendahului nama pengarang dalam sitasi naratif tetapi bukan sebahagian daripada nama itu. */
+const AWAL_NAMA = new Set(['menurut', 'bagi', 'kajian', 'dapatan', 'dalam', 'seperti', 'oleh', 'namun', 'sebaliknya', 'selain', 'malah', 'malahan', 'justeru', 'manakala', 'sedangkan', 'kerana', 'apabila', 'jika', 'contohnya', 'misalnya', 'pertama', 'kedua', 'ketiga', 'seterusnya', 'akhirnya', 'kemudian', 'begitu', 'demikian', 'tambahan', 'maka', 'bagaimanapun', 'walau', 'lihat', 'in', 'as', 'like', 'unlike', 'both', 'while', 'whereas', 'see', 'however', 'similarly', 'likewise', 'moreover', 'furthermore', 'thus', 'hence', 'therefore', 'according', 'study', 'research', 'the', 'for', 'by', 'dan', 'and', '&', 'et', 'al', 'bin', 'binti']);
+const bukanNama = w => AWAL_NAMA.has(String(w || '').replace(/[,.;:]+$/, '').toLowerCase());
 /* Kunci sumber: perkataan pertama nama (berhuruf besar atau satu-satunya) + tahun, contohnya "saha2020". */
 export function kunciSumber(pengarang, tahun) {
   const th = (String(tahun || '').match(/(?:1[89]|20)\d{2}/) || [''])[0];
@@ -105,19 +108,38 @@ export function kunciSumber(pengarang, tahun) {
   return besar ? besar.toLowerCase().replace(/[^a-z0-9]/g, '') + th : '';
 }
 /* Kesan sitasi APA dalam satu ayat atau perenggan. Pulangan: [{ kunci, pengarang, tahun, bentuk: 'naratif' | 'kurungan', pos }] */
+/* Frasa sitasi sekunder di dalam satu kurungan: "(A, 2018, seperti yang dipetik dalam B, 2021)" atau "A (2018, as cited in B, 2021)". */
+const RE_SEKUNDER = /\s*,?\s*(?:seperti\s+yang\s+dipetik\s+(?:dalam|oleh)|sebagaimana\s+(?:yang\s+)?dipetik\s+(?:dalam|oleh)|dipetik\s+(?:dalam|oleh|daripada)|as\s+cited\s+in|cited\s+in|as\s+quoted\s+in|quoted\s+in)\s+/i;
+/* Nama pengarang yang mendahului satu kurungan (sitasi naratif), tanpa kata pembuka ayat. */
+function namaSebelum(s, idx) {
+  const sebelum = s.slice(Math.max(0, idx - 90), idx); const tok = sebelum.trim().split(/\s+/); const nama = [];
+  for (let i = tok.length - 1; i >= 0 && nama.length < 8; i--) { const w = tok[i]; const inti = w.replace(/[,.;:]+$/, ''); if (/^[A-ZÀ-ɏ][\p{L}'’-]*$/u.test(inti) || /^(et|al|dan|and|&|rakan-rakan|bin|binti|van|der|de|al-[A-Z]\p{L}+)$/iu.test(inti)) nama.unshift(w); else break; }
+  while (nama.length && bukanNama(nama[0])) nama.shift();
+  return nama.join(' ').replace(/[,;:]+$/, '').trim();
+}
+/* Kesan sitasi APA dalam satu ayat atau perenggan. Pulangan: [{ kunci, pengarang, tahun, bentuk: 'naratif' | 'kurungan', pos, peranan? }]
+   peranan: 'asal' bagi sumber asal dalam sitasi sekunder, 'dibaca' bagi artikel yang memetiknya; tiada bagi sitasi biasa. */
 export function kesanSitasi(teks) {
   const s = String(teks || ''); const out = []; const reK = /\(([^()]*)\)/g; let m;
   const reTahun = new RegExp(TAHUN); const reTahunSahaja = new RegExp('^\\s*' + TAHUN + '(?:\\s*,\\s*' + TAHUN + ')*(?:\\s*[,;:]\\s*(?:m\\.?\\s?s\\.?|hlm\\.?|pp?\\.?|para\\.?)\\s*[^()]*)?\\s*$');
+  const buangAwal = p => p.replace(/^\s*(?:lihat juga|lihat|contohnya|cth\.?|seperti|see also|see|e\.g\.,?|cf\.?|i\.e\.,?)\s*,?\s*/i, '').replace(/[,\s]+$/, '').trim();
   while ((m = reK.exec(s))) {
     const isi = m[1]; if (!reTahun.test(isi)) continue;
     if (reTahunSahaja.test(isi)) {
-      const sebelum = s.slice(Math.max(0, m.index - 90), m.index); const tok = sebelum.trim().split(/\s+/); const nama = [];
-      for (let i = tok.length - 1; i >= 0 && nama.length < 8; i--) { const w = tok[i]; const inti = w.replace(/[,.;:]+$/, ''); if (/^[A-ZÀ-ɏ][\p{L}'’-]*$/u.test(inti) || /^(et|al|dan|and|&|rakan-rakan|bin|binti|van|der|de|al-[A-Z]\p{L}+)$/iu.test(inti)) nama.unshift(w); else break; }
-      while (nama.length && /^(dan|and|&|et|al\.?|bin|binti)$/i.test(nama[0].replace(/[,.;:]+$/, ''))) nama.shift();
-      const p = nama.join(' ').replace(/[,;:]+$/, '').trim(); const th = (isi.match(reTahun) || [''])[0];
+      const p = namaSebelum(s, m.index); const th = (isi.match(reTahun) || [''])[0];
       if (p) out.push({ kunci: kunciSumber(p, th), pengarang: p, tahun: th, bentuk: 'naratif', pos: m.index });
     } else {
-      isi.split(';').forEach(bhg => { const th = (bhg.match(reTahun) || [''])[0]; if (!th) return; const p = bhg.slice(0, bhg.search(reTahun)).replace(/^\s*(?:lihat juga|lihat|contohnya|cth\.?|seperti|see also|see|e\.g\.,?|cf\.?|i\.e\.,?)\s*,?\s*/i, '').replace(/[,\s]+$/, '').trim(); const k = kunciSumber(p, th); if (k && /[\p{L}]/u.test(p)) out.push({ kunci: k, pengarang: p, tahun: th, bentuk: 'kurungan', pos: m.index }); });
+      isi.split(';').forEach((bhg, bi) => {
+        const dua = bhg.split(RE_SEKUNDER); const sek = dua.length > 1;
+        dua.forEach((x, xi) => {
+          const th = (x.match(reTahun) || [''])[0]; if (!th) return; let p = buangAwal(x.slice(0, x.search(reTahun))); let bentuk = 'kurungan';
+          if (!/[\p{L}]/u.test(p) && bi === 0 && xi === 0) { p = namaSebelum(s, m.index); bentuk = 'naratif'; }
+          const k = kunciSumber(p, th); if (!k || !/\p{L}{2,}/u.test(p) || /[=<>%]/.test(p)) return;
+          const c = { kunci: k, pengarang: p, tahun: th, bentuk, pos: m.index }; if (sek) c.peranan = xi === dua.length - 1 ? 'dibaca' : 'asal'; out.push(c);
+        });
+        /* "(seperti yang dipetik dalam B, 2021)" selepas nama sumber asal tanpa tahun: B ialah artikel yang dibaca */
+        if (!sek && RE_SEKUNDER.test(' ' + bhg.trim() + ' ') && out.length) { const akhir = out[out.length - 1]; if (akhir.pos === m.index) akhir.peranan = 'dibaca'; }
+      });
     }
   }
   return out;
@@ -136,11 +158,57 @@ export function tindih(a, b, n) {
   return { peratus: Math.round((sama / ga) * 100), larian, cukup: true };
 }
 
-/* ---- semakan bahan sebelum agen dipanggil (tanpa token). Pulangan: { boleh, amaran: [{ aras: 'halang' | 'amaran' | 'info', teks, id? }], sumber, bahasa } ---- */
+/* Sumber satu ayat bahan: sumber utama (pengarang, tahun, ms) diikuti sumber tambahan (lain). Satu ayat boleh memikul beberapa sitasi.
+   dalam = artikel yang benar-benar dibaca apabila ayat itu sitasi sekunder ("seperti yang dipetik dalam"). */
+export function sumberBahan(b) {
+  if (!b || b.saya) return []; const out = [];
+  const tambah = x => { const p = String((x && x.pengarang) || '').trim(), t = String((x && x.tahun) || '').trim(); if (p || t) out.push({ pengarang: p, tahun: t, ms: String((x && x.ms) || '').trim() }); };
+  tambah(b); (Array.isArray(b.lain) ? b.lain : []).forEach(tambah); return out;
+}
+export const dalamBahan = b => (b && !b.saya && b.dalam && String(b.dalam.pengarang || '').trim() ? { pengarang: String(b.dalam.pengarang).trim(), tahun: String(b.dalam.tahun || '').trim(), ms: String(b.dalam.ms || '').trim() } : null);
+export const satuSumber = x => (x.pengarang || 'Sumber belum diisi') + (x.tahun ? ' (' + x.tahun + ')' : '');
+export function labelSumber(b) {
+  if (!b) return ''; if (b.saya) return 'Dapatan saya'; const ss = sumberBahan(b); const d = dalamBahan(b);
+  return (ss.length ? ss.map(satuSumber).join('; ') : 'Sumber belum diisi') + (d ? ', dipetik dalam ' + satuSumber(d) : '');
+}
+/* Kunci semua sitasi yang sah bagi satu ayat bahan (sumber, sumber tambahan dan artikel yang dibaca). */
+export function kunciBahan(b) { const out = new Set(); sumberBahan(b).forEach(x => { const k = kunciSumber(x.pengarang, x.tahun); if (k) out.add(k); }); const d = dalamBahan(b); if (d) { const k = kunciSumber(d.pengarang, d.tahun); if (k) out.add(k); } return out; }
+/* Sitasi yang tertulis di dalam teks ayat bahan, tanpa pendua, mengikut urutan muncul. */
+export function sitasiDalamTeks(teks) { const lihat = new Set(); return kesanSitasi(teks).filter(c => c.kunci && !lihat.has(c.kunci) && lihat.add(c.kunci)).map(c => { const o = { kunci: c.kunci, pengarang: c.pengarang, tahun: c.tahun }; if (c.peranan) o.peranan = c.peranan; return o; }); }
+/* Tanda keadaan sitasi satu ayat bahan: sumber pada kad berserta sitasi dalam teksnya. Digunakan untuk mengingat keputusan "kekalkan":
+   amaran sitasi muncul semula hanya apabila sumber pada kad atau sitasi dalam teks berubah. */
+export function tandaSitasi(b) { return Array.from(kunciBahan(b)).sort().join(',') + '|' + sitasiDalamTeks(b && b.teks).map(c => c.kunci + (c.peranan === 'dibaca' ? '<' : '')).sort().join(','); }
+/* Adakah satu sumber { pengarang, tahun } benar-benar tertulis dalam teks ayat itu? Nama pertama pengarang mesti hadir sebagai satu perkataan
+   dan tahunnya mesti hadir. Menghalang pembetulan sitasi yang direka: cadangan pembantu hanya diterima jika lulus semakan ini. */
+export function sumberDalamTeks(teks, x) {
+  const k = kunciSumber(x && x.pengarang, '').replace(/\d+$/, ''); const th = (String((x && x.tahun) || '').match(/(?:1[89]|20)\d{2}/) || [''])[0]; if (!k || k.length < 2 || !th) return false;
+  const t = tanpaDiakritik(String(teks || '')).toLowerCase(); if (!t.includes(th)) return false;
+  return t.split(/[^a-z0-9'’-]+/).some(w => w.replace(/[^a-z0-9]/g, '') === k);
+}
+const jarakNama = (a, b) => { a = kunciSumber(a, '').replace(/\d+$/, ''); b = kunciSumber(b, '').replace(/\d+$/, ''); if (!a || !b) return 99; if (a === b) return 0; const m = []; for (let i = 0; i <= a.length; i++) { m[i] = [i]; for (let k = 1; k <= b.length; k++) m[i][k] = i === 0 ? k : Math.min(m[i - 1][k] + 1, m[i][k - 1] + 1, m[i - 1][k - 1] + (a[i - 1] === b[k - 1] ? 0 : 1)); } return m[a.length][b.length]; };
+/* Sitasi dalam teks ayat yang tidak sepadan dengan sumber pada kad. jenis:
+   'kosong' (kad tanpa sumber), 'salah' (satu lawan satu, nama atau tahun hampir sama: mungkin tersilap taip),
+   'berbilang' (teks menyebut sumber pada kad berserta sumber lain: satu ayat, beberapa sitasi) atau
+   'sekunder' (teks memetik sumber lain, atau memuatkan frasa "seperti yang dipetik dalam"). Pulangan: null jika tiada isu
+   atau jika pengguna sudah memilih untuk mengekalkan keadaan ini (b.sitOk). */
+export function isuSitasi(b) {
+  if (!b || b.saya) return null; const semua = sitasiDalamTeks(b.teks); if (!semua.length) return null; const sah = kunciBahan(b); const asing = semua.filter(c => !sah.has(c.kunci));
+  const tersurat = semua.some(c => c.peranan === 'dibaca') && semua.some(c => c.peranan === 'asal') && !dalamBahan(b);
+  if (!asing.length && !tersurat) return null;
+  if (b.sitOk && b.sitOk === tandaSitasi(b)) return null;
+  const ss = sumberBahan(b).filter(x => x.pengarang);
+  if (tersurat) return { jenis: 'sekunder', semua, asing, tersurat: true };
+  if (!ss.length) return { jenis: 'kosong', semua, asing };
+  if (ss.length === 1 && semua.length === 1 && !dalamBahan(b)) { const x = ss[0], c = semua[0]; const jn = jarakNama(x.pengarang, c.pengarang); const tahunSama = String(x.tahun).slice(0, 4) === String(c.tahun).slice(0, 4); if ((jn === 0 && !tahunSama) || (jn > 0 && jn <= 2 && tahunSama)) return { jenis: 'salah', semua, asing }; }
+  if (asing.length < semua.length) return { jenis: 'berbilang', semua, asing };
+  return { jenis: 'sekunder', semua, asing };
+}
+
+/* ---- semakan bahan sebelum agen dipanggil (tanpa token). Pulangan: { boleh, amaran: [{ aras: 'halang' | 'amaran' | 'info', teks, id?, jenis?, sitasi? }], sumber, bil, bahasa } ---- */
 export function semakBahan(bahan) {
   const isi = (bahan || []).filter(b => b && String(b.teks || '').trim()); const amaran = []; const kunci = new Map();
-  isi.forEach(b => { const k = b.saya ? 'saya' : kunciSumber(b.pengarang, b.tahun) || ''; if (k) kunci.set(k, (kunci.get(k) || 0) + 1); });
-  const tanpaSumber = isi.filter(b => !b.saya && !String(b.pengarang || '').trim()); const tanpaTahun = isi.filter(b => !b.saya && String(b.pengarang || '').trim() && !/(?:1[89]|20)\d{2}|t\.t\.|n\.d\./.test(String(b.tahun || '')));
+  isi.forEach(b => { if (b.saya) { kunci.set('saya', (kunci.get('saya') || 0) + 1); return; } sumberBahan(b).forEach(x => { const k = kunciSumber(x.pengarang, x.tahun); if (k) kunci.set(k, (kunci.get(k) || 0) + 1); }); });
+  const tanpaSumber = isi.filter(b => !b.saya && !sumberBahan(b).some(x => x.pengarang)); const tanpaTahun = isi.filter(b => !b.saya && sumberBahan(b).some(x => x.pengarang && !/(?:1[89]|20)\d{2}|t\.t\.|n\.d\./.test(x.tahun)));
   if (isi.length < 2) amaran.push({ aras: 'halang', teks: 'Sintesis memerlukan sekurang-kurangnya dua ayat daripada dua sumber berlainan. Tambah ayat daripada artikel kedua.' });
   else if (kunci.size < 2 && !tanpaSumber.length) amaran.push({ aras: 'halang', teks: 'Semua ayat datang daripada satu sumber sahaja. Itu ringkasan, bukan sintesis. Tambah ayat daripada sekurang-kurangnya satu sumber lain.' });
   tanpaSumber.forEach(b => amaran.push({ aras: 'halang', id: b.id, teks: 'Ayat ini belum ada sumber. Isi nama pengarang dan tahun supaya sitasi tidak direka.' }));
@@ -151,8 +219,11 @@ export function semakBahan(bahan) {
     if (n < 6) amaran.push({ aras: 'amaran', id: b.id, teks: 'Ayat terlalu pendek (' + n + ' patah perkataan) untuk membawa satu dakwaan yang jelas.' });
     if (n > 110) amaran.push({ aras: 'amaran', id: b.id, teks: 'Petikan panjang (' + n + ' patah perkataan). Pilih satu atau dua ayat yang membawa dakwaan utama sahaja.' });
     if (lihat.has(t)) amaran.push({ aras: 'amaran', id: b.id, teks: 'Ayat ini sama dengan ayat lain dalam bahan.' }); else lihat.set(t, b.id);
-    const dlm = kesanSitasi(b.teks).filter(c => c.kunci && c.kunci !== kunciSumber(b.pengarang, b.tahun));
-    if (dlm.length && !b.saya) amaran.push({ aras: 'info', id: b.id, teks: 'Ayat ini memetik sumber lain (' + dlm.slice(0, 3).map(c => c.pengarang + ', ' + c.tahun).join('; ') + '). Itu sitasi sekunder: sitasikan artikel yang Prof Dr baca, atau cari sumber asalnya.' });
+    const isu = isuSitasi(b); const senarai = x => x.slice(0, 5).map(c => c.pengarang + ', ' + c.tahun).join('; ');
+    if (isu && isu.jenis === 'sekunder') amaran.push({ aras: 'amaran', id: b.id, jenis: 'sekunder', sitasi: isu, teks: isu.tersurat ? 'Sitasi sekunder dikesan dalam teks ayat (' + senarai(isu.semua) + '), tetapi kad belum menandakan artikel yang dibaca.' : 'Sitasi sekunder: ayat ini memetik ' + senarai(isu.asing) + ', bukan sumber pada kad.' });
+    else if (isu && isu.jenis === 'berbilang') amaran.push({ aras: 'info', id: b.id, jenis: 'berbilang', sitasi: isu, teks: 'Ayat ini memikul ' + isu.semua.length + ' sitasi (' + senarai(isu.semua) + '), tetapi kad belum mencatat ' + senarai(isu.asing) + '.' });
+    else if (isu && isu.jenis === 'salah') amaran.push({ aras: 'amaran', id: b.id, jenis: 'salah', sitasi: isu, teks: 'Sitasi dalam teks ayat (' + senarai(isu.semua) + ') tidak sepadan dengan sumber pada kad. Mungkin tersilap taip.' });
+    else if (isu && isu.jenis === 'kosong') amaran.push({ aras: 'info', id: b.id, jenis: 'kosong', sitasi: isu, teks: 'Sitasi dikesan dalam teks ayat: ' + senarai(isu.semua) + '.' });
   });
   const bhs = new Set(isi.map(b => bahasaTeks(b.teks)).filter(Boolean));
   if (isi.length > 8) amaran.push({ aras: 'info', teks: 'Bahan melebihi lapan ayat. Satu perenggan elok memikul satu idea; pertimbangkan memecahkan bahan kepada dua kerja sintesis.' });
@@ -265,7 +336,7 @@ const RE_MULA = /^(?:["'“(]\s*)?(?:(?:menurut|bagi|kajian(?:\s+oleh)?|dapatan(
 const SEPADU = ['sama', 'beza', 'syarat', 'kumpul', 'teori'], TAFSIR = ['sebab', 'pendirian', 'nilai', 'jurang'];
 export function kesanGaya(teks, o) {
   o = o || {}; const bhs = o.bahasa === 'en' ? 'en' : (o.bahasa === 'ms' ? 'ms' : (bahasaTeks(teks) || 'ms'));
-  const ay = pecahAyat(teks).map(t => { const sit = kesanSitasi(t); const kunci = Array.from(new Set(sit.map(c => c.kunci).filter(Boolean))); const pn = cariPenanda(t, bhs); return { t, sumber: kunci, mula: RE_MULA.test(t.trim()) || /^(?:menurut|according to)\b/i.test(t.trim()), naratif: sit.filter(c => c.bentuk === 'naratif').length, penanda: Object.keys(pn.kategori) }; });
+  const ay = pecahAyat(teks).map(t => { const sit = kesanSitasi(t).filter(c => c.peranan !== 'dibaca'); const kunci = Array.from(new Set(sit.map(c => c.kunci).filter(Boolean))); const pn = cariPenanda(t, bhs); return { t, sumber: kunci, mula: RE_MULA.test(t.trim()) || /^(?:menurut|according to)\b/i.test(t.trim()), naratif: sit.filter(c => c.bentuk === 'naratif').length, penanda: Object.keys(pn.kategori) }; });
   const nA = ay.length; const bersit = ay.filter(a => a.sumber.length); const unik = new Set(); ay.forEach(a => a.sumber.forEach(k => unik.add(k)));
   if (nA < 2 || !bersit.length) return { cukup: false, skor: 0, gaya: '', ukur: { ayat: nA, bersitasi: bersit.length, sumber: unik.size }, bukti: [nA < 2 ? 'Tulis sekurang-kurangnya dua ayat untuk dinilai.' : 'Belum ada sitasi dalam tulisan ini. Sintesis mesti menunjukkan sumber setiap dakwaan.'], ayat: ay };
   const satu = bersit.filter(a => a.sumber.length === 1).length, ramai = bersit.filter(a => a.sumber.length >= 2).length, mula = ay.filter(a => a.mula).length, tanpa = ay.filter(a => !a.sumber.length);
@@ -303,15 +374,19 @@ export function semakTeks(teks, o) {
   Object.keys(mula).forEach(k => { if (mula[k] >= 3 && k.length > 4) out.push({ aras: 'info', teks: mula[k] + ' ayat bermula dengan "' + k + '". Pelbagaikan pembuka ayat.' }); });
   const pj = ay.map(patah).filter(Boolean); if (pj.length >= 4) { const mx = Math.max(...pj), mn = Math.min(...pj); if (mx - mn <= 4) out.push({ aras: 'info', teks: 'Semua ayat hampir sama panjang (' + mn + ' hingga ' + mx + ' patah perkataan). Selang-selikan ayat pendek dengan ayat sederhana.' }); if (mx > 43) out.push({ aras: 'info', teks: 'Ada ayat sepanjang ' + mx + ' patah perkataan. Pecahkan ayat yang melebihi kira-kira 43 patah perkataan.' }); }
   if (o.bahan) {
-    const sah = new Map(); (o.bahan || []).forEach(b => { if (b && !b.saya) { const k = kunciSumber(b.pengarang, b.tahun); if (k) sah.set(k, b); } });
+    const sah = new Map(); (o.bahan || []).forEach(b => { if (!b || b.saya) return; sumberBahan(b).forEach(x => { const k = kunciSumber(x.pengarang, x.tahun); if (k && !sah.has(k)) sah.set(k, x); }); const dl = dalamBahan(b); if (dl) { const k = kunciSumber(dl.pengarang, dl.tahun); if (k && !sah.has(k)) sah.set(k, dl); } });
     const sit = kesanSitasi(s); const guna = new Set(sit.map(c => c.kunci)); const asing = []; sit.forEach(c => { if (c.kunci && !sah.has(c.kunci) && !asing.some(x => x.kunci === c.kunci)) asing.push(c); });
     if (asing.length) out.push({ aras: 'halang', teks: 'Sitasi yang tiada dalam bahan: ' + asing.map(c => c.pengarang + ' (' + c.tahun + ')').join('; ') + '. Tambah ayat sumber itu ke dalam bahan, atau buang sitasinya.' });
     const tinggal = Array.from(sah.keys()).filter(k => !guna.has(k)); if (tinggal.length && sit.length) out.push({ aras: 'info', teks: 'Sumber dalam bahan yang belum disitasi: ' + tinggal.map(k => { const b = sah.get(k); return b.pengarang + ' (' + b.tahun + ')'; }).join('; ') + '.' });
+    /* sitasi sekunder: sumber yang hanya dibaca melalui artikel lain mesti ditulis bersama artikel itu dalam kurungan yang sama */
+    const terus = new Set(), sek = new Map(); (o.bahan || []).forEach(b => { if (!b || b.saya) return; const dl = dalamBahan(b); sumberBahan(b).forEach(x => { const k = kunciSumber(x.pengarang, x.tahun); if (!k) return; if (dl) { if (!sek.has(k)) sek.set(k, { x, dl }); } else terus.add(k); }); });
+    const longgar = []; sit.forEach(c => { const e = sek.get(c.kunci); if (!e || terus.has(c.kunci) || longgar.some(y => y.c.kunci === c.kunci)) return; const kd = kunciSumber(e.dl.pengarang, e.dl.tahun); if (!sit.some(y => y.pos === c.pos && y.peranan === 'dibaca' && y.kunci === kd)) longgar.push({ c, e }); });
+    if (longgar.length) { const y = longgar[0]; const frasa = bhs === 'en' ? 'as cited in' : 'seperti yang dipetik dalam'; out.push({ aras: 'amaran', teks: 'Sitasi sekunder: ' + longgar.map(z => z.e.x.pengarang + ' (' + z.e.x.tahun + ')').join('; ') + ' dibaca melalui ' + y.e.dl.pengarang + ' (' + y.e.dl.tahun + '), bukan dibaca terus. Tulis, contohnya, (' + y.e.x.pengarang + ', ' + y.e.x.tahun + ', ' + frasa + ' ' + y.e.dl.pengarang + ', ' + y.e.dl.tahun + '), atau baca sumber asal itu dan buang tanda "dipetik dalam" pada kad.' }); }
     const rapat = (o.bahan || []).map(b => ({ b, t: tindih(s, b.teks, 5) })).filter(x => x.t.cukup && x.t.larian >= 8);
-    if (rapat.length) out.push({ aras: 'amaran', teks: 'Rangkaian ' + Math.max(...rapat.map(x => x.t.larian)) + ' patah perkataan berturutan sama dengan ayat sumber (' + rapat.map(x => x.b.saya ? 'Dapatan saya' : x.b.pengarang).join('; ') + '). Itu tulisan tampalan: ubah struktur ayat, atau jadikan petikan langsung bertanda petik.' });
+    if (rapat.length) out.push({ aras: 'amaran', teks: 'Rangkaian ' + Math.max(...rapat.map(x => x.t.larian)) + ' patah perkataan berturutan sama dengan ayat sumber (' + rapat.map(x => x.b.saya ? 'Dapatan saya' : (sumberBahan(x.b)[0] || {}).pengarang || 'sumber').join('; ') + '). Itu tulisan tampalan: ubah struktur ayat, atau jadikan petikan langsung bertanda petik.' });
   }
   if (o.susunan) { const ss = semakSusunan(s, o.susunan); if (ss.length) out.push({ aras: 'info', teks: 'Susunan sitasi berkumpulan ' + ss[0].asal + ': ' + (o.susunan === 'apa' ? 'APA 7 menyusun mengikut abjad' : 'garis panduan tesis UPSI (16.10.2) menyusun mengikut tahun bermula yang terkini') + ', iaitu ' + ss[0].cadang + '.' + (ss.length > 1 ? ' Ada ' + (ss.length - 1) + ' kurungan lain yang serupa.' : '') }); }
-  if (o.contoh) { const t = tindih(s, o.contoh, 4); if (t.cukup && (t.peratus >= 45 || t.larian >= 12)) out.push({ aras: 'amaran', teks: 'Tulisan ini masih terlalu hampir dengan contoh pembantu (' + t.peratus + '% rangkaian empat patah perkataan sama; larian terpanjang ' + t.larian + '). Tutup contoh dan tulis semula daripada peta idea.' }); }
+  if (o.contoh) { const t = tindih(s, o.contoh, 4); if (t.cukup && (t.peratus >= 45 || t.larian >= 12)) out.push({ aras: t.peratus >= 70 ? 'amaran' : 'info', teks: t.peratus + '% rangkaian empat patah perkataan masih sama dengan cadangan pembantu (larian terpanjang ' + t.larian + ' patah perkataan). Sunting struktur ayat dan pilihan kata sebelum tulisan ini dijadikan teks rasmi.' }); }
   return out;
 }
 
@@ -321,6 +396,7 @@ export function semakSusunan(teks, gaya) {
   const out = []; const re = /\(([^()]{6,400})\)/g; let m;
   while ((m = re.exec(String(teks || '')))) {
     const am = /^((?:contohnya|misalnya|lihat juga|lihat|e\.g\.|see also|see|cf\.),?\s*)/i.exec(m[1]); const awal = am ? am[1] : '';
+    if (RE_SEKUNDER.test(' ' + m[1] + ' ')) continue; /* menyusun semula kurungan sitasi sekunder boleh mengubah sumber mana yang dipetik dalam artikel yang dibaca */
     const bhg = m[1].slice(awal.length).split(';').map(x => x.trim()).filter(Boolean); if (bhg.length < 2) continue;
     const butir = bhg.map(b => { const y = /((?:1[89]|20)\d{2})[a-z]?\s*(?:,\s*(?:m\.?\s?s\.?|hlm\.?|pp?\.?)[^;]*)?$/i.exec(b); return y ? { asal: b, nama: b.toLowerCase(), tahun: +y[1] } : null; });
     if (butir.some(x => !x)) continue;
@@ -331,6 +407,65 @@ export function semakSusunan(teks, gaya) {
   }
   return out;
 }
+
+/* ================= warna dalam Cadangan Sintesis dan pratonton Tulisan saya =================
+   Lima golongan ditanda dengan warna berlainan supaya gerakan sintesis mudah dilihat dan ditiru. */
+export const WARNA = [
+  { k: 'wacana', ms: 'Penanda wacana', en: 'Discourse markers', ket: 'Kata atau frasa yang menghubungkan ayat dengan ayat atau klausa dengan klausa: tambahan, tentangan, sebab dan akibat, masa.' },
+  { k: 'lapor', ms: 'Kata kerja pelaporan', en: 'Reporting verbs', ket: 'Kata kerja yang melaporkan apa yang dilakukan oleh sumber: mendapati, melaporkan, menghujahkan, mentakrifkan.' },
+  { k: 'istilah', ms: 'Istilah sintesis', en: 'Synthesis terms', ket: 'Kata yang menamakan hubungan antara sumber atau menghimpunkan sumber: selari dengan, bercanggah dengan, kedua-dua kajian, saling melengkapi, jurang.' },
+  { k: 'sitasi', ms: 'Sitasi', en: 'Citations', ket: 'Tempat sumber dinyatakan. Sitasi berkumpulan dalam kurungan menunjukkan beberapa sumber memikul satu idea.' },
+  { k: 'pendirian', ms: 'Suara penulis', en: 'Writer voice', ket: 'Tafsiran, pendirian dan bahasa berhati-hati penulis: hal ini menunjukkan bahawa, membayangkan bahawa, mungkin, pada hemat pengkaji.' }
+];
+export const WARNA_PETA = Object.fromEntries(WARNA.map(w => [w.k, w]));
+const LEKS = {
+  ms: {
+    istilah: ['saling melengkapi', '(?:selari|sejajar|selaras|konsisten|senada|seiring|sepadan) dengan(?: (?:itu|hal itu|dapatan (?:ini|itu|tersebut)))?', 'tidak selari dengan', 'berbeza dengan', 'berbeza daripada', 'bercanggah dengan', 'bertentangan dengan', 'berbanding dengan', 'bersetuju dengan', 'mengesahkan dapatan', 'menyokong dapatan', 'kedua-dua (?:kajian|dapatan|sumber|pengkaji|penulis|artikel)', 'ketiga-tiga (?:kajian|dapatan|sumber|pengkaji)', 'beberapa (?:kajian|pengkaji|dapatan|sumber)', 'kebanyakan (?:kajian|pengkaji|dapatan)', 'sebilangan (?:kajian|pengkaji)', 'sekumpulan (?:kajian|pengkaji)', 'kajian-kajian (?:ini|tersebut|lepas)', 'dapatan-dapatan (?:ini|tersebut)', 'dapatan yang (?:serupa|sama|selari|berbeza|bercanggah)', 'pola yang sama', 'dua aliran', 'secara kolektif', 'secara bersama', 'persamaan', 'perbezaan', 'percanggahan', 'kesepakatan', 'sepakat', 'bercanggah', 'melengkapi', 'melengkapkan', 'melanjutkan', 'meluaskan', 'memperluas', 'mengukuhkan', 'memperkukuh', 'diperkukuh', 'menyokong', 'disokong', 'mempersoalkan', 'menyangkal', 'mencabar', 'jurang kajian', 'jurang ini', 'jurang', 'belum (?:dikaji|diteliti|diuji|ditemui)', 'kurang (?:dikaji|diteliti|diberi perhatian)', 'jarang dikaji', 'masih terhad', 'masih kurang'],
+    wacana: ['hal ini dikatakan demikian kerana', 'walau bagaimanapun', 'bagaimanapun', 'namun begitu', 'namun demikian', 'namun', 'akan tetapi', 'tetapi', 'sebaliknya', 'manakala', 'sedangkan', 'walaupun', 'meskipun', 'sungguhpun', 'selain itu', 'di samping itu', 'tambahan pula', 'tambahan lagi', 'lebih daripada itu', 'bukan sahaja', 'malahan', 'malah', 'bahkan', 'justeru', 'begitu juga', 'demikian juga', 'oleh sebab itu', 'oleh sebab', 'oleh itu', 'oleh yang demikian', 'oleh hal yang demikian', 'dengan demikian', 'dengan itu', 'kesannya', 'akibatnya', 'lantaran itu', 'sehubungan dengan itu', 'kerana', 'sementara itu', 'pada peringkat awal', 'sehingga kini', 'dengan kata lain', 'iaitu', 'secara khusus', 'lebih khusus lagi', 'contohnya', 'misalnya', 'sebagai contoh', 'ringkasnya', 'tegasnya', 'jelasnya', 'kesimpulannya', 'secara keseluruhannya', 'secara keseluruhan', 'secara umum', 'akhir sekali'],
+    wacanaAwal: ['seterusnya', 'kemudian', 'akhirnya', 'maka', 'pertama', 'kedua', 'ketiga'],
+    lapor: ['turut (?:mendapati|melaporkan|menunjukkan|menyatakan|menegaskan)', 'mengenal pasti', 'dikenal pasti', 'menyatakan', 'melaporkan', 'menjelaskan', 'menghuraikan', 'menerangkan', 'mencatatkan', 'mendapati', 'menemui', 'menunjukkan', 'membincangkan', 'meneliti', 'mengkaji', 'mencadangkan', 'berpendapat', 'beranggapan', 'mengandaikan', 'menjangkakan', 'menegaskan', 'menekankan', 'menghujahkan', 'berhujah', 'membuktikan', 'mengesahkan', 'mempertahankan', 'merumuskan', 'menyimpulkan', 'mentakrifkan', 'mendefinisikan', 'menggariskan', 'mengemukakan', 'memerihalkan', 'menumpukan', 'dilaporkan', 'didapati', 'dinyatakan', 'ditegaskan', 'dihujahkan', 'ditunjukkan', 'dijelaskan', 'ditakrifkan', 'dibuktikan', 'dirumuskan'],
+    pendirian: ['pada hemat pengkaji', 'pengkaji berpandangan', 'pengkaji berpendapat', 'kajian ini berpendirian', 'kajian ini berhujah', 'kajian ini menghujahkan', 'bagi tujuan kajian ini', '(?:hal|dapatan|keadaan|pola|perbezaan|persamaan) ini (?:menunjukkan|membayangkan|bermakna|menjelaskan|mengisyaratkan|menandakan)(?: bahawa)?', 'ini (?:menunjukkan|membayangkan|bermakna|mengisyaratkan)(?: bahawa)?', 'membayangkan bahawa', 'mengisyaratkan bahawa', 'kemungkinan besar', 'berkemungkinan', 'barangkali', 'mungkin', 'kelihatan', 'nampaknya', 'cenderung', 'sebahagiannya', 'secara relatif', 'tidak semestinya', 'yang lebih penting', 'ternyata', 'sememangnya', 'wajar']
+  },
+  en: {
+    istilah: ['consistent with', 'in line with', 'in agreement with', 'in contrast to', 'in contrast with', 'compared with', 'compared to', 'similar to', 'different from', 'agrees? with', 'conflicts? with', 'at odds with', 'both studies', 'both (?:authors|sources|findings)', 'several studies', 'a number of studies', 'most studies', 'these studies', 'these findings', 'taken together', 'collectively', 'two strands', 'one strand', 'a similar pattern', 'converge[sd]?', 'corroborat(?:es|ed|e)', 'reinforc(?:es|ed|e)', 'complement(?:s|ed)', 'extend(?:s|ed)', 'builds? on', 'support(?:s|ed)', 'echo(?:es|ed)', 'contradict(?:s|ed)?', 'challeng(?:es|ed|e)', 'disput(?:es|ed|e)', 'similarit(?:y|ies)', 'differences?', 'discrepanc(?:y|ies)', 'inconsistenc(?:y|ies)', 'agreement', 'research gap', 'this gap', 'gap', 'underexplored', 'remains? limited', 'few studies', 'no study'],
+    wacana: ['on the other hand', 'on the one hand', 'in other words', 'as a result', 'for this reason', 'for example', 'for instance', 'in addition', 'in contrast', 'by contrast', 'by comparison', 'in short', 'that is', 'not only', 'but also', 'moreover', 'furthermore', 'similarly', 'likewise', 'however', 'nevertheless', 'nonetheless', 'conversely', 'whereas', 'although', 'though', 'while', 'therefore', 'thus', 'hence', 'consequently', 'because', 'meanwhile', 'subsequently', 'specifically', 'overall', 'yet'],
+    wacanaAwal: ['first', 'second', 'third', 'finally', 'then', 'so'],
+    lapor: ['also (?:found|reported|showed|noted)', 'found', 'finds?', 'report(?:s|ed)?', 'stat(?:es|ed|e)', 'describ(?:es|ed|e)', 'not(?:es|ed)', 'identif(?:y|ies|ied)', 'show(?:s|ed|n)?', 'examin(?:es|ed|e)', 'discuss(?:es|ed)?', 'observ(?:es|ed|e)', 'suggest(?:s|ed)?', 'propos(?:es|ed|e)', 'assum(?:es|ed|e)', 'hypothesi[sz](?:es|ed|e)', 'argu(?:es|ed|e)', 'assert(?:s|ed)?', 'maintain(?:s|ed)?', 'demonstrat(?:es|ed|e)', 'establish(?:es|ed)?', 'emphasi[sz](?:es|ed|e)', 'conclud(?:es|ed|e)', 'confirm(?:s|ed)?', 'defin(?:es|ed|e)', 'highlight(?:s|ed)?', 'claim(?:s|ed)?'],
+    pendirian: ['this study (?:argues|takes the position|contends)(?: that)?', 'in the view of the researcher', 'for the purposes of this study', '(?:this|these) (?:finding|findings|pattern|difference|similarity)? ?(?:suggests?|impl(?:y|ies)|indicates?|means?)(?: that)?', 'this (?:suggests|implies|indicates|means)(?: that)?', 'it follows that', 'more importantly', 'appears? to', 'seems? to', 'tends? to', 'arguably', 'possibly', 'perhaps', 'likely', 'might', 'may', 'could', 'clearly', 'indeed']
+  }
+};
+const reLeks = arr => new RegExp('\\b(?:' + arr.join('|') + ')\\b', 'giu');
+const RE_WARNA = {}; ['ms', 'en'].forEach(b => { RE_WARNA[b] = { istilah: reLeks(LEKS[b].istilah), wacana: reLeks(LEKS[b].wacana), lapor: reLeks(LEKS[b].lapor), pendirian: reLeks(LEKS[b].pendirian), awal: new RegExp('(?:^|[.!?]["”’)]?\\s+)((?:' + LEKS[b].wacanaAwal.join('|') + '))(?=,)', 'giu') }; });
+const KELAS_FUNGSI = { lapor: 'lapor', pendirian: 'pendirian', sama: 'istilah', beza: 'istilah', kumpul: 'istilah', jurang: 'istilah', nilai: 'istilah', teori: 'istilah', tambah: 'wacana', sebab: 'wacana', syarat: 'wacana', masa: 'wacana', takrif: 'wacana' };
+/* Julat sitasi dalam teks: kurungan yang memuatkan tahun, dan nama pengarang yang mendahului kurungan tahun (sitasi naratif). */
+function julatSitasi(s) {
+  const out = []; const re = /\(([^()]*)\)/g; let m; const reTh = /(?:1[89]|20)\d{2}/;
+  while ((m = re.exec(s))) {
+    if (!reTh.test(m[1])) continue; let mula = m.index;
+    if (/^\s*(?:1[89]|20)\d{2}[a-z]?(?:\s*,\s*(?:1[89]|20)\d{2}[a-z]?)*(?:\s*[,;:][^()]*)?\s*$/.test(m[1])) {
+      const sebelum = s.slice(Math.max(0, m.index - 90), m.index); const tok = sebelum.match(/\S+\s*/g) || []; let ambil = 0, ada = false;
+      for (let i = tok.length - 1; i >= 0 && tok.length - i <= 8; i--) { const inti = tok[i].trim().replace(/[,.;:]+$/, ''); if (/^[A-ZÀ-ɏ][\p{L}'’-]*$/u.test(inti)) { ambil += tok[i].length; ada = true; } else if (/^(?:et|al|dan|and|&|rakan-rakan|bin|binti|van|der|de)$/i.test(inti)) ambil += tok[i].length; else break; }
+      if (ada) { const awal = s.slice(m.index - ambil, m.index); const tk = awal.match(/\S+\s*/g) || []; let buang = 0, baki = false; for (const w of tk) { if (bukanNama(w.trim())) buang += w.length; else { baki = true; break; } } mula = baki ? m.index - ambil + buang : m.index; }
+    }
+    out.push([mula, m.index + m[0].length]);
+  }
+  return out;
+}
+/* Tanda golongan kata dalam satu teks. tambahan: [{ frasa, fungsi }] daripada pembantu (dikelaskan melalui leksikon dahulu, kemudian fungsi).
+   Pulangan: julat tidak bertindih [{ s, e, k }] mengikut urutan; frasa yang lebih panjang diutamakan. */
+export function tandaTeks(teks, bhs, tambahan) {
+  const s = String(teks || ''); const b = bhs === 'en' ? 'en' : 'ms'; const R = RE_WARNA[b]; const calon = []; let m;
+  julatSitasi(s).forEach(j => calon.push({ s: j[0], e: j[1], k: 'sitasi', u: 0 }));
+  [['pendirian', 3], ['istilah', 1], ['wacana', 2], ['lapor', 4]].forEach(([k, u]) => { const re = R[k]; re.lastIndex = 0; while ((m = re.exec(s))) { if (m[0].length) calon.push({ s: m.index, e: m.index + m[0].length, k, u }); else re.lastIndex++; } });
+  R.awal.lastIndex = 0; while ((m = R.awal.exec(s))) { const i = m.index + m[0].length - m[1].length; calon.push({ s: i, e: i + m[1].length, k: 'wacana', u: 2 }); }
+  const kecil = s.toLowerCase();
+  (tambahan || []).forEach(x => { const f = String((x && x.frasa) || x || '').trim().replace(/\s*\.\.\.\s*$/, ''); if (f.length < 3 || f.length > 60) return; const q = f.toLowerCase(); let k = null; for (const g of ['istilah', 'wacana', 'lapor', 'pendirian']) { const re = R[g]; re.lastIndex = 0; const mm = re.exec(q); if (mm && mm[0].length >= q.length - 1) { k = g; break; } } if (!k) k = KELAS_FUNGSI[x && x.fungsi] || 'wacana'; let i = 0; while ((i = kecil.indexOf(q, i)) >= 0) { calon.push({ s: i, e: i + q.length, k, u: 1.5 }); i += q.length; } });
+  calon.sort((x, y) => (x.k === 'sitasi' ? 0 : 1) - (y.k === 'sitasi' ? 0 : 1) || (y.e - y.s) - (x.e - x.s) || x.u - y.u);
+  const ambil = []; calon.forEach(c => { if (!ambil.some(a => c.s < a.e && c.e > a.s)) ambil.push(c); });
+  return ambil.sort((x, y) => x.s - y.s).map(c => ({ s: c.s, e: c.e, k: c.k }));
+}
+/* Bilangan setiap golongan dalam satu teks, untuk ringkasan di bawah Tulisan saya. */
+export function kiraWarna(teks, bhs, tambahan) { const out = { wacana: 0, lapor: 0, istilah: 0, sitasi: 0, pendirian: 0 }; tandaTeks(teks, bhs, tambahan).forEach(j => { out[j.k]++; }); return out; }
 
 /* ---- cadangan tahap bantuan daripada rekod kemajuan. maju: { semak: [{ masa, tahap, gaya, skor, tindih }] } ---- */
 export function cadangTahap(maju) {
@@ -366,6 +501,7 @@ export const SUMBER = {
   mansourizadeh: S_('Mansourizadeh dan Ahmad (2011)', 'Mansourizadeh, K., & Ahmad, U. K. (2011). Citation practices among non-native expert and novice scientific writers. Journal of English for Academic Purposes, 10(3), 152-161.', 'https://doi.org/10.1016/j.jeap.2011.03.004', 'abstrak'),
   petric: S_('Petrić (2007)', 'Petrić, B. (2007). Rhetorical functions of citations in high- and low-rated master\'s theses. Journal of English for Academic Purposes, 6(3), 238-253.', 'https://doi.org/10.1016/j.jeap.2007.09.002', 'abstrak'),
   dbp: S_('Dewan Bahasa dan Pustaka (t.t.)', 'Dewan Bahasa dan Pustaka. (t.t.). Khidmat Nasihat Bahasa [jawapan tentang kata hubung dan penanda wacana; tarikh setiap jawapan dicatat pada entri berkenaan]. Pusat Rujukan Persuratan Melayu. Dicapai pada 11 November 2026.', 'https://prpm.dbp.gov.my/Cari1?keyword=penanda+wacana&d=175768&', 'laman rasmi'),
+  apa86: S_('American Psychological Association (2022)', 'American Psychological Association. (2022, Julai). Secondary sources. APA Style [panduan bagi Seksyen 8.6, Publication Manual of the American Psychological Association, edisi ke-7]. Dicapai pada 12 November 2026.', 'https://apastyle.apa.org/style-grammar-guidelines/citations/secondary-sources', 'laman rasmi'),
   upsi: S_('Universiti Pendidikan Sultan Idris (2024)', 'Universiti Pendidikan Sultan Idris. (2024). Garis panduan penulisan tesis/disertasi (diluluskan Senat Bil. 5/2023 pada 16 Mei 2023; dikemas kini November 2024).', 'https://postgrad.upsi.edu.my/thesis/1-1_TesisMalay.pdf', 'laman rasmi')
 };
 /* Peraturan menu Sintesis dan sandarannya. kuat: jenis dan kekuatan bukti, dinyatakan terus terang. */
@@ -384,5 +520,6 @@ export const ASAS = [
   { t: 'Atribusi satu sumber demi satu sumber ialah corak penulis baharu. Dalam 14 kertas penulis bukan penutur jati di sebuah universiti Malaysia, penulis baharu kebanyakannya mengatribusi dan memetik sumber secara bersendirian, manakala penulis pakar menggabungkan beberapa sumber dan lebih kerap menggunakan sitasi dalam kurungan. Tesis sarjana bergred rendah juga kurang menggunakan sitasi untuk menilai dan menghubungkan sumber.', kuat: 'dua kajian deskriptif kecil; abstrak sahaja dibaca', s: ['mansourizadeh', 'petric'] },
   { t: 'Bentuk Bahasa Melayu dalam Pustaka dan senarai Bentuk dielakkan bersandar pada jawapan Khidmat Nasihat Bahasa Dewan Bahasa dan Pustaka, dengan tarikh jawapan dicatat. Jawapan DBP kadangkala berubah mengikut masa; apabila berbeza, jawapan yang lebih baharu diutamakan dan perbezaannya dinyatakan. Rangka ayat dalam Pustaka ditulis sendiri untuk aplikasi ini, dan pengelasan kata kerja pelaporan Melayu ialah pengelasan kerja aplikasi.', kuat: 'rujukan rasmi bahasa', s: ['dbp'] },
   { t: 'Sitasi naratif menggunakan "dan", sitasi dalam kurungan menggunakan "&". Bagi beberapa sumber dalam satu kurungan, garis panduan tesis UPSI (16.10.2) menyusun mengikut tahun bermula yang terkini, sedangkan APA 7 menyusun mengikut abjad; pilih pada tetapan Susunan sitasi dan sahkan dengan penyelia.', kuat: 'garis panduan universiti', s: ['upsi'] },
+  { t: 'Satu ayat bahan boleh memikul beberapa sitasi, dan sitasi sekunder ditanda supaya tidak disitasi seolah-olah dibaca terus. APA 7 (Seksyen 8.6) menamakan sumber asal, diikuti "as cited in" dan sumber yang benar-benar dibaca, contohnya (Rabbitt, 1982, as cited in Lyon et al., 2014); hanya sumber yang dibaca masuk ke senarai rujukan, dan sitasi sekunder digunakan secara berhemat kerana amalan yang baik ialah membaca sumber asal. Garis panduan tesis UPSI yang disemak pada 12 November 2026 tidak memuatkan peraturan khusus tentang sitasi sekunder, maka bentuk APA 7 digunakan. Padanan Melayu "seperti yang dipetik dalam" ialah ketetapan aplikasi dan wajar disahkan dengan penyelia. Pembetulan sitasi hanya menulis nama dan tahun yang benar-benar tertulis dalam teks ayat bahan.', kuat: 'manual gaya dan ketetapan aplikasi', s: ['apa86', 'upsi'] },
   { t: 'Had bukti: tiada kajian yang ditemui menguji reka bentuk ini (contoh daripada model diikuti parafrasa oleh pelajar) dalam kalangan calon kedoktoran atau dalam Bahasa Melayu. Ukuran kemajuan yang paling boleh dipercayai ialah tulisan Tahap 3 dan penilaian penyelia, bukan skor pengesan gaya.', kuat: 'had', s: [] }
 ];

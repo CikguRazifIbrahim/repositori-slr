@@ -62,7 +62,7 @@ export function initBanding(R) {
     const el = $('#bandKad' + sisi.toUpperCase()); if (!el) return;
     if (!id || !R.S.docs.has(id)) { el.innerHTML = `<div class="empty-kad">Artikel ${sisi === 'a' ? '1' : '2'} belum dipilih. Pilihan hanya daripada artikel yang sudah ada dalam repositori.</div>`; return; }
     const d = rekod(id); const k = kelengkapan(d);
-    const chips = [d.tema, d.jenis, d.rekaBentuk, d.indeks && d.indeks !== 'Tidak pasti' ? d.indeks + (d.kuartil && !/Tiada|Tidak pasti/.test(d.kuartil) ? ' ' + d.kuartil : '') : '', d.negara, d.peringkat, d.teknik].filter(Boolean);
+    const chips = [d.tema, R.nilaiMedan(d, 'jenis'), d.rekaBentuk, d.indeks && d.indeks !== 'Tidak pasti' ? d.indeks + (d.kuartil && !/Tiada|Tidak pasti/.test(d.kuartil) ? ' ' + d.kuartil : '') : '', d.negara, d.peringkat, d.teknik].filter(Boolean);
     el.innerHTML = `<div class="kad-top"><div class="avatar">${esc(inisial(d))}</div><div class="kad-id"><div class="nama">${esc(nama(d))}${id === B.kayu ? ' <span class="tag kayu" title="Artikel kayu ukur: pasangan lain dibandingkan dengannya">Kayu ukur</span>' : ''}</div><div class="meta">Bil. ${esc(d.bil || '?')} · ${esc(d.status || 'Belum dibaca')}${(d.fail || []).length ? ' · PDF ada' : ' · tiada PDF'}</div></div></div>
       <div class="tajuk">${esc(d.tajuk || 'Tajuk belum diisi')}</div>
       <div class="chips">${chips.map(c => `<span class="tag">${esc(c)}</span>`).join('')}</div>
@@ -106,7 +106,7 @@ export function initBanding(R) {
   /* ---- jadual bersebelahan A hingga F ---- */
   function nilaiTeks(v) { return Array.isArray(v) ? v.join(', ') : String(v == null ? '' : v); }
   function jadualSisi(da, db) {
-    return SEK.map(s => `<details class="band-sek" open><summary>Bahagian ${s.letter}. ${esc(s.title)}</summary><div class="band-tbl"><div class="h">Medan</div><div class="h a">Artikel 1</div><div class="h b">Artikel 2</div>${s.fields.map(f => { const va = nilaiTeks(da[f.k]), vb = nilaiTeks(db[f.k]); const sama = f.type === 'select' && va && va === vb; return `<div class="k">${esc(f.label)}</div><div class="${sama ? 'sama' : ''}">${esc(va) || '<i>kosong</i>'}</div><div class="${sama ? 'sama' : ''}">${esc(vb) || '<i>kosong</i>'}</div>`; }).join('')}</div></details>`).join('');
+    return SEK.map(s => `<details class="band-sek" open><summary>Bahagian ${s.letter}. ${esc(s.title)}</summary><div class="band-tbl"><div class="h">Medan</div><div class="h a">Artikel 1</div><div class="h b">Artikel 2</div>${s.fields.map(f => { const va = R.nilaiMedan(da, f.k), vb = R.nilaiMedan(db, f.k); const sama = f.type === 'select' && va && va === vb; return `<div class="k">${esc(f.label)}</div><div class="${sama ? 'sama' : ''}">${esc(va) || '<i>kosong</i>'}</div><div class="${sama ? 'sama' : ''}">${esc(vb) || '<i>kosong</i>'}</div>`; }).join('')}</div></details>`).join('');
   }
 
   /* ---- banding (lapisan tempatan) ---- */
@@ -162,7 +162,7 @@ export function initBanding(R) {
 
   /* ---- agen banding ---- */
   function teksRekod(no, d) {
-    return `ARTIKEL ${no} (Bil. ${d.bil || '?'}): ${nama(d)}. ${d.tajuk || ''}\n` + SEK.map(s => `Bahagian ${s.letter}. ${s.title}\n` + s.fields.map(f => `- ${f.label}: ${nilaiTeks(d[f.k]).slice(0, f.k === 'dapatan' ? 3000 : 1500)}`).join('\n')).join('\n');
+    return `ARTIKEL ${no} (Bil. ${d.bil || '?'}): ${nama(d)}. ${d.tajuk || ''}\n` + SEK.map(s => `Bahagian ${s.letter}. ${s.title}\n` + s.fields.map(f => `- ${f.label}: ${R.nilaiMedan(d, f.k).slice(0, f.k === 'dapatan' ? 3000 : 1500)}`).join('\n')).join('\n');
   }
   function skemaLaporan() {
     const ab = { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' } }, required: ['a', 'b'], additionalProperties: false };
@@ -381,7 +381,7 @@ ${profil}`;
      di sini (kad pengenalan artikel, laporan agen dengan tanda dimensi dikongsi), dilukis oleh mod/laporanpdf.js dengan jsPDF daripada vendor/laporan.bundle.js yang dimuat hanya apabila diperlukan. */
   function dataPdf() {
     const da = rekod(B.a), db = rekod(B.b); const l = B.laporan;
-    const kad = (d, no) => ({ no, nama: nama(d), tajuk: d.tajuk || 'Tajuk belum diisi', rujukan: nilaiTeks(d.rujukan), bil: d.bil || '?', status: d.status || 'Belum dibaca', doi: d.doi || '', chips: [d.tema, d.jenis, d.rekaBentuk, d.indeks && d.indeks !== 'Tidak pasti' ? d.indeks + (d.kuartil && !/Tiada|Tidak pasti/.test(d.kuartil) ? ' ' + d.kuartil : '') : '', d.negara, d.peringkat, d.teknik].filter(Boolean) });
+    const kad = (d, no) => ({ no, nama: nama(d), tajuk: d.tajuk || 'Tajuk belum diisi', rujukan: nilaiTeks(d.rujukan), bil: d.bil || '?', status: d.status || 'Belum dibaca', doi: d.doi || '', chips: [d.tema, R.nilaiMedan(d, 'jenis'), d.rekaBentuk, d.indeks && d.indeks !== 'Tidak pasti' ? d.indeks + (d.kuartil && !/Tiada|Tidak pasti/.test(d.kuartil) ? ' ' + d.kuartil : '') : '', d.negara, d.peringkat, d.teknik].filter(Boolean) });
     const sama = l && l.dimensi ? samaMengikutPeranan(l.dimensi.a, l.dimensi.b) : null;
     const kons = arr => (arr || []).map(k => ({ konstruk: k.konstruk, peranan: k.peranan, kerangka: k.kerangka, dimensi: (k.dimensi || []).map(dd => ({ nama: dd.nama, sub: dd.sub || [], sama: !!(sama && sama[k.peranan] && sama[k.peranan].has(normDim(dd.nama))) })) }));
     return { artikel: [kad(da, 1), kad(db, 2)], dijana: R.fmtTime(Date.now()), masa: B.simpanan ? R.fmtTime(B.simpanan.masa) : '', model: B.simpanan && B.simpanan.model || '', token: B.simpanan && B.simpanan.token || null,

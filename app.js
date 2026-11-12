@@ -13,7 +13,7 @@ import { initSintesis } from './mod/sintesis.js';
 import { initBengkel } from './mod/bengkel.js';
 import { initKumpulan } from './mod/kumpulan.js';
 import { initKalendar } from './mod/kalendar.js';
-const VERSION = '1.26.0';
+const VERSION = '1.27.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -41,7 +41,7 @@ const GROUPS = [
       { k: 'tajuk', label: 'Tajuk penuh (bahasa asal)', type: 'textarea', rows: 2, wide: true },
       { k: 'rujukan', label: 'Rujukan APA 7 lengkap', type: 'textarea', rows: 3, wide: true, help: 'Disalin tepat. Penulis, tahun, tajuk, jurnal, jilid(isu), halaman, DOI.' },
       { k: 'doi', label: 'DOI', type: 'text', help: 'Contoh: 10.1111/ejed.70600. Semak pautan berfungsi.' },
-      { k: 'jenis', label: 'Jenis sumber', type: 'select', opts: ['Empirikal', 'Ulasan sistematik', 'Ulasan skop', 'Meta-analisis', 'Konseptual', 'Laporan dasar', 'Instrumen dan pengesahan', 'Lain-lain'] },
+      { k: 'jenis', label: 'Jenis sumber', type: 'select', opts: ['Empirikal', 'Ulasan sistematik', 'Ulasan skop', 'Meta-analisis', 'Konseptual', 'Laporan dasar', 'Instrumen dan pengesahan', 'Prosiding', 'Lain-lain'], lain: { k: 'jenisLain', bila: 'Lain-lain', had: 100, label: 'Nyatakan jenis sumber', placeholder: 'Taip jenis sumber, contohnya Bab buku' } },
       { k: 'indeks', label: 'Pengindeksan', type: 'select', opts: ['Scopus', 'WoS', 'Scopus dan WoS', 'MyCite', 'ERA', 'Tiada', 'Tidak pasti'] },
       { k: 'kuartil', label: 'Kuartil', type: 'select', opts: ['Q1', 'Q2', 'Q3', 'Q4', 'Tiada', 'Tidak pasti'] }
     ] },
@@ -118,12 +118,22 @@ const GROUPS = [
 const FIELDS = [];
 GROUPS.forEach(g => g.medan.forEach(m => m.fields.forEach(f => FIELDS.push(f))));
 const FIELD_BY_KEY = Object.fromEntries(FIELDS.map(f => [f.k, f]));
-const TEXT_KEYS = FIELDS.filter(f => f.type !== 'multi').map(f => f.k).concat(['pautan']);
-const ALL_KEYS = FIELDS.map(f => f.k).concat(['bil', 'status', 'pautan']);
+/* Medan senarai yang mempunyai f.lain: apabila pilihan f.lain.bila ("Lain-lain") dipilih, pengguna menaip sendiri nilainya ke dalam medan
+   teks f.lain.k (had f.lain.had aksara). LAIN_FIELD memetakan kunci medan teks itu kepada medan senarainya. */
+const LAIN_FIELD = Object.fromEntries(FIELDS.filter(f => f.lain).map(f => [f.lain.k, f]));
+const LAIN_KEYS = Object.keys(LAIN_FIELD);
+const TEXT_KEYS = FIELDS.filter(f => f.type !== 'multi').map(f => f.k).concat(['pautan'], LAIN_KEYS);
+const ALL_KEYS = FIELDS.map(f => f.k).concat(['bil', 'status', 'pautan'], LAIN_KEYS);
 function defaults() {
   const d = { bil: 0, status: 'Belum dibaca', fail: [], pautan: '' };
-  FIELDS.forEach(f => { d[f.k] = f.type === 'multi' ? [] : ''; });
+  FIELDS.forEach(f => { d[f.k] = f.type === 'multi' ? [] : ''; if (f.lain) d[f.lain.k] = ''; });
   return d;
+}
+/* Nilai paparan satu medan rekod: senarai digabung, dan "Lain-lain" disertai teks yang ditaip sendiri ("Lain-lain: Bab buku"). */
+function nilaiMedan(d, k) {
+  const f = FIELD_BY_KEY[k]; const v = d ? d[k] : ''; if (Array.isArray(v)) return v.join(', '); const s = v === null || v === undefined ? '' : String(v);
+  if (f && f.lain && s === f.lain.bila) { const t = String((d && d[f.lain.k]) || '').trim().slice(0, f.lain.had); return t ? s + ': ' + t : s; }
+  return s;
 }
 
 /* ---------- state ---------- */
@@ -640,7 +650,7 @@ function buildForm() {
 function fieldHtml(f) {
   const id = 'f_' + f.k; const wide = f.wide ? ' wide' : ''; const help = f.help ? `<div class="help">${esc(f.help)}</div>` : '';
   if (f.type === 'textarea') return `<div class="field${wide}"><label for="${id}">${esc(f.label)}</label><textarea id="${id}" rows="${f.rows || 2}" data-k="${f.k}"></textarea>${help}</div>`;
-  if (f.type === 'select') return `<div class="field${wide}"><label for="${id}">${esc(f.label)}</label><select id="${id}" data-k="${f.k}"><option value="">Pilih</option>${f.opts.map(o => `<option>${esc(o)}</option>`).join('')}</select>${help}</div>`;
+  if (f.type === 'select') return `<div class="field${wide}"><label for="${id}">${esc(f.label)}</label><select id="${id}" data-k="${f.k}"><option value="">Pilih</option>${f.opts.map(o => `<option>${esc(o)}</option>`).join('')}</select>${f.lain ? `<div class="lain-wrap" id="w_${f.lain.k}" hidden><input id="f_${f.lain.k}" type="text" data-k="${f.lain.k}" maxlength="${f.lain.had}" placeholder="${esc(f.lain.placeholder)}" aria-label="${esc(f.lain.label)}" autocomplete="off"><span class="lain-kira" id="c_${f.lain.k}" title="Had ${f.lain.had} aksara">0/${f.lain.had}</span></div>` : ''}${help}</div>`;
   if (f.type === 'multi') return `<div class="field${wide}"><span class="lbl">${esc(f.label)}</span><div class="checks" data-k="${f.k}">${f.opts.map((o, i) => `<label><input type="checkbox" id="${id}_${i}" value="${esc(o)}" data-k="${f.k}">${esc(o)}</label>`).join('')}</div>${help}</div>`;
   return `<div class="field${wide}"><label for="${id}">${esc(f.label)}</label><input id="${id}" type="text" data-k="${f.k}" ${f.attrs || ''} ${f.list ? `list="${f.list}"` : ''}>${help}</div>`;
 }
@@ -648,7 +658,14 @@ function readControl(k) {
   const f = FIELD_BY_KEY[k];
   if (f && f.type === 'multi') return $$(`input[data-k="${k}"]`).filter(c => c.checked).map(c => c.value);
   if (k === 'bil') { const v = $('#f_bil').value.trim(); return v === '' ? 0 : Number(v); }
-  const el = $('#f_' + k); return el ? el.value : '';
+  const el = $('#f_' + k); if (LAIN_FIELD[k]) return el ? el.value.slice(0, LAIN_FIELD[k].lain.had) : '';
+  return el ? el.value : '';
+}
+/* Tunjukkan medan teks "Lain-lain" hanya apabila pilihan itu dipilih, dengan kiraan aksara; fokus = true memindahkan kursor ke medan itu. */
+function segarLain(f, fokus) {
+  const sel = $('#f_' + f.k), w = $('#w_' + f.lain.k), inp = $('#f_' + f.lain.k), c = $('#c_' + f.lain.k); if (!sel || !w || !inp) return;
+  const buka = sel.value === f.lain.bila; w.hidden = !buka; if (c) c.textContent = Math.min(inp.value.length, f.lain.had) + '/' + f.lain.had; w.classList.toggle('perlu', buka && !inp.value.trim());
+  if (buka && fokus) { try { inp.focus(); const n = inp.value.length; inp.setSelectionRange(n, n); } catch (e) {} }
 }
 function writeControl(k, v) {
   const f = FIELD_BY_KEY[k];
@@ -657,6 +674,7 @@ function writeControl(k, v) {
   if (k === 'bil') { const s = v ? String(v) : ''; if (el.value !== s) el.value = s; return; }
   const s = v === null || v === undefined ? '' : String(v);
   if (el.value !== s) el.value = s;
+  if (f && f.lain) segarLain(f); else if (LAIN_FIELD[k]) segarLain(LAIN_FIELD[k]);
 }
 function fillForm(d) { ALL_KEYS.forEach(k => writeControl(k, d[k])); renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); if (R.Sintesis) R.Sintesis.render(d); }
 function mergeIntoForm() {
@@ -1089,6 +1107,7 @@ function toCSV(entries) {
     else if (k === 'dimuatNaik') { const m = (d.fail || []).reduce((x, f) => Math.max(x, Number(f.masa) || 0), 0); v = m ? fmtTime(m) : ''; }
     else if (Array.isArray(v)) v = v.join('; ');
     else if (k === 'dicipta' || k === 'dikemaskini') v = v ? fmtTime(v) : '';
+    else if (FIELD_BY_KEY[k] && FIELD_BY_KEY[k].lain) v = nilaiMedan(d, k);
     return csvCell(v);
   }).join(','));
   return [head].concat(rows).join('\r\n');
@@ -1198,6 +1217,7 @@ function onFieldInput(e) {
   const k = e.target.dataset.k || (e.target.id === 'f_bil' ? 'bil' : e.target.id === 'f_status' ? 'status' : e.target.id === 'f_pautan' ? 'pautan' : null);
   if (!k || !S.currentId) return;
   queueUpdate(S.currentId, { [k]: readControl(k) });
+  if (FIELD_BY_KEY[k] && FIELD_BY_KEY[k].lain) segarLain(FIELD_BY_KEY[k], true); else if (LAIN_FIELD[k]) segarLain(LAIN_FIELD[k]);
   if (k === 'penulis' || k === 'tahun' || k === 'tajuk' || k === 'doi' || k === 'pautan') { const d = Object.assign({}, S.docs.get(S.currentId) || {}, S.pending[S.currentId] || {}); renderRecordHead(d); }
 }
 $('#rekod').addEventListener('input', e => { if (e.target.matches('textarea, input[type="text"], input[type="url"], input[type="number"]')) onFieldInput(e); });
@@ -1339,7 +1359,7 @@ async function start() {
 const R = {
   $, $$, esc, toast, confirmBox, fmtTime, fmtBytes, lsGet, lsSet, saveFile, normDoi, TEMA, C, S, V,
   db: () => DB, drive: () => Drive, loadPdfJs, ensureDrive, driveMsg, keepCache, openViewer, gotoPage, openRecord, createArticle, writeNow, renderList,
-  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name), savePrefs, masaNaik, metaMasa, kunciTarikh, teksTarikh, ialahTarikh, pilihTarikhNaik, HARI_NAMA, BULAN_NAMA
+  uploadFiles, openFlip, downloadPdf, GROUPS, FIELD_BY_KEY, nilaiMedan, fillForm, mergeIntoForm, richModal, showTetapan: () => showTetapan(), goView: name => goView(name), savePrefs, masaNaik, metaMasa, kunciTarikh, teksTarikh, ialahTarikh, pilihTarikhNaik, HARI_NAMA, BULAN_NAMA
 };
 const Flip = initFlip(R); R.Flip = Flip;
 const Harian = initHarian(R); R.Harian = Harian;

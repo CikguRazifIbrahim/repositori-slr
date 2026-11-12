@@ -1,7 +1,9 @@
 /* Menu Sintesis (Bengkel Sintesis): ruang berlatih mensintesis ayat daripada beberapa artikel.
-   Kanvas kiri BAHAN: ayat daripada beberapa artikel, setiap satu dengan sumbernya, serta semakan kesesuaian tanpa token.
-   Kanvas kanan HASIL: kesesuaian, peta idea, hubungan antara sumber, sintesis contoh atau rangka daripada pembantu, cadangan tempat
-   menulis, dan "Tulisan saya" (parafrasa atau sintesis sendiri) dengan pengesan gaya laporan lawan sintesis.
+   Kanvas BAHAN (kiri atas): ayat daripada beberapa artikel, setiap satu dengan satu atau beberapa sitasi, tanda sitasi sekunder
+   ("dipetik dalam") dan semakan kesesuaian serta sitasi tanpa token, dengan butang "tulis ganti" bagi sitasi yang tidak sepadan.
+   Ruang ANALISIS (kanan atas): kelas setiap ayat, peta idea, hubungan antara sumber dan cadangan tempat menulis daripada pembantu.
+   Tetingkap CADANGAN SINTESIS (kiri bawah) dan TULISAN SAYA (kanan bawah) berada pada aras yang sama: cadangan pembantu diwarnakan
+   mengikut penanda wacana, kata kerja pelaporan, istilah sintesis, sitasi dan suara penulis, disalin ke Tulisan saya dan disunting di situ.
    Tangga bantuan: Tahap 1 contoh penuh, Tahap 2 rangka untuk dilengkapkan, Tahap 3 pengguna menulis dahulu dan pembantu hanya menyemak.
    Pustaka: penanda wacana, kata kerja pelaporan dan glosari (Bahasa Melayu dan Bahasa Inggeris) serta frasa tambahan pengguna.
    Simpanan: meta/bengkel_indeks, meta/bengkel_<id>, meta/bengkel_pustaka, meta/bengkel_kemajuan, berserta salinan tempatan.
@@ -14,7 +16,8 @@ export function initBengkel(R) {
   const K_INDEKS = 'meta/bengkel_indeks', LS_INDEKS = 'rslr_bengkel_indeks', LS_SEMASA = 'rslr_bengkel_semasa';
   const kunci = id => 'meta/bengkel_' + id, ls = id => 'rslr_bengkel_' + id;
   const K_PUSTAKA = 'meta/bengkel_pustaka', LS_PUSTAKA = 'rslr_bengkel_pustaka', K_MAJU = 'meta/bengkel_kemajuan', LS_MAJU = 'rslr_bengkel_kemajuan';
-  const B = { indeks: null, id: null, d: null, busy: '', timers: {}, mula: false, sesi: 0, pustaka: null, maju: null, pst: { q: '', k: 'semua', bhs: '' }, sorot: null, sorotI: null, tutup: false, fokusTulisan: null };
+  const LS_WARNA = 'rslr_bengkel_warna', LS_SENARAI = 'rslr_bengkel_senarai_tutup', LS_BEDAH = 'rslr_bengkel_bedah_buka';
+  const B = { indeks: null, id: null, d: null, busy: '', ulang: false, timers: {}, mula: false, sesi: 0, pustaka: null, maju: null, pst: { q: '', k: 'semua', bhs: '' }, sorot: null, sorotI: null, tutup: false, fokus: false, warna: null, fokusTulisan: null };
   const H = BD.HAD;
   const angka = n => Number(n || 0).toLocaleString('en-US');
   const anggarToken = t => Math.round(String(t || '').length / 3.6);
@@ -24,16 +27,25 @@ export function initBengkel(R) {
   const gaya = () => { try { return R.Artikel && R.Artikel.Pandu ? R.Artikel.Pandu.gaya() : GAYA_LALAI; } catch (e) { return GAYA_LALAI; } };
 
   /* ---- simpanan ---- */
-  const kosong = id => ({ v: 1, id, tajuk: '', konteks: '', bahasa: 'ms', jenis: 'auto', tahap: 1, sasaran: '', sitasi: '', ramal: '', bahan: [bahanBaru(), bahanBaru()], tulisan: '', sesi: [], token: { masuk: 0, keluar: 0, panggil: 0 }, cipta: Date.now(), masa: 0 });
-  function bahanBaru(p) { return Object.assign({ id: idBaru('b'), teks: '', pengarang: '', tahun: '', ms: '', rekod: '', saya: false }, p || {}); }
-  function lengkap(d, id) { const k = kosong(id); const out = Object.assign(k, d || {}); if (!Array.isArray(out.bahan) || !out.bahan.length) out.bahan = [bahanBaru(), bahanBaru()]; out.bahan = out.bahan.map(b => Object.assign(bahanBaru({ id: b && b.id }), b || {})); out.sesi = (Array.isArray(out.sesi) ? out.sesi : []).map(normSesi).filter(Boolean).slice(0, H.sesi); out.token = Object.assign({ masuk: 0, keluar: 0, panggil: 0 }, out.token || {}); out.tahap = [1, 2, 3].includes(+out.tahap) ? +out.tahap : 1; out.bahasa = out.bahasa === 'en' ? 'en' : 'ms'; if (!BD.JENIS_PETA[out.jenis]) out.jenis = 'auto'; if (!['', 'upsi', 'apa'].includes(out.sitasi)) out.sitasi = ''; if (out.ramal && !BD.HUBUNGAN_PETA[out.ramal]) out.ramal = ''; return out; }
+  const kosong = id => ({ v: 2, id, tajuk: '', konteks: '', bahasa: 'ms', jenis: 'auto', tahap: 1, sasaran: '', sitasi: '', ramal: '', bahan: [bahanBaru(), bahanBaru()], tulisan: '', sesi: [], token: { masuk: 0, keluar: 0, panggil: 0 }, cipta: Date.now(), masa: 0 });
+  /* Satu ayat bahan: sumber utama (pengarang, tahun, ms); lain = sitasi tambahan bagi ayat yang memikul beberapa sumber; dalam = artikel yang
+     benar-benar dibaca apabila ayat itu sitasi sekunder ("seperti yang dipetik dalam"). sitOk dan repoOk mengingat keputusan "kekalkan". */
+  const sumberKemas = x => ({ pengarang: String((x && x.pengarang) || '').slice(0, 160), tahun: String((x && x.tahun) || '').slice(0, 12), ms: String((x && x.ms) || '').slice(0, 16) });
+  function bahanBaru(p) {
+    const b = Object.assign({ id: idBaru('b'), teks: '', pengarang: '', tahun: '', ms: '', rekod: '', saya: false, lain: [], dalam: null, sitOk: '', repoOk: '' }, p || {});
+    b.lain = (Array.isArray(b.lain) ? b.lain : []).filter(x => x && typeof x === 'object').slice(0, H.sumberAyat - 1).map(sumberKemas);
+    b.dalam = b.dalam && typeof b.dalam === 'object' ? sumberKemas(b.dalam) : null; b.sitOk = String(b.sitOk || ''); b.repoOk = String(b.repoOk || ''); return b;
+  }
+  function lengkap(d, id) { const k = kosong(id); const out = Object.assign(k, d || {}); if (!Array.isArray(out.bahan) || !out.bahan.length) out.bahan = [bahanBaru(), bahanBaru()]; out.bahan = out.bahan.map(b => bahanBaru(Object.assign({}, b && typeof b === 'object' ? b : {}, { id: (b && b.id) || idBaru('b') }))); out.sesi = (Array.isArray(out.sesi) ? out.sesi : []).map(normSesi).filter(Boolean).slice(0, H.sesi); out.token = Object.assign({ masuk: 0, keluar: 0, panggil: 0 }, out.token || {}); out.tahap = [1, 2, 3].includes(+out.tahap) ? +out.tahap : 1; out.bahasa = out.bahasa === 'en' ? 'en' : 'ms'; if (!BD.JENIS_PETA[out.jenis]) out.jenis = 'auto'; if (!['', 'upsi', 'apa'].includes(out.sitasi)) out.sitasi = ''; if (out.ramal && !BD.HUBUNGAN_PETA[out.ramal]) out.ramal = ''; out.tulisan = String(out.tulisan || ''); return out; }
   /* Sesi yang dimuat daripada simpanan disahkan semula supaya bentuk lama atau data rosak tidak merosakkan paparan. */
   function normSesi(s) {
     if (!s || typeof s !== 'object' || !s.hasil || typeof s.hasil !== 'object') return null; const A = x => (Array.isArray(x) ? x : []); const T = x => String(x == null ? '' : x); const h = s.hasil; const k = h.kesesuaian || {}; const sm = h.semakan || {};
-    s.mod = ['contoh', 'rangka', 'semak'].includes(s.mod) ? s.mod : 'contoh'; s.bahasa = s.bahasa === 'en' ? 'en' : 'ms'; s.masa = +s.masa || 0;
-    s.bahan = A(s.bahan).filter(b => b && typeof b === 'object').map(b => ({ l: T(b.l), id: T(b.id), pengarang: T(b.pengarang), tahun: T(b.tahun), saya: !!b.saya }));
+    const sb = x => ({ pengarang: T(x && x.pengarang), tahun: T(x && x.tahun) });
+    const sit = x => (x && typeof x === 'object' && ['sekunder', 'salah'].includes(x.masalah) ? { masalah: x.masalah, sumber: A(x.sumber).filter(y => y && typeof y === 'object').map(sb).filter(y => y.pengarang), nota: T(x.nota) } : null);
+    s.mod = ['contoh', 'rangka', 'semak'].includes(s.mod) ? s.mod : 'contoh'; s.bahasa = s.bahasa === 'en' ? 'en' : 'ms'; s.masa = +s.masa || 0; s.terpotong = !!s.terpotong; s.tk = T(s.tk);
+    s.bahan = A(s.bahan).filter(b => b && typeof b === 'object').map(b => ({ l: T(b.l), id: T(b.id), pengarang: T(b.pengarang), tahun: T(b.tahun), saya: !!b.saya, lain: A(b.lain).filter(y => y && typeof y === 'object').map(sb), dalam: b.dalam && typeof b.dalam === 'object' && T(b.dalam.pengarang) ? sb(b.dalam) : null }));
     s.hasil = {
-      kesesuaian: { status: ['sesuai', 'separa', 'tidak'].includes(k.status) ? k.status : 'separa', ringkas: T(k.ringkas), ayat: A(k.ayat).filter(Boolean).map(a => ({ id: T(a.id), bid: T(a.bid), status: ['guna', 'lemah', 'ganti'].includes(a.status) ? a.status : 'guna', sebab: T(a.sebab), cari: T(a.cari) })) },
+      kesesuaian: { status: ['sesuai', 'separa', 'tidak'].includes(k.status) ? k.status : 'separa', ringkas: T(k.ringkas), ayat: A(k.ayat).filter(Boolean).map(a => ({ id: T(a.id), bid: T(a.bid), status: ['guna', 'lemah', 'ganti'].includes(a.status) ? a.status : 'guna', sebab: T(a.sebab), cari: T(a.cari), sitasi: sit(a.sitasi) })) },
       jenis: A(h.jenis).filter(j => j && BD.JENIS_PETA[j.k]).map(j => ({ k: j.k, sebab: T(j.sebab) })),
       idea: A(h.idea).filter(Boolean).map(i => ({ teras: T(i.teras), sumber: A(i.sumber).map(T) })),
       hubungan: A(h.hubungan).filter(Boolean).map(x => ({ jenis: BD.HUBUNGAN_PETA[x.jenis] ? x.jenis : 'tiada', antara: A(x.antara).map(T), huraian: T(x.huraian) })),
@@ -66,11 +78,20 @@ export function initBengkel(R) {
 
   /* ---- data terbitan ---- */
   const bahanIsi = () => (B.d ? B.d.bahan.filter(b => String(b.teks || '').trim()) : []);
-  const sumberTeks = b => (b.saya ? 'Dapatan saya' : (String(b.pengarang || '').trim() || 'Sumber belum diisi') + (String(b.tahun || '').trim() ? ' (' + String(b.tahun).trim() + ')' : ''));
+  const sumberTeks = b => BD.labelSumber(b);
+  const labelKad = id => { let no = 0; for (const b of (B.d ? B.d.bahan : [])) { if (String(b.teks || '').trim()) { no++; if (b.id === id) return 'A' + no; } } return ''; };
   const sesiSemasa = () => (B.d && B.d.sesi[B.sesi]) || null;
   const sesiContoh = () => (B.d ? B.d.sesi.find(s => s.mod === 'contoh' && s.hasil && s.hasil.sintesis.length) : null);
+  /* Sesi yang cadangannya dipaparkan dalam tetingkap Cadangan Sintesis: sesi terpilih jika ia memuatkan sintesis. Jika sesi terpilih ialah
+     sesi semakan, cadangan terdekat yang lebih awal ditunjukkan supaya cadangan dan Tulisan saya kekal sebelah-menyebelah. */
+  const sesiCadang = () => { if (!B.d) return null; const ada = s => !!(s && s.hasil && s.hasil.sintesis.length); const s = sesiSemasa(); if (ada(s)) return s; if (!s || s.mod !== 'semak') return null; return B.d.sesi.slice(B.sesi + 1).find(ada) || null; };
   const contohTeks = s => (s && s.hasil ? s.hasil.sintesis.map(x => x.ayat).join(' ') : '');
   const tahapSemasa = () => BD.TAHAP.find(t => t.n === (B.d ? B.d.tahap : 1)) || BD.TAHAP[0];
+  /* Tanda keadaan bahan (teks dan sumber) pada satu masa, untuk mengesan cadangan yang ditulis sebelum bahan atau sitasinya berubah. */
+  const tandaBahan = arr => arr.map(b => b.id + ':' + String(b.teks || '').trim().length + ':' + Array.from(BD.kunciBahan(b)).sort().join('+') + (BD.dalamBahan(b) ? '<' : '')).join('|');
+  /* Tetapan warna (lima golongan dan warna dalam Tulisan saya), disimpan pada peranti. */
+  function warna() { if (!B.warna) { const w = R.lsGet(LS_WARNA, null) || {}; B.warna = { saya: w.saya !== false }; BD.WARNA.forEach(x => { B.warna[x.k] = w[x.k] !== false; }); } return B.warna; }
+  const simpanWarna = () => R.lsSet(LS_WARNA, warna());
   /* Susunan sitasi berkumpulan: pilihan pengguna, atau automatik ikut sasaran (tesis: UPSI; artikel: APA 7), kemudian ikut bahasa hasil. */
   const susunanAuto = () => { const d = B.d; if (!d) return 'upsi'; if (/^A\|/.test(d.sasaran || '')) return 'apa'; if (/^T\|/.test(d.sasaran || '')) return 'upsi'; return d.bahasa === 'en' ? 'apa' : 'upsi'; };
   const susunanSitasi = () => (B.d && B.d.sitasi) || susunanAuto();
@@ -102,10 +123,11 @@ export function initBengkel(R) {
   /* ---- paparan: editor ---- */
   function renderEditor() {
     const el = $('#bsEditor'); if (!el) return; const d = B.d;
-    if (!d) { el.innerHTML = `<div class="tul-kosong"><h3>Berlatih mensintesis, satu perenggan pada satu masa</h3><p>Laporan menyusun ayat mengikut pengarang: "A mendapati..., B menyatakan...". Sintesis menyusun ayat mengikut idea, mempertemukan dua sumber atau lebih dalam satu ayat, menyatakan hubungan antaranya dan menambah tafsiran penulis.</p><p><b>Cara kerja:</b> (1) tampal ayat daripada beberapa artikel ke kanvas BAHAN, setiap satu dengan pengarang dan tahunnya; (2) nyatakan konteks perbincangan dan pilih Jenis Sintesis, atau biar pembantu mencadangkannya; (3) pembantu menyemak kesesuaian bahan, memetakan idea dan menunjukkan contoh; (4) Prof Dr menulis semula dengan ayat sendiri dalam "Tulisan saya" dan meminta semakan; (5) hantar tulisan itu ke RAM seksyen yang berkenaan.</p><p><button class="btn btn-primary" data-bs="baru">Kerja baharu</button></p></div>`; return; }
+    if (!d) { el.innerHTML = `<div class="tul-kosong"><h3>Berlatih mensintesis, satu perenggan pada satu masa</h3><p>Laporan menyusun ayat mengikut pengarang: "A mendapati..., B menyatakan...". Sintesis menyusun ayat mengikut idea, mempertemukan dua sumber atau lebih dalam satu ayat, menyatakan hubungan antaranya dan menambah tafsiran penulis.</p><p><b>Cara kerja:</b> (1) tampal ayat daripada beberapa artikel ke kanvas BAHAN, setiap satu dengan pengarang dan tahunnya (satu ayat boleh memikul lebih daripada satu sitasi); (2) nyatakan konteks perbincangan dan pilih Jenis Sintesis, atau biar pembantu mencadangkannya; (3) pembantu mengelaskan setiap ayat, memetakan idea dan menulis Cadangan Sintesis yang berwarna; (4) Prof Dr menyalin cadangan itu ke Tulisan saya di sebelahnya, menyuntingnya sehingga menjadi ayat sendiri dan meminta semakan; (5) hantar tulisan itu ke RAM seksyen yang berkenaan.</p><p><button class="btn btn-primary" data-bs="baru">Kerja baharu</button></p></div>`; return; }
     const jenisOpt = BD.JENIS.map(j => `<option value="${j.k}"${d.jenis === j.k ? ' selected' : ''}>${esc(j.ms)}${j.k !== 'auto' ? ' (' + esc(j.en) + ')' : ''}</option>`).join('');
     const tahapOpt = BD.TAHAP.map(t => `<option value="${t.n}"${d.tahap === t.n ? ' selected' : ''}>Tahap ${t.n}: ${esc(t.nama)}</option>`).join('');
     el.innerHTML = `<div class="tul-ed-head"><input id="bsTajuk" class="tul-tajuk" data-bsm="tajuk" maxlength="140" placeholder="Tajuk kerja, contohnya: Kepimpinan digital dan sokongan terhadap guru" value="${esc(d.tajuk || '')}"><div class="tul-ed-acts"><button class="btn btn-sm" data-bs="salinkerja" title="Cipta kerja baharu dengan bahan yang sama">Salin kerja</button><button class="btn btn-sm btn-danger" data-bs="padam">Padam</button></div></div>
+      <div class="bs-atas" id="bsAtas">
       <div class="bs-tetap">
         <label>Bahasa hasil<select data-bsm="bahasa" id="bsBahasa"><option value="ms"${d.bahasa === 'ms' ? ' selected' : ''}>Bahasa Melayu</option><option value="en"${d.bahasa === 'en' ? ' selected' : ''}>Bahasa Inggeris</option></select></label>
         <label>Jenis sintesis<select data-bsm="jenis" id="bsJenis">${jenisOpt}</select></label>
@@ -118,18 +140,40 @@ export function initBengkel(R) {
       <label class="bs-lbl" for="bsKonteks">Konteks perbincangan <span class="help">Apa yang perenggan ini mahu hujahkan, dan dalam subtopik apa? Semakin jelas konteks, semakin tepat sintesis.</span></label>
       <textarea id="bsKonteks" class="bs-konteks" data-bsm="konteks" rows="2" maxlength="${H.konteks}" placeholder="Contohnya: Perenggan dalam subtopik Kepimpinan Digital Guru Besar yang menunjukkan bahawa peranan guru besar berfungsi melalui sokongan terhadap guru, bukan melalui penyediaan peralatan semata-mata.">${esc(d.konteks || '')}</textarea>
       <div class="tul-dua bs-dua">
-        <section class="tul-pane asal" id="bsKiri"><div class="tul-pane-h"><b>BAHAN</b><span>Ayat daripada beberapa artikel. Setiap ayat mesti ada pengarang dan tahun supaya tiada sitasi direka.</span></div>
+        <section class="tul-pane asal" id="bsKiri"><div class="tul-pane-h"><b>BAHAN</b><span>Ayat daripada beberapa artikel. Setiap ayat mesti ada pengarang dan tahun supaya tiada sitasi direka; klik "+ Sitasi" jika satu ayat memikul lebih daripada satu sitasi.</span></div>
           <datalist id="bsSumberList">${sumberRepo().map(s => `<option value="${esc(s.teks)}"></option>`).join('')}</datalist>
           <div id="bsBahan"></div>
-          <div class="bs-acts"><button class="btn btn-sm btn-primary" data-bs="tambah">Tambah ayat</button><button class="btn btn-sm" data-bs="tampal" title="Tampal beberapa perenggan sekali gus; sitasi di hujung perenggan dikesan automatik">Tampal banyak ayat</button><button class="btn btn-sm" data-bs="saya" title="Untuk jenis Dapatan sendiri dengan kajian lepas (Bab 5)">Tambah dapatan saya</button></div>
+          <div class="bs-acts"><button class="btn btn-sm btn-primary" data-bs="tambah">Tambah ayat</button><button class="btn btn-sm" data-bs="tampal" title="Tampal beberapa perenggan sekali gus; semua sitasi di hujung perenggan dikesan automatik">Tampal banyak ayat</button><button class="btn btn-sm" data-bs="saya" title="Untuk jenis Dapatan sendiri dengan kajian lepas (Bab 5)">Tambah dapatan saya</button></div>
           <div id="bsSemakBahan" class="bs-semak"></div>
           <label class="bs-ramal" for="bsRamal"><b>Ramalan saya</b> <span class="help">Sebelum meminta bantuan, teka dahulu hubungan antara sumber ini. Pembantu akan membandingkannya dengan dapatannya.</span><select data-bsm="ramal" id="bsRamal"><option value="">Belum pasti</option>${BD.HUBUNGAN.map(h => `<option value="${h[0]}"${d.ramal === h[0] ? ' selected' : ''}>${esc(h[1])}: ${esc(h[2])}</option>`).join('')}</select></label>
         </section>
-        <section class="tul-pane ram" id="bsKanan"><div class="tul-pane-h"><b>HASIL</b><span>Semakan dan contoh daripada pembantu, kemudian tulisan Prof Dr sendiri. Contoh ialah bahan belajar, bukan teks akhir.</span></div>
+        <section class="tul-pane ram" id="bsKanan"><div class="tul-pane-h"><b>ANALISIS</b><span>Pembantu mengelaskan setiap ayat bahan, menyemak sitasinya, memetakan idea dan menamakan hubungan antara sumber. Cadangan sintesisnya dipaparkan di bawah, sebelah Tulisan saya.</span></div>
           <div id="bsHasil"></div>
         </section>
+      </div>
+      </div>
+      <div class="bs-meja" id="bsMeja">
+        <div class="bs-meja-h"><span class="help">Cadangan pembantu di kiri dan tulisan Prof Dr di kanan, pada aras yang sama supaya mudah dibanding dan disunting.</span><span class="spacer"></span><button class="btn btn-sm" data-bs="fokus" id="bsBtnFokus" aria-pressed="${B.fokus ? 'true' : 'false'}" title="Sembunyikan tetapan, bahan dan analisis supaya dua tetingkap ini memenuhi skrin">${B.fokus ? 'Tunjukkan bahan dan analisis' : 'Fokus sunting'}</button></div>
+        <div class="bs-dua2">
+          <div class="bs-c bs-c1 kiri tul-pane-h" id="bsCadangH"></div>
+          <div class="bs-c bs-c1 kanan tul-pane-h" id="bsSayaH"><b>TULISAN SAYA</b><span>Sunting di sini sehingga menjadi ayat Prof Dr sendiri. Inilah yang dihantar ke RAM dan menjadi teks rasmi.</span></div>
+          <div class="bs-c bs-c2 kiri" id="bsCadangBar"></div>
+          <div class="bs-c bs-c2 kanan bs-bar" id="bsSayaBar"></div>
+          <div class="bs-c bs-c3 kiri" id="bsCadang"></div>
+          <div class="bs-c bs-c3 kanan" id="bsSayaKotak"><div class="bs-ta-wrap" id="bsTaWrap"><div class="bs-ta-latar" aria-hidden="true"><div class="bs-ta-isi" id="bsLatarIsi"></div></div><textarea id="bsTulisan" class="bs-tulisan" data-bsm="tulisan" rows="7" maxlength="${H.tulisan}" lang="${d.bahasa}" spellcheck="true" placeholder="${esc(phTulisan(d.bahasa))}">${esc(d.tulisan || '')}</textarea></div></div>
+          <div class="bs-c bs-c4 kiri" id="bsCadangKaki"></div>
+          <div class="bs-c bs-c4 kanan" id="bsSayaKaki"><div id="bsSemakTulisan" class="bs-semak"></div><div id="bsSemakan"></div></div>
+        </div>
       </div>`;
-    renderBahan(); renderJenisKet(); renderTangga(); renderHasil(); renderPustaka();
+    renderBahan(); renderJenisKet(); renderTangga(); renderHasil(); renderPustaka(); kemasLatar();
+  }
+  const phTulisan = bhs => (bhs === 'en' ? 'Write the synthesis in your own words, or copy the suggestion on the left and edit it. Start with the idea, not the author.' : 'Tulis sintesis dengan ayat Prof Dr sendiri, atau salin cadangan di sebelah kiri dan sunting. Mulakan dengan idea, bukan dengan nama pengarang.');
+  /* Mod fokus menyembunyikan senarai kerja, tetapan, bahan dan analisis supaya Cadangan Sintesis dan Tulisan saya memenuhi skrin. */
+  function kemasFokus() {
+    const root = $('#bengkel'); if (!root) return; root.classList.toggle('bs-fokus', !!B.fokus && !!B.d); root.classList.toggle('bs-tanpa-senarai', !!R.lsGet(LS_SENARAI, false));
+    const bt = $('#bsBtnFokus'); if (bt) { bt.textContent = B.fokus ? 'Tunjukkan bahan dan analisis' : 'Fokus sunting'; bt.setAttribute('aria-pressed', B.fokus ? 'true' : 'false'); }
+    const bs = $('#bsBtnSenarai'); if (bs) { const tutup = !!R.lsGet(LS_SENARAI, false); bs.textContent = tutup ? 'Tunjuk senarai kerja' : 'Sembunyi senarai kerja'; bs.setAttribute('aria-pressed', tutup ? 'true' : 'false'); }
+    kemasLatar();
   }
   function htmlSitasi() { const d = B.d; return `<option value=""${!d.sitasi ? ' selected' : ''}>Auto: ${esc(namaSusunan(susunanAuto()))}</option><option value="upsi"${d.sitasi === 'upsi' ? ' selected' : ''}>UPSI: tahun terkini dahulu</option><option value="apa"${d.sitasi === 'apa' ? ' selected' : ''}>APA 7: ikut abjad</option>`; }
   const kemasSitasi = () => { const el = $('#bsSitasi'); if (el && B.d) el.innerHTML = htmlSitasi(); };
@@ -149,85 +193,215 @@ export function initBengkel(R) {
   }
 
   /* ---- paparan: kanvas BAHAN ---- */
+  const htmlLainBaris = (x, i) => `<div class="bs-lain-b" data-li="${i}"><span class="bs-lain-t">dan</span><input class="bs-pg" data-bsl="pengarang" list="bsSumberList" placeholder="Pengarang sitasi tambahan" value="${esc(x.pengarang || '')}" autocomplete="off" aria-label="Pengarang sitasi ke-${i + 2}"><input class="bs-th" data-bsl="tahun" placeholder="Tahun" inputmode="numeric" maxlength="5" value="${esc(x.tahun || '')}" aria-label="Tahun sitasi ke-${i + 2}"><input class="bs-ms" data-bsl="ms" placeholder="ms." maxlength="12" value="${esc(x.ms || '')}" title="Muka surat (pilihan)" aria-label="Muka surat sitasi ke-${i + 2}"><button class="bs-x" data-bs="lainbuang" title="Buang sitasi ini" aria-label="Buang sitasi ke-${i + 2}">×</button></div>`;
+  const htmlDalamBaris = x => `<div class="bs-lain-b dlm"><span class="bs-lain-t" title="Sitasi sekunder: Prof Dr membaca sumber di atas melalui artikel ini. Dalam senarai rujukan, hanya artikel yang dibaca ini disenaraikan (APA 7, Seksyen 8.6).">dipetik dalam</span><input class="bs-pg" data-bsd="pengarang" list="bsSumberList" placeholder="Artikel yang Prof Dr baca" value="${esc(x.pengarang || '')}" autocomplete="off" aria-label="Pengarang artikel yang dibaca"><input class="bs-th" data-bsd="tahun" placeholder="Tahun" inputmode="numeric" maxlength="5" value="${esc(x.tahun || '')}" aria-label="Tahun artikel yang dibaca"><input class="bs-ms" data-bsd="ms" placeholder="ms." maxlength="12" value="${esc(x.ms || '')}" title="Muka surat (pilihan)" aria-label="Muka surat artikel yang dibaca"><button class="bs-x" data-bs="dalambuang" title="Buang tanda dipetik dalam" aria-label="Buang tanda dipetik dalam">×</button></div>`;
   function renderBahan() {
     const el = $('#bsBahan'); if (!el || !B.d) return; let no = 0; const s = sesiSemasa(); const kes = s && s.hasil ? s.hasil.kesesuaian.ayat : [];
-    el.innerHTML = B.d.bahan.map(b => { const ada = String(b.teks || '').trim(); const lab = ada ? 'A' + (++no) : '-'; const st = ada && s ? kes.find(k => k.bid === b.id) : null;
-      return `<div class="bs-kad${b.saya ? ' saya' : ''}${B.sorot && B.sorot.includes(b.id) ? ' sorot' : ''}${st && st.status !== 'guna' ? ' st-' + st.status : ''}" data-bid="${esc(b.id)}"><div class="bs-kad-h"><span class="bs-no">${lab}</span>${b.saya ? '<span class="bs-saya">Dapatan saya (kajian ini)</span>' : `<input class="bs-pg" data-bsb="pengarang" list="bsSumberList" placeholder="Pengarang, contohnya Saha et al." value="${esc(b.pengarang || '')}" autocomplete="off"><input class="bs-th" data-bsb="tahun" placeholder="Tahun" inputmode="numeric" maxlength="5" value="${esc(b.tahun || '')}"><input class="bs-ms" data-bsb="ms" placeholder="m.s." maxlength="12" value="${esc(b.ms || '')}" title="Muka surat (pilihan)">`}<button class="btn btn-sm" data-bs="buang" title="Buang ayat ini daripada bahan">Buang</button></div><textarea data-bsb="teks" rows="3" maxlength="${H.aksaraBahan}" placeholder="${b.saya ? 'Tulis dapatan kajian Prof Dr sendiri yang hendak dibandingkan dengan kajian lepas' : 'Tampal satu atau dua ayat daripada artikel ini'}">${esc(b.teks || '')}</textarea><div class="bs-kad-f"><span class="bs-patah"></span><span class="bs-rekod"></span><span class="bs-tanda"></span></div></div>`; }).join('');
+    el.innerHTML = B.d.bahan.map(b => { const ada = String(b.teks || '').trim(); const lab = ada ? 'A' + (++no) : '-'; const st = ada && s ? kes.find(k => k.bid === b.id) : null; const penuh = 1 + b.lain.length >= H.sumberAyat;
+      return `<div class="bs-kad${b.saya ? ' saya' : ''}${B.sorot && B.sorot.includes(b.id) ? ' sorot' : ''}${st && st.status !== 'guna' ? ' st-' + st.status : ''}" data-bid="${esc(b.id)}"><div class="bs-kad-h"><span class="bs-no">${lab}</span>${b.saya ? '<span class="bs-saya">Dapatan saya (kajian ini)</span>' : `<input class="bs-pg" data-bsb="pengarang" list="bsSumberList" placeholder="Pengarang, contohnya Saha et al." value="${esc(b.pengarang || '')}" autocomplete="off" aria-label="Pengarang"><input class="bs-th" data-bsb="tahun" placeholder="Tahun" inputmode="numeric" maxlength="5" value="${esc(b.tahun || '')}" aria-label="Tahun"><input class="bs-ms" data-bsb="ms" placeholder="ms." maxlength="12" value="${esc(b.ms || '')}" title="Muka surat (pilihan)" aria-label="Muka surat"><button class="btn btn-sm bs-tambah-sit" data-bs="laintambah"${penuh ? ' disabled' : ''} title="Tambah satu lagi sitasi (nama dan tahun) bagi ayat yang sama. Had ${H.sumberAyat} sitasi bagi satu ayat.">+ Sitasi</button>`}<button class="btn btn-sm" data-bs="buang" title="Buang ayat ini daripada bahan">Buang</button></div>${b.saya ? '' : `<div class="bs-lain">${b.lain.map(htmlLainBaris).join('')}${b.dalam ? htmlDalamBaris(b.dalam) : ''}</div>`}<textarea data-bsb="teks" rows="3" maxlength="${H.aksaraBahan}" placeholder="${b.saya ? 'Tulis dapatan kajian Prof Dr sendiri yang hendak dibandingkan dengan kajian lepas' : 'Tampal satu atau dua ayat daripada artikel ini'}">${esc(b.teks || '')}</textarea><div class="bs-kad-f"><span class="bs-patah"></span>${b.saya || b.dalam ? '' : '<button class="bs-pautan" data-bs="dalamtambah" title="Tandakan ayat ini sebagai sitasi sekunder: sumber di atas dibaca melalui artikel lain">+ Dipetik dalam</button>'}<span class="bs-rekod"></span><span class="bs-tanda"></span></div></div>`; }).join('');
     kemasSemakBahan();
+  }
+  /* Isu sitasi satu kad: pengesan tempatan dahulu (sentiasa semasa), kemudian tanda pembantu daripada sesi terpilih. Cadangan pembantu
+     hanya diterima jika nama dan tahunnya benar-benar tertulis dalam teks ayat itu, dan hilang sebaik sahaja kad sudah dibetulkan. */
+  function isuKad(b) {
+    if (!b || b.saya || !String(b.teks || '').trim()) return null;
+    const t = BD.isuSitasi(b); if (t) return Object.assign({ asal: 'tempatan' }, t);
+    if (b.sitOk && b.sitOk === BD.tandaSitasi(b)) return null;
+    const s = sesiSemasa(); const a = s && s.hasil.kesesuaian.ayat.find(x => x.bid === b.id); const sit = a && a.sitasi; if (!sit) return null;
+    const kini = new Set(BD.sumberBahan(b).map(x => BD.kunciSumber(x.pengarang, x.tahun)).filter(Boolean)); const lihat = new Set(); const semua = [];
+    sit.sumber.forEach(x => { if (!BD.sumberDalamTeks(b.teks, x)) return; const kunci = BD.kunciSumber(x.pengarang, x.tahun); if (!kunci || lihat.has(kunci)) return; lihat.add(kunci); semua.push({ kunci, pengarang: x.pengarang, tahun: x.tahun }); });
+    const asing = semua.filter(c => !kini.has(c.kunci)); if (!asing.length) return null;
+    return { asal: 'pembantu', jenis: sit.masalah, semua, asing, nota: sit.nota };
+  }
+  const senaraiSit = arr => arr.slice(0, H.sumberAyat).map(c => c.pengarang + (c.tahun ? ' (' + c.tahun + ')' : '')).join('; ');
+  /* Hasil satu pembetulan sitasi (sumber dan "dipetik dalam") tanpa mengubah kad. Label butang dan tindakan menggunakan rancangan yang sama,
+     supaya apa yang tertulis pada butang itulah yang ditulis ke kad. cara: 'dalam' (sumber asal, dipetik dalam artikel yang dibaca),
+     'teks' (guna sitasi dalam teks ayat sahaja) atau 'tambah' (tambah sitasi ke kad). */
+  function rancangIsu(b, isu, cara) {
+    const kad = BD.sumberBahan(b).filter(x => x.pengarang); const dl = BD.dalamBahan(b); const dibaca = isu.semua.find(c => c.peranan === 'dibaca'); const asal = dibaca ? isu.semua.filter(c => c !== dibaca) : null;
+    if (cara === 'dalam') { if (dibaca) return { sumber: asal, dalam: { pengarang: dibaca.pengarang, tahun: dibaca.tahun, ms: '' } }; if (isu.jenis !== 'sekunder') return null; if (dl) return { sumber: kad.concat(isu.asing), dalam: dl }; return kad[0] ? { sumber: isu.asing, dalam: kad[0] } : null; }
+    if (cara === 'tambah') return { sumber: kad.concat(isu.asing), dalam: dl };
+    if (cara === 'teks') return { sumber: isu.jenis === 'sekunder' ? (asal || isu.asing) : isu.semua.filter(c => c.peranan !== 'dibaca'), dalam: null };
+    return null;
+  }
+  /* Satu baris amaran sitasi berserta butang "tulis ganti": pembetulan terus ke atas sumber pada kad, dengan Batal pada toast. */
+  function htmlIsu(b, isu) {
+    const kad = BD.sumberBahan(b).filter(x => x.pengarang); const kadT = kad.map(BD.satuSumber).join('; ');
+    const bt = (cara, label, tajuk, utama) => `<button class="bs-cip${utama ? ' utama' : ''}" data-bs="sit" data-cara="${cara}" data-bid="${esc(b.id)}" title="${esc(tajuk)}">${esc(label)}</button>`;
+    const kekal = bt('kekal', 'Kekalkan', 'Biarkan kad seperti sekarang. Amaran ini disenyapkan sehingga ayat atau sumbernya berubah.');
+    const dari = isu.asal === 'pembantu' ? 'Pembantu: ' : ''; let teks = '', btn = ''; const rd = rancangIsu(b, isu, 'dalam'), rt = rancangIsu(b, isu, 'teks');
+    if (isu.jenis === 'sekunder') {
+      const tersurat = isu.semua.some(c => c.peranan === 'dibaca');
+      teks = dari + 'Sitasi sekunder. Ayat ini memetik ' + senaraiSit(rt.sumber) + (kadT && !tersurat ? ', bukan ' + kadT : '') + '.' + (isu.nota ? ' ' + isu.nota : '');
+      btn = (rd ? bt('dalam', 'Tulis ganti: ' + senaraiSit(rd.sumber) + ', dipetik dalam ' + BD.satuSumber(rd.dalam), 'Sumber ayat ini ditukar kepada sumber asal, dan artikel yang Prof Dr baca dicatat sebagai "dipetik dalam". Pilih ini jika Prof Dr tidak membaca sumber asal itu sendiri.', true) : '') + bt('teks', 'Guna sumber asal sahaja', 'Sumber ayat ini ditukar kepada ' + senaraiSit(rt.sumber) + ' tanpa tanda dipetik dalam. Pilih ini hanya jika Prof Dr sudah membaca sumber asal itu sendiri.', !rd) + kekal;
+    } else if (isu.jenis === 'berbilang') {
+      teks = dari + 'Ayat ini memikul ' + isu.semua.length + ' sitasi (' + senaraiSit(isu.semua) + '), tetapi kad belum mencatat ' + senaraiSit(isu.asing) + '.';
+      btn = bt('tambah', 'Tambah ke kad: ' + senaraiSit(isu.asing), 'Sitasi itu ditambah sebagai sumber tambahan bagi ayat yang sama.', true) + kekal;
+    } else if (isu.jenis === 'salah') {
+      teks = dari + 'Sitasi tidak sepadan. Teks ayat menulis ' + senaraiSit(isu.semua) + ', kad menulis ' + kadT + '.' + (isu.nota ? ' ' + isu.nota : '');
+      btn = bt('teks', 'Tulis ganti: ' + senaraiSit(rt.sumber), 'Sumber pada kad ditulis ganti dengan sitasi yang tertulis dalam teks ayat. Jika kad yang betul, betulkan teks ayat atau klik Kekalkan.', true) + kekal;
+    } else { teks = 'Sitasi dikesan dalam teks ayat: ' + senaraiSit(isu.semua) + '.'; btn = bt('teks', 'Isi sumber daripada teks', 'Pengarang dan tahun pada kad diisi daripada sitasi yang tertulis dalam teks ayat.', true); }
+    return `<span class="bs-am ${isu.jenis === 'berbilang' || isu.jenis === 'kosong' ? 'info' : 'amaran'} bs-isu" data-jenis="${esc(isu.jenis)}"><span>${esc(teks)}</span><span class="bs-isu-b">${btn}</span></span>`;
+  }
+  /* Semakan silang tahun dengan repositori: nama pengarang yang sama tertulis dengan satu tahun sahaja dalam rekod, dan tahun pada kad berbeza. */
+  const normNama = x => String(x || '').toLowerCase().replace(/&/g, ' dan ').replace(/\band\b/g, 'dan').replace(/[^\p{L}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  function semakRepo(b) {
+    if (!b || b.saya) return null; const p = normNama(b.pengarang); const th = (String(b.tahun || '').match(/(?:1[89]|20)\d{2}/) || [''])[0]; if (!p || !th || b.repoOk === p + '|' + th) return null; const tahun = new Set(); let teks = '';
+    try { R.S.docs.forEach(d => { if (normNama(d.penulis) !== p) return; const t = (String(d.tahun || '').match(/(?:1[89]|20)\d{2}/) || [''])[0]; if (t) { tahun.add(t); teks = String(d.penulis).trim() + ' (' + t + ')'; } }); } catch (e) {}
+    return tahun.size === 1 && !tahun.has(th) ? { tahun: Array.from(tahun)[0], teks, kunci: p + '|' + th } : null;
   }
   function kemasSemakBahan() {
     if (!B.d) return; const sb = BD.semakBahan(B.d.bahan); const s = sesiSemasa(); const kes = s && s.hasil ? s.hasil.kesesuaian.ayat : [];
-    let no = 0;
-    $$('#bsBahan .bs-kad').forEach(k => { const b = B.d.bahan.find(x => x.id === k.dataset.bid); if (!b) return; const n = BD.patah(b.teks); const lb = k.querySelector('.bs-no'); if (lb) lb.textContent = String(b.teks || '').trim() ? 'A' + (++no) : '-'; const am = sb.amaran.filter(a => a.id === b.id); const st = kes.find(x => x.bid === b.id);
+    let no = 0, nIsu = 0;
+    $$('#bsBahan .bs-kad').forEach(k => { const b = B.d.bahan.find(x => x.id === k.dataset.bid); if (!b) return; const n = BD.patah(b.teks); const lb = k.querySelector('.bs-no'); if (lb) lb.textContent = String(b.teks || '').trim() ? 'A' + (++no) : '-'; const am = sb.amaran.filter(a => a.id === b.id && !a.jenis); const st = kes.find(x => x.bid === b.id); const isu = isuKad(b); if (isu) nIsu++; const rp = semakRepo(b);
       const pt = k.querySelector('.bs-patah'); if (pt) pt.textContent = n ? n + ' patah perkataan' : '';
       const rk = k.querySelector('.bs-rekod'); if (rk) { const r = rekodBahan(b); const tanda = r ? r.id + ':' + r.medan.map(m => m[0]).join(',') : ''; if (rk.dataset.rid !== tanda) { rk.dataset.rid = tanda; rk.innerHTML = r ? `<select data-bsb="medan" title="Isi ayat ini daripada medan rekod artikel dalam repositori; pilih kemudian ayat yang berkenaan sahaja" aria-label="Isi daripada rekod repositori"><option value="">Isi daripada rekod</option>${r.medan.map(m => `<option value="${m[0]}">${esc(m[1])}</option>`).join('')}</select>` : ''; } }
-      const td = k.querySelector('.bs-tanda'); if (td) td.innerHTML = am.map(a => `<span class="bs-am ${a.aras}">${esc(a.teks)}</span>`).join('') + (st && st.status !== 'guna' ? `<span class="bs-am ${st.status === 'ganti' ? 'halang' : 'amaran'}">Pembantu: ${st.status === 'ganti' ? 'ganti ayat ini' : 'ayat lemah'}. ${esc(st.sebab)}${st.cari ? ' Cari: ' + esc(st.cari) : ''}</span>` : ''); });
+      const td = k.querySelector('.bs-tanda'); if (td) td.innerHTML = (isu ? htmlIsu(b, isu) : '') + (rp ? `<span class="bs-am info bs-isu" data-jenis="tahun"><span>Semak tahun: dalam repositori tercatat ${esc(rp.teks)}, kad menulis ${esc(String(b.tahun).trim())}.</span><span class="bs-isu-b"><button class="bs-cip utama" data-bs="tahunrepo" data-bid="${esc(b.id)}" data-t="${esc(rp.tahun)}" title="Tahun pada kad ditulis ganti dengan tahun dalam rekod repositori">Tulis ganti: ${esc(rp.tahun)}</button><button class="bs-cip" data-bs="tahunkekal" data-bid="${esc(b.id)}" data-k="${esc(rp.kunci)}" title="Biarkan tahun pada kad; amaran ini tidak ditunjukkan lagi bagi sumber ini">Kekalkan</button></span></span>` : '') + am.map(a => `<span class="bs-am ${a.aras}">${esc(a.teks)}</span>`).join('') + (st && st.status !== 'guna' ? `<span class="bs-am ${st.status === 'ganti' ? 'halang' : 'amaran'}">Pembantu: ${st.status === 'ganti' ? 'ganti ayat ini' : 'ayat lemah'}. ${esc(st.sebab)}${st.cari ? ' Cari: ' + esc(st.cari) : ''}</span>` : ''); });
     const el = $('#bsSemakBahan'); if (!el) return; const am = sb.amaran.filter(a => !a.id); const isi = sb.bil;
     if (B.d.jenis === 'dapatan' && !B.d.bahan.some(b => b.saya && String(b.teks || '').trim())) am.push({ aras: 'info', teks: 'Jenis "Dapatan sendiri dengan kajian lepas" memerlukan satu ayat dapatan kajian Prof Dr sendiri. Klik "Tambah dapatan saya".' });
-    el.innerHTML = `<div class="bs-ringkas"><span class="chip ${sb.boleh ? 'ok' : 'warn'}">${sb.boleh ? 'Bahan boleh disintesis' : 'Bahan belum cukup'}</span><span class="help">${isi} ayat daripada ${sb.sumber} sumber${sb.bahasa.length ? ', bahasa bahan: ' + sb.bahasa.map(x => (x === 'en' ? 'Inggeris' : 'Melayu')).join(' dan ') : ''}. Had ${H.bahan} ayat bagi satu kerja.</span></div>` + am.map(a => `<div class="bs-am ${a.aras}">${esc(a.teks)}</div>`).join('');
+    el.innerHTML = `<div class="bs-ringkas"><span class="chip ${sb.boleh ? 'ok' : 'warn'}">${sb.boleh ? 'Bahan boleh disintesis' : 'Bahan belum cukup'}</span><span class="help">${isi} ayat daripada ${sb.sumber} sumber${sb.bahasa.length ? ', bahasa bahan: ' + sb.bahasa.map(x => (x === 'en' ? 'Inggeris' : 'Melayu')).join(' dan ') : ''}. Had ${H.bahan} ayat bagi satu kerja.</span>${nIsu >= 2 ? `<button class="btn btn-sm" data-bs="sitsemua" title="Tulis ganti sumber pada setiap kad yang bertanda: sitasi sekunder ditanda dipetik dalam artikel yang dibaca, sitasi tambahan ditambah ke kad, dan sitasi yang tidak sepadan mengikut teks ayat">Betulkan semua sitasi (${nIsu})</button>` : ''}</div>` + am.map(a => `<div class="bs-am ${a.aras}">${esc(a.teks)}</div>`).join('');
+  }
+  /* ---- tulis ganti sitasi pada kad ---- */
+  function tetapSumber(b, ss, dalam) {
+    const u = []; (ss || []).forEach(x => { const p = String((x && x.pengarang) || '').trim(); if (!p) return; const k = BD.kunciSumber(p, x.tahun) || p.toLowerCase(); if (!u.some(y => y.k === k)) u.push({ k, pengarang: p, tahun: String(x.tahun || '').trim(), ms: String(x.ms || '').trim() }); });
+    const s = u.slice(0, H.sumberAyat); b.pengarang = s[0] ? s[0].pengarang : ''; b.tahun = s[0] ? s[0].tahun : ''; b.ms = s[0] ? s[0].ms : ''; b.lain = s.slice(1).map(sumberKemas); b.dalam = dalam ? sumberKemas(dalam) : null;
+  }
+  const salinSumber = b => ({ pengarang: b.pengarang, tahun: b.tahun, ms: b.ms, lain: b.lain.map(x => Object.assign({}, x)), dalam: b.dalam ? Object.assign({}, b.dalam) : null, rekod: b.rekod, sitOk: b.sitOk || '', repoOk: b.repoOk || '' });
+  function gunaIsu(b, cara) {
+    const isu = isuKad(b); if (!isu) return false;
+    if (cara !== 'kekal') { const r = rancangIsu(b, isu, cara); if (!r || !r.sumber || !r.sumber.length) return false; tetapSumber(b, r.sumber, r.dalam); if (cara === 'teks') b.rekod = ''; }
+    b.sitOk = BD.tandaSitasi(b); return true;
+  }
+  function selepasSitasi() { simpan(); renderBahan(); renderHasil(); }
+  function baikSitasi(bid, cara) {
+    const d = B.d; const b = d && d.bahan.find(x => x.id === bid); if (!b) return; const lama = salinSumber(b); const lab = labelKad(b.id) || 'Ayat';
+    if (!gunaIsu(b, cara)) { toast('Tiada pembetulan sitasi yang boleh dibuat pada ayat ini', true); return; } selepasSitasi();
+    toast(cara === 'kekal' ? lab + ': sumber pada kad dikekalkan' : lab + ': sitasi ditulis ganti kepada ' + BD.labelSumber(b), false, { label: 'Batal', fn: () => { if (B.d !== d) return; Object.assign(b, lama); selepasSitasi(); } });
+  }
+  function baikSemua() {
+    const d = B.d; if (!d) return; const lama = [];
+    d.bahan.forEach(b => { const isu = isuKad(b); if (!isu) return; const cara = isu.jenis === 'sekunder' ? 'dalam' : isu.jenis === 'berbilang' ? 'tambah' : 'teks'; const s = salinSumber(b); if (gunaIsu(b, cara)) lama.push([b, s]); });
+    if (!lama.length) return; selepasSitasi();
+    toast(lama.length + ' kad ditulis ganti. Sitasi sekunder ditanda sebagai dipetik dalam artikel yang dibaca; semak setiap kad.', false, { label: 'Batal', fn: () => { if (B.d !== d) return; lama.forEach(([b, s]) => Object.assign(b, s)); selepasSitasi(); } });
   }
 
-  /* ---- paparan: kanvas HASIL ---- */
-  function chipSumber(labels, s) { return (labels || []).map(l => { const m = s && s.bahan.find(x => x.l === l); return `<span class="bs-sb" title="${esc(m ? (m.saya ? 'Dapatan saya' : m.pengarang + ' (' + m.tahun + ')') : '')}">${esc(l)}${m ? ' ' + esc(m.saya ? 'Dapatan saya' : potong(m.pengarang, 22) + (m.tahun ? ', ' + m.tahun : '')) : ''}</span>`; }).join(''); }
-  /* Serlahkan penanda wacana dalam satu ayat tanpa memecahkan pelarian HTML. */
-  function serlah(ayat, penanda) {
-    const t = String(ayat || ''); const pn = (penanda || []).map(p => String(p || '').trim()).filter(p => p.length >= 3).sort((a, b) => b.length - a.length); const julat = []; const kecil = t.toLowerCase();
-    pn.forEach(p => { let i = 0; const q = p.toLowerCase(); while ((i = kecil.indexOf(q, i)) >= 0) { if (!julat.some(j => i < j[1] && i + q.length > j[0])) julat.push([i, i + q.length]); i += q.length; } });
-    julat.sort((a, b) => a[0] - b[0]); let out = '', pos = 0; julat.forEach(j => { out += esc(t.slice(pos, j[0])) + '<mark class="bs-pn">' + esc(t.slice(j[0], j[1])) + '</mark>'; pos = j[1]; }); return out + esc(t.slice(pos));
+  /* ---- paparan: ANALISIS (kanan atas) ---- */
+  function chipSumber(labels, s) {
+    return (labels || []).map(l => { const m = s && s.bahan.find(x => x.l === l); const ss = m && !m.saya ? BD.sumberBahan(m) : []; const pendek = !m ? '' : m.saya ? 'Dapatan saya' : ss.length ? potong(ss[0].pengarang, 22) + (ss[0].tahun ? ', ' + ss[0].tahun : '') + (ss.length > 1 ? ' +' + (ss.length - 1) : '') : '';
+      return `<span class="bs-sb" title="${esc(m ? BD.labelSumber(m) : '')}">${esc(l)}${pendek ? ' ' + esc(pendek) : ''}</span>`; }).join('');
+  }
+  /* Warnakan lima golongan (penanda wacana, kata kerja pelaporan, istilah sintesis, sitasi, suara penulis) tanpa memecahkan pelarian HTML.
+     tajuk = true menambah nama golongan sebagai petua pada setiap tanda. */
+  function htmlWarna(teks, bhs, tambahan, tajuk) {
+    const w = warna(); const t = String(teks || ''); let out = '', pos = 0;
+    BD.tandaTeks(t, bhs, tambahan).forEach(j => { if (!w[j.k] || j.s < pos) return; out += esc(t.slice(pos, j.s)) + `<mark class="bs-w w-${j.k}"${tajuk ? ` title="${esc((BD.WARNA_PETA[j.k] || {}).ms || '')}"` : ''}>` + esc(t.slice(j.s, j.e)) + '</mark>'; pos = j.e; });
+    return out + esc(t.slice(pos));
+  }
+  /* Penanda yang dinamakan oleh pembantu bagi satu sesi, sebagai tambahan kepada leksikon tetap semasa mewarna. */
+  function tambahanSesi(s) { const pf = new Map(s.hasil.penanda.map(p => [String(p.frasa).toLowerCase(), p.fungsi])); return a => a.penanda.map(p => ({ frasa: p, fungsi: pf.get(String(p).toLowerCase()) })).concat(s.hasil.penanda); }
+  function kiraCadang(s) { const kira = { wacana: 0, lapor: 0, istilah: 0, sitasi: 0, pendirian: 0 }; const tb = tambahanSesi(s); s.hasil.sintesis.forEach(a => { const k = BD.kiraWarna(a.ayat, s.bahasa, tb(a)); Object.keys(kira).forEach(x => { kira[x] += k[x] || 0; }); }); return kira; }
+  function htmlLegenda(kira) {
+    const w = warna();
+    return `<div class="bs-legenda" role="group" aria-label="Warna dalam Cadangan Sintesis dan Tulisan saya">` + BD.WARNA.map(x => `<button class="bs-lg w-${x.k}${w[x.k] ? ' on' : ''}" data-bs="warna" data-k="${x.k}" aria-pressed="${w[x.k] ? 'true' : 'false'}" title="${esc(x.ket)} Klik untuk ${w[x.k] ? 'menyembunyikan' : 'menunjukkan'} warna ini."><i></i>${esc(x.ms)}${kira ? ` <b>${kira[x.k] || 0}</b>` : ''}</button>`).join('') + `</div>`;
   }
   function htmlKesesuaian(s) {
     const k = s.hasil.kesesuaian; const nama = { sesuai: ['ok', 'Sesuai disintesis'], separa: ['warn', 'Sebahagian sahaja sesuai'], tidak: ['bad', 'Tidak sesuai disintesis'] }[k.status] || ['info', k.status]; const lemah = k.ayat.filter(a => a.status !== 'guna');
-    return `<div class="bs-blok bs-kes ${k.status}"><div class="bs-blok-h"><span class="chip ${nama[0]}">${nama[1]}</span><span>${esc(k.ringkas)}</span></div>${lemah.length ? '<ul>' + lemah.map(a => `<li><b>${esc(a.id)}</b> ${a.status === 'ganti' ? 'perlu diganti' : 'lemah'}: ${esc(a.sebab)}${a.cari ? ' <i>Cari sebagai ganti: ' + esc(a.cari) + '</i>' : ''}</li>`).join('') + '</ul>' : ''}${k.status === 'tidak' ? '<div class="help">Pembantu tidak memaksa sintesis daripada bahan yang tidak sepadan. Ganti ayat yang ditanda, kemudian cuba semula.</div>' : ''}</div>`;
+    const st = { guna: ['ok', 'boleh diguna'], lemah: ['warn', 'lemah'], ganti: ['bad', 'perlu diganti'] };
+    const cip = k.ayat.length ? `<div class="bs-kes-cip" aria-label="Kelas setiap ayat bahan">${k.ayat.map(a => `<span class="chip ${(st[a.status] || st.guna)[0]}" title="${esc(a.sebab || '')}">${esc(a.id)} ${(st[a.status] || st.guna)[1]}</span>`).join('')}</div>` : '';
+    const sit = B.d.bahan.map(b => ({ b, isu: isuKad(b) })).filter(x => x.isu);
+    return `<div class="bs-blok bs-kes ${k.status}"><div class="bs-blok-h"><span class="chip ${nama[0]}">${nama[1]}</span><span>${esc(k.ringkas)}</span></div>${cip}${lemah.length ? '<ul>' + lemah.map(a => `<li><b>${esc(a.id)}</b> ${a.status === 'ganti' ? 'perlu diganti' : 'lemah'}: ${esc(a.sebab)}${a.cari ? ' <i>Cari sebagai ganti: ' + esc(a.cari) + '</i>' : ''}</li>`).join('') + '</ul>' : ''}${sit.length ? `<div class="bs-blok-t bs-sit-t">Sitasi yang perlu disemak <span class="help">klik butang untuk menulis ganti sumber pada kad; boleh dibatalkan</span></div>` + sit.map(x => `<div class="bs-sit-b"><b>${esc(labelKad(x.b.id))}</b>${htmlIsu(x.b, x.isu)}</div>`).join('') : ''}${k.status === 'tidak' ? '<div class="help">Pembantu tidak memaksa sintesis daripada bahan yang tidak sepadan. Ganti ayat yang ditanda, kemudian cuba semula.</div>' : ''}</div>`;
   }
-  function htmlSesi(s) {
-    const h = s.hasil; if (!h) return ''; const bhs = s.bahasa; let out = htmlKesesuaian(s);
+  function htmlAnalisis(s) {
+    const h = s.hasil; if (!h) return ''; let out = '';
+    if (s.terpotong) out += `<div class="bs-am amaran">Jawapan pembantu terpotong pada had token walaupun selepas diulang, maka sebahagian medan mungkin tiada. Kurangkan bilangan ayat bahan atau pendekkan konteks, kemudian minta semula.</div>`;
+    out += htmlKesesuaian(s);
     if (h.jenis.length) out += `<div class="bs-blok"><div class="bs-blok-t">Jenis sintesis yang sepadan</div>${h.jenis.map(j => `<div class="bs-jn"><span class="tag">${esc(BD.namaJenis(j.k))}</span> ${esc(j.sebab)}</div>`).join('')}</div>`;
     if (h.idea.length) out += `<div class="bs-blok"><div class="bs-blok-t">Peta idea <span class="help">sumber disusun mengikut idea, bukan mengikut pengarang</span></div>${h.idea.map(i => `<div class="bs-idea"><div class="bs-idea-t">${esc(i.teras)}</div><div class="bs-idea-s">${chipSumber(i.sumber, s)}</div></div>`).join('')}</div>`;
     const rm = s.ramal ? `<div class="bs-ramal-h"><span class="chip ${s.ramalTepat ? 'ok' : 'warn'}">${s.ramalTepat ? 'Ramalan tepat' : 'Ramalan berbeza'}</span> Ramalan Prof Dr: <b>${esc((BD.HUBUNGAN_PETA[s.ramal] || [0, s.ramal])[1])}</b>.${s.ramalTepat ? '' : ' Bandingkan dengan hubungan yang ditemui pembantu dan lihat ayat mana yang menunjukkannya.'}</div>` : '';
     if (h.hubungan.length) out += `<div class="bs-blok"><div class="bs-blok-t">Hubungan antara sumber</div>${rm}${h.hubungan.map(x => `<div class="bs-hub"><span class="tag h-${esc(x.jenis)}">${esc((BD.HUBUNGAN_PETA[x.jenis] || [0, x.jenis])[1])}</span> ${chipSumber(x.antara, s)} <span>${esc(x.huraian)}</span></div>`).join('')}</div>`;
-    if (h.sintesis.length) {
-      const rangka = s.mod === 'rangka'; const asing = h.sintesis.some(a => a.asing && a.asing.length);
-      out += `<div class="bs-blok bs-contoh${rangka ? ' rangka' : ''}"><div class="bs-blok-t">${rangka ? 'Rangka untuk dilengkapkan' : 'Contoh sintesis'} <span class="help">${rangka ? 'lengkapkan setiap lompang dalam Tulisan saya' : 'baca, fahami gerakannya, kemudian tulis semula dengan ayat sendiri'}</span>${rangka ? '' : `<button class="bs-pautan" data-bs="tutup">${B.tutup ? 'Tunjukkan contoh' : 'Sembunyikan contoh dan tulis daripada peta idea'}</button>`}</div>`;
-      if (asing) out += `<div class="bs-am halang">Amaran: ada sitasi dalam contoh yang tiada dalam bahan (bertanda merah). Jangan gunakan ayat itu.</div>`;
-      if (!B.tutup || rangka) {
-        if (!rangka) out += `<div class="bs-perenggan" lang="${bhs}">${h.sintesis.map((a, i) => `<span class="bs-ay f-${esc(a.fungsi)}${a.asing && a.asing.length ? ' asing' : ''}" data-bs="sorot" data-i="${i}" tabindex="0" role="button" aria-pressed="false" title="Klik untuk menyerlahkan ayat bahan yang menyokong ayat ini">${serlah(a.ayat, a.penanda)}</span>`).join(' ')}</div>`;
-        out += `<ol class="bs-bedah">${h.sintesis.map((a, i) => `<li data-bs="sorot" data-i="${i}"><span class="bs-fg f-${esc(a.fungsi)}" title="${esc((BD.FUNGSI_PETA[a.fungsi] || [])[2] || '')}">${esc((BD.FUNGSI_PETA[a.fungsi] || [0, a.fungsi])[1])}</span><span class="bs-bedah-a" lang="${bhs}">${serlah(a.ayat, a.penanda)}</span>${a.sumber.length ? `<span class="bs-bedah-s">${chipSumber(a.sumber, s)}</span>` : '<span class="bs-bedah-s help">suara penulis</span>'}${rangka && a.penanda.length ? `<span class="bs-bedah-p">Pilihan penanda: ${a.penanda.map(p => `<button class="bs-cip" data-bs="sisip" data-f="${esc(p)}">${esc(p)}</button>`).join('')}</span>` : ''}${a.asing && a.asing.length ? `<span class="bs-am halang">Sitasi di luar bahan: ${esc(a.asing.join('; '))}</span>` : ''}</li>`).join('')}</ol>`;
-        if (!rangka) out += `<div class="bs-acts"><button class="btn btn-sm" data-bs="salincontoh">Salin contoh</button><button class="btn btn-sm" data-bs="ramcontoh" title="Masukkan contoh ke RAM seksyen sasaran sebagai bahan mentah yang akan diparafrasa">Hantar contoh ke RAM</button></div>`;
-      } else out += `<div class="help">Contoh disembunyikan. Tulis daripada peta idea dan hubungan di atas, kemudian buka semula contoh untuk membandingkan.</div>`;
-      out += `</div>`;
-    }
     if (rm && !h.hubungan.length) out += `<div class="bs-blok">${rm}</div>`;
-    if (s.mod === 'semak') {
-      const k = h.semakan; const g = { laporan: ['bad', 'Masih bercorak laporan'], separa: ['warn', 'Separa sintesis'], sintesis: ['ok', 'Sudah menjadi sintesis'], tiada: ['info', 'Tidak dinilai'] }[k.gaya] || ['info', k.gaya];
-      out += `<div class="bs-blok bs-semakan"><div class="bs-blok-h"><span class="chip ${g[0]}">${g[1]}</span><span class="help">penilaian pembantu atas Tulisan saya</span></div>${k.bukti.length ? '<ul>' + k.bukti.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : ''}${k.setia.length ? `<div class="bs-blok-t">Kesetiaan kepada sumber</div>${k.setia.map(x => `<div class="bs-setia"><span class="tag s-${esc(x.status)}">${esc(x.id)} ${esc({ tepat: 'tepat', longgar: 'longgar', salah: 'tersasar', tiada: 'tidak digunakan' }[x.status] || x.status)}</span> ${esc(x.nota)}</div>`).join('')}` : ''}${k.baik.length ? `<div class="bs-blok-t">Yang sudah menjadi</div><ul>${k.baik.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${k.baiki.length ? `<div class="bs-blok-t">Langkah pembaikan</div><ol>${k.baiki.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}${k.contohAyat ? `<div class="bs-blok-t">Satu contoh gerakan</div><div class="bs-perenggan kecil" lang="${bhs}">${esc(k.contohAyat)}</div>` : ''}</div>`;
-    }
+    if (h.sintesis.length) out += `<div class="bs-blok bs-kecadang"><span>${s.mod === 'rangka' ? 'Rangka ayat' : 'Cadangan sintesis'} daripada pembantu berada dalam tetingkap Cadangan Sintesis, sebelah Tulisan saya.</span><button class="btn btn-sm" data-bs="kecadang">Lihat ${s.mod === 'rangka' ? 'rangka' : 'cadangan'}</button></div>`;
     if (h.langkah.length) out += `<details class="bs-blok"${s.mod === 'semak' ? '' : ' open'}><summary class="bs-blok-t">Cara sintesis ini dibina</summary><ol>${h.langkah.map(x => `<li>${esc(x)}</li>`).join('')}</ol></details>`;
     if (h.letak.length) out += `<div class="bs-blok"><div class="bs-blok-t">Di mana sesuai ditulis</div>${h.letak.map((x, i) => { const sk = x.ruj ? seksyenDari(x.ruj) : null; return `<div class="bs-letak"><div><b>${esc(sk ? sk.kump + ' › ' + sk.label : x.tempat)}</b>${sk && x.tempat && x.tempat !== sk.label ? ' <span class="help">' + esc(x.tempat) + '</span>' : ''}<div>${esc(x.sebab)}</div></div>${sk ? `<div class="bs-letak-b"><button class="btn btn-sm" data-bs="sasar" data-i="${i}">${B.d.sasaran === x.ruj ? 'Sasaran semasa' : 'Jadikan sasaran'}</button><button class="btn btn-sm" data-bs="bukasek" data-i="${i}">Buka</button></div>` : ''}</div>`; }).join('')}</div>`;
-    if (h.penanda.length) out += `<div class="bs-blok"><div class="bs-blok-t">Penanda wacana yang digunakan</div><div class="bs-cips">${h.penanda.map(p => `<button class="bs-cip" data-bs="pstk" data-k="${esc(p.fungsi)}" title="Lihat kategori ini dalam Pustaka">${esc(p.frasa)} <i>${esc(p.fungsi === 'lapor' ? 'pelaporan' : ((BD.PUSTAKA_PETA[p.fungsi] || {}).ms || p.fungsi).toLowerCase())}</i></button>`).join('')}</div></div>`;
     if (h.soalan.length) out += `<div class="bs-blok"><div class="bs-blok-t">Soalan pembantu kepada Prof Dr</div><ul>${h.soalan.map(x => `<li>${esc(x)}</li>`).join('')}</ul><div class="help">Jawab dengan menambah butiran itu ke Konteks perbincangan atau ke ayat bahan, kemudian minta semula.</div></div>`;
     if (h.nota) out += `<div class="bs-blok help">${esc(h.nota)}</div>`;
     return out;
   }
   function renderHasil() {
     const el = $('#bsHasil'); if (!el || !B.d) return; const d = B.d; const t = tahapSemasa(); const s = sesiSemasa(); const tk = d.token;
-    const butang = t.k === 'semak' ? `<button class="btn btn-primary" data-bs="jalan" data-mod="semak"${B.busy ? ' disabled' : ''}>Semak tulisan saya</button><button class="btn btn-sm" data-bs="jalan" data-mod="contoh"${B.busy ? ' disabled' : ''} title="Minta contoh penuh walaupun berada di Tahap 3">Tunjukkan contoh</button>` : `<button class="btn btn-primary" data-bs="jalan" data-mod="${t.k}"${B.busy ? ' disabled' : ''}>${esc(t.butang)}</button>`;
+    const butang = t.k === 'semak' ? `<button class="btn btn-primary" data-bs="jalan" data-mod="semak"${B.busy ? ' disabled' : ''}>Semak tulisan saya</button><button class="btn btn-sm" data-bs="jalan" data-mod="contoh"${B.busy ? ' disabled' : ''} title="Minta cadangan penuh walaupun berada di Tahap 3">Tunjukkan contoh</button>` : `<button class="btn btn-primary" data-bs="jalan" data-mod="${t.k}"${B.busy ? ' disabled' : ''}>${esc(t.butang)}</button>`;
     const pilihSesi = d.sesi.length > 1 ? `<label class="bs-sesi">Sesi <select data-bsm="sesi">${d.sesi.map((x, i) => `<option value="${i}"${i === B.sesi ? ' selected' : ''}>${d.sesi.length - i}. ${esc({ contoh: 'contoh', rangka: 'rangka', semak: 'semakan' }[x.mod] || x.mod)}, ${esc(R.fmtTime(x.masa))}</option>`).join('')}</select></label>` : '';
     el.innerHTML = `<div class="bs-bar">${butang}${pilihSesi}<span class="spacer"></span><span class="help">${tk.panggil ? angka(tk.panggil) + ' panggilan, token masuk ' + angka(tk.masuk) + ', keluar ' + angka(tk.keluar) : 'Setiap permintaan ialah satu panggilan API dengan kunci Prof Dr'}</span></div>
-      ${B.busy ? `<div class="bs-sibuk"><span class="chip info busy">Pembantu sedang ${B.busy === 'semak' ? 'menyemak tulisan' : B.busy === 'rangka' ? 'menyediakan rangka' : 'mensintesis'}</span></div>` : ''}
-      <div id="bsSesi">${s ? htmlSesi(s) : `<div class="bs-blok help">${t.k === 'semak' ? 'Tulis sintesis Prof Dr dalam ruang Tulisan saya di bawah, kemudian klik Semak tulisan saya.' : 'Isi bahan di kiri, nyatakan konteks, kemudian klik ' + esc(t.butang) + '. Pembantu akan menyemak kesesuaian bahan dahulu.'}</div>`}</div>
-      <div class="bs-blok bs-saya-blok"><div class="bs-blok-t">Tulisan saya <span class="help">parafrasa atau sintesis Prof Dr sendiri; inilah yang dihantar ke RAM</span></div>
-        <textarea id="bsTulisan" class="bs-tulisan" data-bsm="tulisan" rows="7" maxlength="${H.tulisan}" lang="${d.bahasa}" spellcheck="true" placeholder="${d.bahasa === 'en' ? 'Write the synthesis in your own words. Start with the idea, not the author.' : 'Tulis sintesis dengan ayat Prof Dr sendiri. Mulakan dengan idea, bukan dengan nama pengarang.'}">${esc(d.tulisan || '')}</textarea>
-        <div id="bsSemakTulisan" class="bs-semak"></div>
-        <div class="bs-acts"><button class="btn btn-sm btn-primary" data-bs="jalan" data-mod="semak"${B.busy ? ' disabled' : ''} title="Pembantu menilai sama ada tulisan ini sintesis atau laporan dan menyemak kesetiaan kepada sumber">Semak tulisan saya</button><button class="btn btn-sm" data-bs="ramtulisan" title="Masukkan Tulisan saya ke RAM seksyen sasaran">Hantar ke RAM</button><button class="btn btn-sm" data-bs="salintulisan">Salin</button><span class="spacer"></span><span class="help" id="bsStatus">${d.masa ? 'Disimpan ' + esc(R.fmtTime(d.masa)) : ''}</span></div>
-      </div>`;
-    kemasSemakTulisan();
+      ${B.busy ? `<div class="bs-sibuk"><span class="chip info busy">${B.ulang ? 'Jawapan pertama terpotong; pembantu menulis semula dengan lebih ringkas' : 'Pembantu sedang ' + (B.busy === 'semak' ? 'menyemak tulisan' : B.busy === 'rangka' ? 'menyediakan rangka' : 'mensintesis')}</span></div>` : ''}
+      <div id="bsSesi">${s ? htmlAnalisis(s) : `<div class="bs-blok help">${t.k === 'semak' ? 'Tulis sintesis Prof Dr dalam tetingkap Tulisan saya di bawah, kemudian klik Semak tulisan saya.' : 'Isi bahan di kiri, nyatakan konteks, kemudian klik ' + esc(t.butang) + '. Pembantu akan mengelaskan setiap ayat dan menyemak sitasinya dahulu.'}</div>`}</div>`;
+    renderCadang(); renderSayaBar(); renderSemakan(); kemasSemakTulisan();
+  }
+
+  /* ---- paparan: tetingkap CADANGAN SINTESIS (kiri bawah), searas dengan Tulisan saya ---- */
+  function renderCadang() {
+    const hEl = $('#bsCadangH'), bar = $('#bsCadangBar'), box = $('#bsCadang'), kaki = $('#bsCadangKaki'); if (!hEl || !bar || !box || !kaki || !B.d) return;
+    const d = B.d; const s = sesiCadang(); const ss = sesiSemasa(); const t = tahapSemasa(); const rangka = !!s && s.mod === 'rangka'; const bhs = s ? s.bahasa : d.bahasa; const h = s ? s.hasil : null; const mati = B.busy ? ' disabled' : '';
+    hEl.innerHTML = `<b>CADANGAN SINTESIS</b><span>${!s ? 'Sintesis yang ditulis oleh pembantu daripada ayat bahan Prof Dr dipaparkan di sini.' : (rangka ? 'Rangka daripada pembantu. Lengkapkan setiap lompang dalam Tulisan saya.' : 'Ditulis oleh pembantu daripada ayat bahan Prof Dr. Salin ke Tulisan saya, kemudian sunting sebelum dijadikan teks rasmi.') + (ss && s !== ss ? ' Cadangan daripada sesi ' + esc(R.fmtTime(s.masa)) + '.' : '')}</span>`;
+    const tunjuk = !!s && !rangka && !B.tutup;
+    const legenda = htmlLegenda(tunjuk ? kiraCadang(s) : null); bar.innerHTML = legenda;
+    if (!s) {
+      const pesan = ss && ss.mod !== 'semak' && ss.hasil.kesesuaian.status === 'tidak' ? 'Pembantu tidak menulis cadangan kerana bahan tidak sesuai disintesis. Lihat sebabnya dalam ruang Analisis, ganti ayat yang ditanda, kemudian minta semula.'
+        : ss && ss.mod !== 'semak' && ss.terpotong ? 'Cadangan tidak sempat ditulis kerana jawapan pembantu terpotong. Minta sekali lagi.'
+        : t.k === 'semak' ? 'Pada Tahap 3 Prof Dr menulis dahulu dalam Tulisan saya dan pembantu hanya menyemak. Cadangan pembantu boleh diminta bila-bila masa.'
+        : 'Cadangan sintesis akan dipaparkan di sini, berwarna mengikut penanda wacana, kata kerja pelaporan, istilah sintesis, sitasi dan suara penulis.';
+      box.innerHTML = `<div class="bs-perenggan bs-kosong"><p>${esc(pesan)}</p><p><button class="btn btn-sm btn-primary" data-bs="jalan" data-mod="${t.k === 'rangka' ? 'rangka' : 'contoh'}"${mati}>${t.k === 'rangka' ? 'Minta rangka' : t.k === 'semak' ? 'Tunjukkan contoh' : esc(t.butang)}</button></p></div>`;
+      kaki.innerHTML = ''; return;
+    }
+    const asing = h.sintesis.some(a => a.asing && a.asing.length); const basi = s.tk && s.tk !== tandaBahan(snapBahan());
+    const amaran = (asing ? `<div class="bs-am halang">Amaran: ada sitasi dalam cadangan ini yang tiada dalam bahan (bertanda merah). Jangan gunakan ayat itu.</div>` : '') + (basi ? `<div class="bs-am amaran bs-basi"><span>Bahan atau sitasinya berubah selepas cadangan ini ditulis. Minta semula supaya cadangan menggunakan bahan dan sitasi terkini.</span> <button class="bs-cip" data-bs="jalan" data-mod="${rangka ? 'rangka' : 'contoh'}"${mati}>Minta semula</button></div>` : '');
+    const tambahan = rangka ? () => null : tambahanSesi(s);
+    const bedah = `<ol class="bs-bedah">${h.sintesis.map((a, i) => `<li data-bs="sorot" data-i="${i}"${B.sorotI === i ? ' class="on"' : ''}><span class="bs-fg f-${esc(a.fungsi)}" title="${esc((BD.FUNGSI_PETA[a.fungsi] || [])[2] || '')}">${esc((BD.FUNGSI_PETA[a.fungsi] || [0, a.fungsi])[1])}</span><span class="bs-bedah-a" lang="${bhs}">${htmlWarna(a.ayat, bhs, tambahan(a), false)}</span>${a.sumber.length ? `<span class="bs-bedah-s">${chipSumber(a.sumber, s)}</span>` : '<span class="bs-bedah-s help">suara penulis</span>'}${rangka && a.penanda.length ? `<span class="bs-bedah-p">Pilihan penanda: ${a.penanda.map(p => `<button class="bs-cip" data-bs="sisip" data-f="${esc(p)}">${esc(p)}</button>`).join('')}</span>` : ''}${a.asing && a.asing.length ? `<span class="bs-am halang">Sitasi di luar bahan: ${esc(a.asing.join('; '))}</span>` : ''}</li>`).join('')}</ol>`;
+    /* amaran diletakkan pada baris legenda, bukan di dalam kotak, supaya kotak cadangan dan kotak tulisan kekal bermula pada aras yang sama */
+    bar.innerHTML = legenda + amaran;
+    if (rangka) { box.innerHTML = `<div class="bs-perenggan bs-rangka" lang="${bhs}"><div class="bs-blok-t">Rangka untuk dilengkapkan <span class="help">klik pilihan penanda untuk memasukkannya ke Tulisan saya</span></div>${bedah}</div>`; kaki.innerHTML = `<div id="bsSumberAyat"></div>`; renderSumberAyat(); return; }
+    if (B.tutup) { box.innerHTML = `<div class="bs-perenggan bs-kosong"><p>Cadangan disembunyikan. Tulis daripada peta idea dan hubungan dalam ruang Analisis, kemudian buka semula cadangan untuk membandingkan.</p><p><button class="btn btn-sm" data-bs="tutup">Tunjukkan cadangan</button></p></div>`; kaki.innerHTML = ''; return; }
+    box.innerHTML = `<div class="bs-perenggan bs-contoh" lang="${bhs}">${h.sintesis.map((a, i) => `<span class="bs-ay f-${esc(a.fungsi)}${a.asing && a.asing.length ? ' asing' : ''}${B.sorotI === i ? ' on' : ''}" data-bs="sorot" data-i="${i}" tabindex="0" role="button" aria-pressed="${B.sorotI === i ? 'true' : 'false'}" title="Klik untuk melihat ayat bahan yang menyokong ayat ini">${htmlWarna(a.ayat, bhs, tambahan(a), true)}</span>`).join(' ')}</div>`;
+    kaki.innerHTML = `<div class="bs-acts"><button class="btn btn-sm btn-primary" data-bs="kesaya" title="Salin cadangan ini ke Tulisan saya supaya boleh disunting di sebelahnya">Salin ke Tulisan saya</button><button class="btn btn-sm" data-bs="salincontoh" title="Salin ke papan klip">Salin</button><button class="btn btn-sm" data-bs="ramcontoh" title="Masukkan cadangan ke RAM seksyen sasaran sebagai bahan mentah yang belum disunting">Hantar cadangan ke RAM</button><button class="btn btn-sm" data-bs="tutup" title="Sembunyikan cadangan dan tulis daripada peta idea">Sembunyikan</button></div>
+      <div id="bsSumberAyat"></div>
+      <details class="bs-blok bs-lipat"${R.lsGet(LS_BEDAH, false) ? ' open' : ''} id="bsBedahWrap"><summary class="bs-blok-t">Bedah ayat: fungsi dan sumber setiap ayat</summary>${bedah}</details>
+      ${h.penanda.length ? `<div class="bs-blok"><div class="bs-blok-t">Penanda wacana yang digunakan <span class="help">klik untuk membuka kategorinya dalam Pustaka</span></div><div class="bs-cips">${h.penanda.map(p => `<button class="bs-cip" data-bs="pstk" data-k="${esc(p.fungsi)}" title="Lihat kategori ini dalam Pustaka">${esc(p.frasa)} <i>${esc(p.fungsi === 'lapor' ? 'pelaporan' : ((BD.PUSTAKA_PETA[p.fungsi] || {}).ms || p.fungsi).toLowerCase())}</i></button>`).join('')}</div></div>` : ''}`;
+    renderSumberAyat();
+  }
+  /* Ayat bahan yang menyokong satu ayat cadangan, dipaparkan terus di bawah cadangan supaya Prof Dr tidak perlu menatal ke kanvas BAHAN. */
+  function renderSumberAyat() {
+    const el = $('#bsSumberAyat'); if (!el || !B.d) return; const s = sesiCadang(); const i = B.sorotI; const a = s && i != null ? s.hasil.sintesis[i] : null; if (!a) { el.innerHTML = ''; return; }
+    const f = BD.FUNGSI_PETA[a.fungsi] || [0, a.fungsi, '']; const kini = id => B.d.bahan.find(b => b.id === id);
+    const baris = a.sumber.map(l => { const m = s.bahan.find(x => x.l === l); if (!m) return ''; const b = kini(m.id); return `<div class="bs-sa-b"><span class="bs-sb">${esc(l)}</span> <b>${esc(b ? BD.labelSumber(b) : BD.labelSumber(m))}</b><div class="bs-sa-t">${b && String(b.teks || '').trim() ? esc(b.teks) : '<i>Ayat bahan ini sudah dibuang atau dikosongkan.</i>'}</div></div>`; }).join('');
+    el.innerHTML = `<div class="bs-blok bs-sa"><div class="bs-blok-t">Ayat ${i + 1}: ${esc(f[1])} <span class="help">${esc(f[2] || '')}</span><button class="bs-pautan" data-bs="sorot" data-i="${i}">tutup</button></div>${baris || '<div class="help">Ayat ini suara penulis: tafsiran atau kaitan dengan konteks, tanpa sumber. Gantikan dengan tafsiran Prof Dr sendiri semasa menyunting.</div>'}</div>`;
+  }
+
+  /* ---- paparan: tetingkap TULISAN SAYA (kanan bawah) ---- */
+  function renderSayaBar() {
+    const el = $('#bsSayaBar'); if (!el || !B.d) return; const w = warna();
+    el.innerHTML = `<button class="btn btn-sm btn-primary" data-bs="jalan" data-mod="semak"${B.busy ? ' disabled' : ''} title="Pembantu menilai sama ada tulisan ini sintesis atau laporan dan menyemak kesetiaan kepada sumber">Semak tulisan saya</button><button class="btn btn-sm" data-bs="ramtulisan" title="Masukkan Tulisan saya ke RAM seksyen sasaran">Hantar ke RAM</button><button class="btn btn-sm" data-bs="salintulisan">Salin</button><button class="btn btn-sm bs-togol${w.saya ? ' on' : ''}" data-bs="warnasaya" aria-pressed="${w.saya ? 'true' : 'false'}" title="Tunjukkan warna yang sama dalam Tulisan saya semasa menaip">Warna: ${w.saya ? 'hidup' : 'mati'}</button><span class="spacer"></span><span class="help" id="bsStatus">${B.d.masa ? 'Disimpan ' + esc(R.fmtTime(B.d.masa)) : ''}</span>`;
+  }
+  /* Lapisan warna di belakang kotak Tulisan saya: teks yang sama dilukis semula dengan tanda berwarna, dan kotak ditinggikan mengikut isi
+     supaya tiada bar tatal dalaman (lebar lapisan dan kotak mesti sama supaya tanda jatuh tepat di bawah perkataannya). */
+  function kemasLatar() {
+    const ta = $('#bsTulisan'), isi = $('#bsLatarIsi'), wrap = $('#bsTaWrap'); if (!ta || !isi || !wrap || !B.d) return; const hidup = warna().saya; wrap.classList.toggle('warna', hidup);
+    isi.innerHTML = (hidup ? htmlWarna(ta.value, B.d.bahasa, null, false) : esc(ta.value)) + '\n\u200b';
+    let tambah = 22; try { const cs = getComputedStyle(ta); tambah = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0); } catch (e) {}
+    const perlu = isi.offsetHeight ? Math.ceil(isi.offsetHeight + tambah) + 2 : 0; ta.style.minHeight = perlu ? perlu + 'px' : '';
+  }
+  function renderSemakan() {
+    const el = $('#bsSemakan'); if (!el || !B.d) return; const s = sesiSemasa(); if (!s || s.mod !== 'semak') { el.innerHTML = ''; return; } const k = s.hasil.semakan; const bhs = s.bahasa;
+    const g = { laporan: ['bad', 'Masih bercorak laporan'], separa: ['warn', 'Separa sintesis'], sintesis: ['ok', 'Sudah menjadi sintesis'], tiada: ['info', 'Tidak dinilai'] }[k.gaya] || ['info', k.gaya];
+    const berubah = typeof s.tulisan === 'string' && s.tulisan.trim() !== String(B.d.tulisan || '').slice(0, H.tulisan).trim();
+    el.innerHTML = `<div class="bs-blok bs-semakan"><div class="bs-blok-h"><span class="chip ${g[0]}">${g[1]}</span><span class="help">penilaian pembantu atas Tulisan saya, ${esc(R.fmtTime(s.masa))}</span></div>${berubah ? '<div class="bs-am info">Tulisan saya telah disunting selepas semakan ini. Minta semakan sekali lagi untuk menilai versi terkini.</div>' : ''}${k.bukti.length ? '<ul>' + k.bukti.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : ''}${k.setia.length ? `<div class="bs-blok-t">Kesetiaan kepada sumber</div>${k.setia.map(x => `<div class="bs-setia"><span class="tag s-${esc(x.status)}">${esc(x.id)} ${esc({ tepat: 'tepat', longgar: 'longgar', salah: 'tersasar', tiada: 'tidak digunakan' }[x.status] || x.status)}</span> ${esc(x.nota)}</div>`).join('')}` : ''}${k.baik.length ? `<div class="bs-blok-t">Yang sudah menjadi</div><ul>${k.baik.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${k.baiki.length ? `<div class="bs-blok-t">Langkah pembaikan</div><ol>${k.baiki.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}${k.contohAyat ? `<div class="bs-blok-t">Satu contoh gerakan</div><div class="bs-perenggan kecil" lang="${bhs}">${htmlWarna(k.contohAyat, bhs, null, true)}</div>` : ''}</div>`;
   }
   function kemasSemakTulisan() {
-    const el = $('#bsSemakTulisan'); if (!el || !B.d) return; const t = String(B.d.tulisan || ''); const n = BD.patah(t);
+    const el = $('#bsSemakTulisan'); if (!el || !B.d) return; const t = String(B.d.tulisan || ''); const n = BD.patah(t); const bhs = B.d.bahasa;
     if (n < 5) { el.innerHTML = `<div class="help">Pengesan gaya (tanpa token) akan menilai tulisan ini sebaik sahaja ada dua ayat bersitasi: laporan, separa sintesis atau sintesis.</div>`; return; }
-    const g = BD.kesanGaya(t, { bahasa: B.d.bahasa }); const g0 = gaya(); const sc = sesiContoh(); const sm = BD.semakTeks(t, { bahasa: B.d.bahasa, larang: g0.larang, frasa: g0.frasa, bahan: bahanIsi(), contoh: sc ? contohTeks(sc) : '', susunan: susunanSitasi() });
-    const nama = { laporan: ['bad', 'Bercorak laporan'], separa: ['warn', 'Separa sintesis'], sintesis: ['ok', 'Bercorak sintesis'] }[g.gaya] || ['info', 'Belum cukup untuk dinilai']; const pn = BD.cariPenanda(t, B.d.bahasa);
-    el.innerHTML = `<div class="bs-meter"><span class="chip ${nama[0]}">${nama[1]}</span>${g.cukup ? `<span class="bs-skala" title="Petunjuk kasar tanpa token: 0 laporan, 100 sintesis"><i style="width:${g.skor}%"></i></span><span class="help">${g.skor}/100, ${n} patah perkataan</span>` : `<span class="help">${n} patah perkataan</span>`}</div><ul class="bs-bukti">${g.bukti.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${sm.map(a => `<div class="bs-am ${a.aras}">${esc(a.teks)}</div>`).join('')}${Object.keys(pn.kategori).length ? `<div class="help">Fungsi wacana dikesan: ${Object.keys(pn.kategori).map(k => esc(((BD.PUSTAKA_PETA[k] || {}).ms || k).toLowerCase())).join('; ')}${pn.lapor.length ? '. Kata kerja pelaporan: ' + esc(pn.lapor.slice(0, 8).join(', ')) : ''}.</div>` : ''}<div class="help">Pengesan ini petunjuk kasar daripada corak ayat dan sitasi, bukan penghakiman mutu hujah.</div>`;
+    const g = BD.kesanGaya(t, { bahasa: bhs }); const g0 = gaya(); const sc = sesiContoh(); const cad = sc ? contohTeks(sc) : ''; const sm = BD.semakTeks(t, { bahasa: bhs, larang: g0.larang, frasa: g0.frasa, bahan: bahanIsi(), contoh: cad, susunan: susunanSitasi() });
+    const nama = { laporan: ['bad', 'Bercorak laporan'], separa: ['warn', 'Separa sintesis'], sintesis: ['ok', 'Bercorak sintesis'] }[g.gaya] || ['info', 'Belum cukup untuk dinilai']; const pn = BD.cariPenanda(t, bhs);
+    const td = cad ? BD.tindih(t, cad, 4) : null; const ks = BD.kiraWarna(t, bhs); const kc = sc ? kiraCadang(sc) : null;
+    const jadual = `<table class="bs-banding-w" aria-label="Bilangan setiap golongan warna"><tr><th></th>${BD.WARNA.map(x => `<th class="w-${x.k}" title="${esc(x.ket)}"><i></i>${esc(x.ms)}</th>`).join('')}</tr>${kc ? `<tr><td>Cadangan</td>${BD.WARNA.map(x => `<td>${kc[x.k]}</td>`).join('')}</tr>` : ''}<tr><td>Tulisan saya</td>${BD.WARNA.map(x => `<td>${ks[x.k]}</td>`).join('')}</tr></table>`;
+    el.innerHTML = `<div class="bs-meter"><span class="chip ${nama[0]}">${nama[1]}</span>${g.cukup ? `<span class="bs-skala" title="Petunjuk kasar tanpa token: 0 laporan, 100 sintesis"><i style="width:${g.skor}%"></i></span><span class="help">${g.skor}/100, ${n} patah perkataan</span>` : `<span class="help">${n} patah perkataan</span>`}${td && td.cukup ? `<span class="chip ${td.peratus >= 70 ? 'warn' : td.peratus >= 45 ? 'info' : 'ok'} bs-sama" title="Peratus rangkaian empat patah perkataan dalam Tulisan saya yang masih sama dengan cadangan pembantu. Semakin banyak disunting, semakin rendah angka ini.">${td.peratus}% sama dengan cadangan</span>` : ''}</div><ul class="bs-bukti">${g.bukti.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${sm.map(a => `<div class="bs-am ${a.aras}">${esc(a.teks)}</div>`).join('')}${jadual}${Object.keys(pn.kategori).length ? `<div class="help">Fungsi wacana dikesan: ${Object.keys(pn.kategori).map(k => esc(((BD.PUSTAKA_PETA[k] || {}).ms || k).toLowerCase())).join('; ')}${pn.lapor.length ? '. Kata kerja pelaporan: ' + esc(pn.lapor.slice(0, 8).join(', ')) : ''}.</div>` : ''}<div class="help">Pengesan ini petunjuk kasar daripada corak ayat dan sitasi, bukan penghakiman mutu hujah.</div>`;
   }
 
   /* ---- pustaka ---- */
@@ -259,7 +433,7 @@ export function initBengkel(R) {
     let teks = String(f || '').replace(/\s*\.\.\.\s*$/, ' '); if (!/\s$/.test(teks)) teks += ' ';
     const v = ta.value; const pos = B.fokusTulisan && B.fokusTulisan.s <= v.length ? B.fokusTulisan : { s: v.length, e: v.length }; const sebelum = v.slice(0, pos.s); const perlu = sebelum && !/\s$/.test(sebelum) ? ' ' : '';
     if (sebelum.trim() && !/[.!?:]\s*$/.test(sebelum.trim()) && /^[A-Z][a-z]/.test(teks)) teks = teks.charAt(0).toLowerCase() + teks.slice(1);
-    ta.value = (sebelum + perlu + teks + v.slice(pos.e)).slice(0, H.tulisan); const baru = Math.min((sebelum + perlu + teks).length, ta.value.length); B.fokusTulisan = { s: baru, e: baru }; B.d.tulisan = ta.value; simpan(); kemasSemakTulisan();
+    ta.value = (sebelum + perlu + teks + v.slice(pos.e)).slice(0, H.tulisan); const baru = Math.min((sebelum + perlu + teks).length, ta.value.length); B.fokusTulisan = { s: baru, e: baru }; B.d.tulisan = ta.value; simpan(); kemasLatar(); kemasSemakTulisan();
     try { ta.focus(); ta.setSelectionRange(baru, baru); } catch (e) {}
     toast('Dimasukkan ke Tulisan saya');
   }
@@ -277,14 +451,14 @@ export function initBengkel(R) {
   }
   async function asas() {
     const S = BD.SUMBER; const sit = ks => (ks || []).map(k => (S[k] || {}).pendek).filter(Boolean).join('; ');
-    await R.richModal('Asas kaedah dan sumbernya', `<p>Peraturan menu Sintesis disandarkan kepada sumber yang disahkan: setiap DOI dipadankan dengan rekod Crossref dan laman rasmi dibuka pada 11 November 2026. Jenis dan kekuatan bukti dinyatakan pada setiap peraturan, dan label pada setiap rujukan menunjukkan sama ada teks penuh atau abstrak sahaja yang dibaca. Beberapa peraturan ialah ketetapan aplikasi, bukan dapatan kajian.</p>${BD.ASAS.length ? '<ol class="bs-asas">' + BD.ASAS.map(a => `<li><b>${esc(a.t)}</b> <span class="tag">${esc(a.kuat)}</span>${a.s && a.s.length ? ` <span class="help">(${esc(sit(a.s))})</span>` : ''}</li>`).join('') + '</ol>' : '<p class="help">Senarai asas belum dimuatkan.</p>'}${Object.keys(S).length ? '<h3>Rujukan</h3><ul class="bs-ruj">' + Object.values(S).sort((a, b) => a.ruj.localeCompare(b.ruj)).map(s => `<li>${esc(s.ruj)} <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a> <span class="tag">dibaca: ${esc(s.baca)}</span></li>`).join('') + '</ul>' : ''}`, 'Tutup');
+    await R.richModal('Asas kaedah dan sumbernya', `<p>Peraturan menu Sintesis disandarkan kepada sumber yang disahkan: setiap DOI dipadankan dengan rekod Crossref dan laman rasmi dibuka pada 11 dan 12 November 2026. Jenis dan kekuatan bukti dinyatakan pada setiap peraturan, dan label pada setiap rujukan menunjukkan sama ada teks penuh atau abstrak sahaja yang dibaca. Beberapa peraturan ialah ketetapan aplikasi, bukan dapatan kajian.</p>${BD.ASAS.length ? '<ol class="bs-asas">' + BD.ASAS.map(a => `<li><b>${esc(a.t)}</b> <span class="tag">${esc(a.kuat)}</span>${a.s && a.s.length ? ` <span class="help">(${esc(sit(a.s))})</span>` : ''}</li>`).join('') + '</ol>' : '<p class="help">Senarai asas belum dimuatkan.</p>'}${Object.keys(S).length ? '<h3>Rujukan</h3><ul class="bs-ruj">' + Object.values(S).sort((a, b) => a.ruj.localeCompare(b.ruj)).map(s => `<li>${esc(s.ruj)} <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a> <span class="tag">dibaca: ${esc(s.baca)}</span></li>`).join('') + '</ul>' : ''}`, 'Tutup');
   }
 
   /* ---- arahan kepada agen ---- */
   const S_STR = { type: 'string' }; const S_ARR = it => ({ type: 'array', items: it }); const S_OBJ = (props, req) => ({ type: 'object', additionalProperties: false, required: req || Object.keys(props), properties: props });
   const K_JENIS = BD.JENIS.map(j => j.k).filter(k => k !== 'auto'), K_HUB = BD.HUBUNGAN.map(h => h[0]), K_FUNGSI = BD.FUNGSI_AYAT.map(f => f[0]), K_PST = BD.PUSTAKA.filter(p => p.kesan).map(p => p.k).concat(['lapor']);
   const SKEMA = S_OBJ({
-    kesesuaian: S_OBJ({ status: { type: 'string', enum: ['sesuai', 'separa', 'tidak'] }, ringkas: S_STR, ayat: S_ARR(S_OBJ({ id: S_STR, status: { type: 'string', enum: ['guna', 'lemah', 'ganti'] }, sebab: S_STR, cari: S_STR })) }),
+    kesesuaian: S_OBJ({ status: { type: 'string', enum: ['sesuai', 'separa', 'tidak'] }, ringkas: S_STR, ayat: S_ARR(S_OBJ({ id: S_STR, status: { type: 'string', enum: ['guna', 'lemah', 'ganti'] }, sebab: S_STR, cari: S_STR, sitasi: S_OBJ({ masalah: { type: 'string', enum: ['tiada', 'sekunder', 'salah'] }, sumber: S_ARR(S_OBJ({ pengarang: S_STR, tahun: S_STR })), nota: S_STR }) })) }),
     jenis: S_ARR(S_OBJ({ k: { type: 'string', enum: K_JENIS }, sebab: S_STR })),
     idea: S_ARR(S_OBJ({ teras: S_STR, sumber: S_ARR(S_STR) })),
     hubungan: S_ARR(S_OBJ({ jenis: { type: 'string', enum: K_HUB }, antara: S_ARR(S_STR), huraian: S_STR })),
@@ -295,10 +469,14 @@ export function initBengkel(R) {
     semakan: S_OBJ({ gaya: { type: 'string', enum: ['laporan', 'separa', 'sintesis', 'tiada'] }, bukti: S_ARR(S_STR), setia: S_ARR(S_OBJ({ id: S_STR, status: { type: 'string', enum: ['tepat', 'longgar', 'salah', 'tiada'] }, nota: S_STR })), baik: S_ARR(S_STR), baiki: S_ARR(S_STR), contohAyat: S_STR }),
     soalan: S_ARR(S_STR), nota: S_STR });
   const ALAT = { name: 'hasil_sintesis', description: 'Pulangkan hasil semakan dan sintesis mengikut struktur ini.', input_schema: SKEMA };
-  const HAD_TOKEN = { contoh: 3200, rangka: 2800, semak: 2400 };
+  /* Had token keluar. Huraian Bahasa Melayu memakan lebih banyak token daripada jangkaan, maka had lama (3,200) memotong jawapan sebelum
+     contoh sempat ditulis. Had ini hanya siling: bil dikira atas token yang benar-benar dijana. Jika jawapan masih terpotong, permintaan
+     diulang sekali dengan had yang lebih besar dan arahan supaya lebih ringkas. */
+  const HAD_TOKEN = { contoh: 8000, rangka: 6500, semak: 6000 }, HAD_ULANG = 16000;
+  const NOTA_RINGKAS = '\n\nPERHATIAN: jawapan sebelum ini terpotong kerana terlalu panjang. Tulis semula semua medan dengan lebih ringkas: setiap huraian satu ayat pendek, "idea" tidak melebihi tiga, "hubungan" tidak melebihi empat, "langkah" tidak melebihi empat, "soalan" tidak melebihi dua. Jangan ringkaskan ayat dalam "sintesis" dan jangan gugurkan sitasinya.';
   function sistem(t) {
     const g = gaya(); const jenis = BD.JENIS.filter(j => j.k !== 'auto').map(j => `- ${j.k} (${j.ms}): ${j.ket}`).join('\n'); const hub = BD.HUBUNGAN.map(h => `- ${h[0]}: ${h[2]}`).join('\n'); const fungsi = BD.FUNGSI_AYAT.map(f => `- ${f[0]} (${f[1]}): ${f[2]}`).join('\n');
-    return `Anda ialah Pembantu Sintesis Prof Dr Claude, pembantu penulisan kepada seorang calon PhD (dipanggil Prof Dr) di Universiti Pendidikan Sultan Idris. Prof Dr menampal beberapa ayat daripada beberapa artikel dan mahu belajar mensintesisnya. Penyelianya menegur bahawa tulisannya ialah "penulisan laporan": ayat artikel A diletakkan di sebelah ayat artikel B dalam satu perenggan tanpa disepadukan. Tugas anda ialah melatih, bukan menulis bagi pihaknya. Tunjukkan bagaimana sumber dihubungkan mengikut idea, terangkan gerakan setiap ayat, dan biarkan Prof Dr menulis semula dengan ayatnya sendiri.
+    return `Anda ialah Pembantu Sintesis Prof Dr Claude, pembantu penulisan kepada seorang calon PhD (dipanggil Prof Dr) di Universiti Pendidikan Sultan Idris. Prof Dr menampal beberapa ayat daripada beberapa artikel dan mahu belajar mensintesisnya. Penyelianya menegur bahawa tulisannya ialah "penulisan laporan": ayat artikel A diletakkan di sebelah ayat artikel B dalam satu perenggan tanpa disepadukan. Tugas anda ialah melatih, bukan menulis bagi pihaknya. Tunjukkan bagaimana sumber dihubungkan mengikut idea, terangkan gerakan setiap ayat, dan biarkan Prof Dr menulis semula dengan ayatnya sendiri. Perenggan contoh anda dipaparkan sebagai Cadangan Sintesis di sebelah ruang Tulisan saya; Prof Dr menyuntingnya sebelum menjadikannya teks rasmi tesis, maka setiap ayat mesti setia kepada bahan, sitasinya mesti tepat, dan ayatnya mudah disunting.
 
 PEGANGAN: LAPORAN LAWAN SINTESIS
 - Laporan berpusatkan pengarang: satu ayat satu sumber, kebanyakan ayat bermula dengan nama pengarang ("A mendapati..., B menyatakan..."), dan hubungan antara sumber tidak dinyatakan.
@@ -317,13 +495,21 @@ PERATURAN KESETIAAN (tidak boleh dilanggar)
 6. Dakwaan jurang ialah dakwaan tentang ketiadaan. Hadkan kepada sumber yang diteliti ("berdasarkan sumber yang diteliti"), jangan nyatakan seolah-olah seluruh literatur telah disemak.
 7. Jangan gunakan bahasa sebab-akibat (kesan, pengaruh, menyebabkan) bagi dapatan yang BAHAN nyatakan sebagai hubungan atau korelasi sahaja.
 8. Ayat bertanda DAPATAN PROF DR SENDIRI dirujuk sebagai "kajian ini" (this study), tanpa sitasi.
+9. Satu bahan boleh memikul beberapa sumber: baris "Sumber:" menyenaraikan kesemuanya, dipisahkan oleh koma bertitik. Kesemuanya menyokong ayat itu. Apabila dakwaan ayat itu digunakan, sitasikan kesemua sumbernya bersama dalam satu kurungan; jangan gugurkan mana-mana satu, dan jangan agihkan bahagian ayat kepada sumber tertentu kerana BAHAN tidak menyatakan pembahagian itu.
+10. Sitasi sekunder: jika baris sumber memuatkan "DIBACA DALAM", Prof Dr tidak membaca sumber asal itu; dia menemuinya di dalam artikel yang dinamakan selepas "DIBACA DALAM". Tulis sitasinya mengikut APA 7 (Seksyen 8.6). Dalam Bahasa Melayu: "(Asal, 2018, seperti yang dipetik dalam Dibaca, 2021)". Dalam Bahasa Inggeris: "(Original, 2018, as cited in Read, 2021)". Bagi beberapa sumber asal daripada artikel yang sama, senaraikan kesemuanya sebelum frasa itu, disusun mengikut SUSUNAN SITASI BERKUMPULAN, contohnya "(Asal, 2018; Kedua, 2019, seperti yang dipetik dalam Dibaca, 2021)". Jangan sitasikan sumber asal seolah-olah ia dibaca terus, dan jangan gugurkan artikel yang dibaca. Nama dalam contoh format ini ialah pemegang tempat; guna nama dan tahun daripada BAHAN sahaja.
 
 SEMAKAN KESESUAIAN (buat dahulu, laporkan dalam "kesesuaian")
 - "sesuai": sekurang-kurangnya dua sumber berbeza membincangkan idea, konstruk atau hubungan yang sama, atau yang boleh dirangkaikan menjadi satu hujah.
 - "separa": sebahagian bahan boleh disintesis dan sebahagian tidak. Sintesiskan yang boleh, dan tandakan yang lain.
 - "tidak": bahan tidak berkongsi tumpuan, datang daripada satu sumber sahaja, hanya butiran kaedah atau latar tanpa dakwaan, atau menggunakan istilah yang sama dengan maksud yang berlainan. Jika "tidak", JANGAN paksa sintesis: biarkan "sintesis" kosong, terangkan sebabnya dalam "ringkas", dan nyatakan dalam "cari" jenis ayat yang patut dicari sebagai ganti.
-- Bagi setiap bahan beri status: "guna"; "lemah" (boleh diguna tetapi terlalu umum, kabur, atau memetik sumber lain iaitu sitasi sekunder); atau "ganti" (tidak sepadan dengan bahan lain). Bagi "lemah" dan "ganti", isi "sebab" dan "cari" (apa yang patut dicari sebagai ganti, contohnya "ayat dapatan tentang hubungan X dengan Y daripada kajian kuantitatif").
+- Bagi setiap bahan beri status: "guna"; "lemah" (boleh diguna tetapi terlalu umum atau kabur); atau "ganti" (tidak sepadan dengan bahan lain). Bagi "lemah" dan "ganti", isi "sebab" dan "cari" (apa yang patut dicari sebagai ganti, contohnya "ayat dapatan tentang hubungan X dengan Y daripada kajian kuantitatif"). Bagi "guna", "sebab" dan "cari" kosong. Masalah sitasi dilaporkan dalam medan "sitasi", bukan melalui status ini.
 - Beri amaran dalam "ringkas" atau "nota" apabila: istilah yang sama digunakan dengan takrif berlainan; populasi, konteks, unit analisis atau reka bentuk terlalu berbeza untuk dibandingkan terus; bahan mencampurkan takrif, teori dan dapatan tanpa tumpuan bersama; atau satu sumber sahaja memikul keseluruhan hujah.
+
+SEMAKAN SITASI SETIAP BAHAN (medan "sitasi" dalam setiap butiran "kesesuaian.ayat"; bandingkan baris "Sumber:" dengan sitasi yang tertulis di dalam teks ayat bahan itu sendiri)
+- "tiada": teks ayat tidak menyebut sebarang sitasi, atau sitasi di dalamnya sepadan dengan baris "Sumber:" (termasuk apabila "DIBACA DALAM" sudah dicatat). "sumber" kosong dan "nota" kosong.
+- "sekunder": teks ayat menunjukkan bahawa dakwaannya datang daripada sumber lain yang disebut di dalam ayat itu (nama dan tahun dalam kurungan, "menurut X (tahun)", atau "seperti yang dipetik dalam"), sedangkan baris "Sumber:" mencatat artikel yang memetiknya dan "DIBACA DALAM" belum dicatat. Isi "sumber" dengan sumber asal itu.
+- "salah": nama pengarang atau tahun pada baris "Sumber:" tidak sepadan dengan sitasi bagi karya yang sama di dalam teks ayat (contohnya ejaan nama atau tahun yang berbeza). Isi "sumber" dengan nama dan tahun seperti tertulis di dalam teks ayat.
+- "sumber" hanya boleh memuatkan nama pengarang dan tahun yang benar-benar tertulis di dalam teks ayat bahan itu, disalin tepat. Jangan betulkan daripada pengetahuan sendiri dan jangan reka. "nota" ialah satu ayat ringkas tentang apa yang dikesan. Aplikasi menggunakan medan ini untuk menulis ganti sumber pada kad bahan apabila Prof Dr bersetuju.
 
 JENIS SINTESIS (medan "jenis": satu hingga dua yang paling sepadan dengan bahan, yang pertama digunakan; jika Prof Dr memilih jenis tertentu tetapi bahan tidak menyokongnya, guna jenis yang sepadan dan terangkan sebabnya)
 ${jenis}
@@ -349,24 +535,29 @@ PENANDA (medan "penanda"): senaraikan penanda wacana dan kata kerja pelaporan ya
 
 CARA KERJA (medan "langkah"): tiga hingga lima langkah ringkas yang menerangkan bagaimana sintesis itu dibina daripada bahan (apa yang dikumpulkan, apa yang dibandingkan, kenapa susunan itu dipilih), supaya Prof Dr boleh mengulanginya sendiri.
 
+HAD PANJANG (supaya jawapan tidak terpotong): "ringkas" tidak melebihi dua ayat; setiap "sebab", "cari", "huraian", "nota" dan setiap butiran "langkah", "bukti", "baik", "baiki" serta "soalan" ialah satu ayat, tidak melebihi kira-kira 30 patah perkataan; "hubungan" tidak melebihi lima; "soalan" tidak melebihi tiga. Jangan ulang teks BAHAN dalam huraian. Had ini tidak terpakai kepada ayat dalam "sintesis".
+
 BAHASA OUTPUT: semua huraian (kesesuaian, sebab, huraian, langkah, letak, semakan, soalan, nota) dalam Bahasa Melayu Malaysia. Teks dalam "sintesis", rangka ayat dan "contohAyat" dalam BAHASA HASIL. Pulangkan JSON mengikut skema sahaja.
 
 LATAR KAJIAN PROF DR (latar untuk memahami konteks sahaja; jangan masukkan ke dalam sintesis kecuali KONTEKS PERBINCANGAN memintanya):
 ${t.profil || ''}`;
   }
-  function snapBahan() { return bahanIsi().slice(0, H.bahan).map((b, i) => ({ l: 'A' + (i + 1), id: b.id, pengarang: String(b.pengarang || '').trim(), tahun: String(b.tahun || '').trim(), ms: String(b.ms || '').trim(), saya: !!b.saya, teks: String(b.teks || '').trim().slice(0, H.aksaraBahan) })); }
+  /* Petikan bahan pada saat permintaan: bentuknya sama dengan ayat bahan (pengarang, tahun, ms, lain, dalam) supaya fungsi sumber dalam
+     bengkel-data.js boleh digunakan terus ke atasnya. */
+  function snapBahan() { return bahanIsi().slice(0, H.bahan).map((b, i) => { const ss = BD.sumberBahan(b); const u = ss[0] || { pengarang: '', tahun: '', ms: '' }; return { l: 'A' + (i + 1), id: b.id, pengarang: u.pengarang, tahun: u.tahun, ms: u.ms, lain: ss.slice(1), dalam: BD.dalamBahan(b), saya: !!b.saya, teks: String(b.teks || '').trim().slice(0, H.aksaraBahan) }; }); }
   /* Senarai seksyen tulisan Prof Dr sebagai blok tersendiri: ia jarang berubah, maka diletakkan sebelum tugasan dan ditanda untuk cache. */
   function blokSeksyen() {
     const ss = seksyenSenarai().slice(0, 160); if (!ss.length) return 'SEKSYEN TULISAN PROF DR (untuk "letak"): tiada senarai seksyen; nyatakan tempat secara umum dan kosongkan "ruj".';
     const kump = new Map(); ss.forEach(x => { if (!kump.has(x.kump)) kump.set(x.kump, []); kump.get(x.kump).push(x); }); let out = 'SEKSYEN TULISAN PROF DR (untuk "letak"; pulangkan "ruj" tepat seperti tertulis di dalam kurungan siku):';
     kump.forEach((arr, k) => { out += '\n== ' + k + ' ==\n' + arr.map(x => '[' + x.ruj + '] ' + potong(x.label, 90)).join('\n'); }); return out;
   }
+  const barisSumber = b => { if (b.saya) return 'DAPATAN PROF DR SENDIRI (rujuk sebagai "kajian ini"; tiada sitasi)'; const satu = x => x.pengarang + ' (' + (x.tahun || 't.t.') + ')' + (x.ms ? ', ms. ' + x.ms : ''); const ss = BD.sumberBahan(b); const dl = BD.dalamBahan(b); return 'Sumber: ' + ss.map(satu).join('; ') + (dl ? ' | DIBACA DALAM: ' + satu(dl) + ' (sitasi sekunder)' : ''); };
   function tugas(mod) {
     const d = B.d; const snap = snapBahan(); const j = BD.JENIS_PETA[d.jenis] || BD.JENIS[0]; const sc = sesiContoh(); const su = susunanSitasi();
-    const bahan = snap.map(b => `[${b.l}] ${b.saya ? 'DAPATAN PROF DR SENDIRI (rujuk sebagai "kajian ini"; tiada sitasi)' : 'Sumber: ' + b.pengarang + ' (' + (b.tahun || 't.t.') + ')' + (b.ms ? ', m.s. ' + b.ms : '')}\n"${b.teks.replace(/\s+/g, ' ')}"`).join('\n\n');
+    const bahan = snap.map(b => `[${b.l}] ${barisSumber(b)}\n"${b.teks.replace(/\s+/g, ' ')}"`).join('\n\n');
     const arahan = mod === 'rangka' ? 'MOD RANGKA: JANGAN tulis perenggan penuh. Isi "kesesuaian", "jenis", "idea", "hubungan", "langkah", "letak" dan "soalan". Dalam "sintesis" beri RANGKA sahaja: 3 hingga 5 objek mengikut urutan perenggan; "ayat" ialah rangka ayat separuh siap dalam BAHASA HASIL dengan lompang ____ pada bahagian yang perlu difikirkan sendiri oleh Prof Dr (penanda wacana, separuh kedua ayat, atau tafsiran); "penanda" ialah dua atau tiga pilihan penanda wacana yang sesuai untuk lompang itu; "sumber" ialah label bahan yang patut digunakan dalam ayat itu. "penanda" (peringkat atas) kosong. "semakan": gaya "tiada" dan senarai kosong.'
-      : mod === 'semak' ? 'MOD SEMAK: nilai TULISAN PROF DR terhadap BAHAN. Isi "kesesuaian", "idea" dan "hubungan" (supaya Prof Dr nampak apa yang terlepas) serta "semakan": "gaya" (laporan, separa atau sintesis) dengan "bukti" yang merujuk ayat dalam tulisannya; "setia" bagi setiap bahan (tepat, longgar, salah, atau tiada jika bahan itu tidak digunakan) dengan nota ringkas; "baik" (apa yang sudah menjadi, satu hingga tiga perkara); "baiki" (dua hingga empat langkah pembaikan yang khusus dan boleh dibuat terus, merujuk ayat mana); "contohAyat" SATU ayat sahaja dalam BAHASA HASIL yang menunjukkan satu gerakan yang belum dibuat. JANGAN tulis semula perenggan Prof Dr. "sintesis" dan "penanda" KOSONG. Jika tulisan itu terlalu hampir dengan CONTOH PEMBANTU TERDAHULU atau dengan ayat BAHAN, nyatakan dalam "bukti". "letak" boleh diisi.'
-      : 'MOD CONTOH: isi semua medan kecuali "semakan" (gaya "tiada" dan senarai kosong). Tulis "sintesis" sebagai SATU perenggan 3 hingga 6 ayat dalam BAHASA HASIL, setiap ayat satu objek mengikut urutan, ayat pertama ialah tuntutan (idea), bukan nama pengarang.';
+      : mod === 'semak' ? 'MOD SEMAK: nilai TULISAN PROF DR terhadap BAHAN. Isi "kesesuaian", "idea" dan "hubungan" (supaya Prof Dr nampak apa yang terlepas) serta "semakan": "gaya" (laporan, separa atau sintesis) dengan "bukti" yang merujuk ayat dalam tulisannya; "setia" bagi setiap bahan (tepat, longgar, salah, atau tiada jika bahan itu tidak digunakan) dengan nota ringkas; "baik" (apa yang sudah menjadi, satu hingga tiga perkara); "baiki" (dua hingga empat langkah pembaikan yang khusus dan boleh dibuat terus, merujuk ayat mana); "contohAyat" SATU ayat sahaja dalam BAHASA HASIL yang menunjukkan satu gerakan yang belum dibuat. JANGAN tulis semula perenggan Prof Dr. "sintesis" dan "penanda" KOSONG. Jika tulisan itu terlalu hampir dengan CONTOH PEMBANTU TERDAHULU atau dengan ayat BAHAN, nyatakan dalam "bukti" ayat mana yang belum disunting. Semak juga sitasi dalam tulisan itu terhadap baris sumber setiap bahan (termasuk bentuk sitasi sekunder) dan laporkan yang tidak sepadan dalam "setia". "letak" boleh diisi.'
+      : 'MOD CONTOH: isi semua medan kecuali "semakan" (gaya "tiada" dan senarai kosong). Tulis "sintesis" sebagai SATU perenggan 3 hingga 6 ayat dalam BAHASA HASIL, setiap ayat satu objek mengikut urutan, ayat pertama ialah tuntutan (idea), bukan nama pengarang. Perenggan ini dipaparkan sebagai Cadangan Sintesis dan akan disunting oleh Prof Dr.';
     return `MOD: ${mod}
 BAHASA HASIL: ${namaBahasa(d.bahasa)}
 JENIS SINTESIS DIMINTA: ${d.jenis === 'auto' ? 'auto (pilih yang paling sepadan dengan bahan)' : j.k + ' (' + j.ms + ')'}
@@ -374,17 +565,19 @@ TAHAP BANTUAN: ${d.tahap}
 SUSUNAN SITASI BERKUMPULAN: ${su === 'apa' ? 'mengikut abjad nama pengarang pertama (APA 7)' : 'mengikut tahun bermula daripada yang terkini (garis panduan tesis UPSI 16.10.2): sumber bertahun 2022 ditulis sebelum sumber bertahun 2020'}
 KONTEKS PERBINCANGAN: ${String(d.konteks || '').trim() || '(tidak diberi; tulis sintesis yang neutral dan tanya konteks dalam "soalan")'}
 
-BAHAN (guna hanya ini; ${snap.length} ayat):
+BAHAN (guna hanya ini; ${snap.length} ayat; "kesesuaian.ayat" mesti memuatkan satu butiran bagi setiap label):
 ${bahan}
 ${d.sasaran && seksyenDari(d.sasaran) ? '\nSasaran pilihan Prof Dr: [' + d.sasaran + ']\n' : ''}${mod === 'semak' ? `\nTULISAN PROF DR (nilai ini):\n"""\n${String(d.tulisan || '').trim().slice(0, H.tulisan)}\n"""\n` : ''}${mod === 'semak' && sc ? `\nCONTOH PEMBANTU TERDAHULU (untuk mengesan tulisan yang terlalu hampir dengan contoh; jangan ulang contoh ini):\n"""\n${contohTeks(sc)}\n"""\n` : ''}
 ${arahan}`;
   }
-  /* Bersihkan dan sahkan jawapan agen terhadap bahan sebenar: label bahan mesti wujud, sitasi di luar bahan ditanda. */
+  /* Bersihkan dan sahkan jawapan agen terhadap bahan sebenar: label bahan mesti wujud, sitasi di luar bahan ditanda, dan cadangan pembetulan
+     sitasi hanya diterima jika nama dan tahunnya benar-benar tertulis dalam teks ayat bahan itu. */
   function bersihHasil(mod, data, snap) {
     const L = new Set(snap.map(b => b.l)); const lab = x => String(x == null ? '' : x).toUpperCase().replace(/[^A-Z0-9]/g, ''); const labs = arr => Array.from(new Set((Array.isArray(arr) ? arr : []).map(lab).filter(x => L.has(x)))); const str = BD.bersih; const arr = x => (Array.isArray(x) ? x : []); const strs = (x, n) => arr(x).map(str).filter(Boolean).slice(0, n);
-    const sah = new Set(snap.filter(b => !b.saya).map(b => BD.kunciSumber(b.pengarang, b.tahun)).filter(Boolean)); const k = data.kesesuaian || {};
+    const sah = new Set(); snap.forEach(b => { if (!b.saya) BD.kunciBahan(b).forEach(k => sah.add(k)); }); const k = data.kesesuaian || {};
+    const sit = (a, b) => { const x = a && a.sitasi; if (!b || b.saya || !x || typeof x !== 'object' || !['sekunder', 'salah'].includes(x.masalah)) return null; const lihat = new Set(); const ss = arr(x.sumber).map(y => ({ pengarang: str(y && y.pengarang).slice(0, 160), tahun: str(y && y.tahun).slice(0, 12) })).filter(y => { if (!y.pengarang || !BD.sumberDalamTeks(b.teks, y)) return false; const kk = BD.kunciSumber(y.pengarang, y.tahun); if (!kk || lihat.has(kk)) return false; lihat.add(kk); return true; }).slice(0, H.sumberAyat); return ss.length ? { masalah: x.masalah, sumber: ss, nota: str(x.nota).slice(0, 300) } : null; };
     const h = {
-      kesesuaian: { status: ['sesuai', 'separa', 'tidak'].includes(k.status) ? k.status : 'separa', ringkas: str(k.ringkas), ayat: arr(k.ayat).map(a => ({ id: lab(a && a.id), bid: (snap.find(b => b.l === lab(a && a.id)) || {}).id || '', status: ['guna', 'lemah', 'ganti'].includes(a && a.status) ? a.status : 'guna', sebab: str(a && a.sebab), cari: str(a && a.cari) })).filter(a => L.has(a.id)) },
+      kesesuaian: { status: ['sesuai', 'separa', 'tidak'].includes(k.status) ? k.status : 'separa', ringkas: str(k.ringkas), ayat: arr(k.ayat).map(a => { const id = lab(a && a.id); const b = snap.find(x => x.l === id); return { id, bid: b ? b.id : '', status: ['guna', 'lemah', 'ganti'].includes(a && a.status) ? a.status : 'guna', sebab: str(a && a.sebab), cari: str(a && a.cari), sitasi: sit(a, b) }; }).filter(a => L.has(a.id)) },
       jenis: arr(data.jenis).filter(j => j && K_JENIS.includes(j.k)).slice(0, 2).map(j => ({ k: j.k, sebab: str(j.sebab) })),
       idea: arr(data.idea).map(i => ({ teras: str(i && i.teras), sumber: labs(i && i.sumber) })).filter(i => i.teras).slice(0, 5),
       hubungan: arr(data.hubungan).map(x => ({ jenis: K_HUB.includes(x && x.jenis) ? x.jenis : 'tiada', antara: labs(x && x.antara), huraian: str(x && x.huraian) })).filter(x => x.huraian).slice(0, 8),
@@ -405,30 +598,43 @@ ${arahan}`;
     if (mod === 'semak' && BD.patah(d.tulisan) < H.minPatahTulisan) { toast('Tulis sekurang-kurangnya ' + H.minPatahTulisan + ' patah perkataan dalam Tulisan saya dahulu, kemudian minta semakan', true); const ta = $('#bsTulisan'); if (ta) ta.focus(); return; }
     const t = await R.Isi.tetapan(); if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
     const system = sistem(t), user = tugas(mod), seksyen = blokSeksyen(); const anggaran = anggarToken(system) + anggarToken(seksyen) + anggarToken(user); const lembut = sb.amaran.filter(a => a.aras === 'amaran'); const hari = new Date().toDateString();
+    const nSit = d.bahan.filter(b => { const i = isuKad(b); return i && (i.jenis === 'sekunder' || i.jenis === 'salah'); }).length;
     if (R.lsGet('rslr_bengkel_taktanya', '') !== hari) {
       const apa = { contoh: 'contoh sintesis', rangka: 'rangka sintesis', semak: 'semakan Tulisan saya' }[mod];
-      const ok = await R.richModal('Minta ' + apa + '?', `${lembut.length ? `<div class="pd-notis"><b>${lembut.length} amaran bahan.</b> ${esc(lembut.slice(0, 3).map(a => a.teks).join(' '))}</div>` : ''}${!String(d.konteks || '').trim() ? '<div class="pd-notis"><b>Konteks perbincangan kosong.</b> Sintesis akan lebih tepat jika Prof Dr menyatakan apa yang perenggan ini mahu hujahkan.</div>' : ''}<p>Panggilan ini menghantar ${sb.bil} ayat bahan berserta sumbernya, konteks perbincangan, senarai tajuk seksyen tulisan${mod === 'semak' ? ' dan Tulisan saya' : ''} ke API Anthropic menggunakan kunci API Prof Dr.</p><p class="help">Anggaran ${angka(anggaran)} token masuk dan sehingga ${angka(HAD_TOKEN[mod])} token keluar, model ${esc(t.model.replace('claude-', ''))}. ${d.token.panggil ? `Setakat ini bagi kerja ini: ${angka(d.token.panggil)} panggilan, token masuk ${angka(d.token.masuk)}, keluar ${angka(d.token.keluar)}.` : ''}</p><label class="bs-semakkotak"><input type="checkbox" id="bsTakTanya"> Jangan tanya lagi hari ini</label>`, 'Teruskan', 'Batal');
+      const ok = await R.richModal('Minta ' + apa + '?', `${nSit ? `<div class="pd-notis"><b>${nSit} ayat bersitasi sekunder atau tidak sepadan.</b> Betulkan sumber pada kad dahulu (butang Tulis ganti pada kad) supaya cadangan menggunakan sitasi yang betul.</div>` : ''}${lembut.length ? `<div class="pd-notis"><b>${lembut.length} amaran bahan.</b> ${esc(lembut.slice(0, 3).map(a => a.teks).join(' '))}</div>` : ''}${!String(d.konteks || '').trim() ? '<div class="pd-notis"><b>Konteks perbincangan kosong.</b> Sintesis akan lebih tepat jika Prof Dr menyatakan apa yang perenggan ini mahu hujahkan.</div>' : ''}<p>Panggilan ini menghantar ${sb.bil} ayat bahan berserta sumbernya, konteks perbincangan, senarai tajuk seksyen tulisan${mod === 'semak' ? ' dan Tulisan saya' : ''} ke API Anthropic menggunakan kunci API Prof Dr.</p><p class="help">Anggaran ${angka(anggaran)} token masuk dan sehingga ${angka(HAD_TOKEN[mod])} token keluar (lazimnya jauh kurang), model ${esc(t.model.replace('claude-', ''))}. Jika jawapan terpotong, aplikasi mengulang sekali dengan arahan supaya lebih ringkas. ${d.token.panggil ? `Setakat ini bagi kerja ini: ${angka(d.token.panggil)} panggilan, token masuk ${angka(d.token.masuk)}, keluar ${angka(d.token.keluar)}.` : ''}</p><label class="bs-semakkotak"><input type="checkbox" id="bsTakTanya"> Jangan tanya lagi hari ini</label>`, 'Teruskan', 'Batal');
       if (!ok) return; if ((R.richModal.values || {}).bsTakTanya) R.lsSet('rslr_bengkel_taktanya', hari);
       if (B.id !== idKerja || B.busy) return;
     }
-    const snap = snapBahan(); B.busy = mod; renderHasil();
+    const snap = snapBahan(); B.busy = mod; B.ulang = false; renderHasil();
+    /* token setiap panggilan direkod walaupun jawapan gagal dibaca, supaya kiraan pada kerja ini jujur */
+    const guna = { masuk: 0, keluar: 0, panggil: 0 }; const kira = r => { guna.panggil += 1; if (r && r.usage) { guna.masuk += (r.usage.masuk || 0) + (r.usage.cacheBaca || 0) + (r.usage.cacheTulis || 0); guna.keluar += r.usage.keluar || 0; } };
+    const rekod = () => { if (B.id === idKerja && B.d && guna.panggil) { B.d.token = { masuk: (B.d.token.masuk || 0) + guna.masuk, keluar: (B.d.token.keluar || 0) + guna.keluar, panggil: (B.d.token.panggil || 0) + guna.panggil }; guna.masuk = guna.keluar = guna.panggil = 0; simpan(true); } };
+    const hantar = (teks, had) => R.Isi.hantar(t, { kunciMod: 'bengkel:' + t.model, system, content: [{ type: 'text', text: seksyen, cache_control: { type: 'ephemeral' } }, { type: 'text', text: teks }], skema: SKEMA, alat: ALAT, hadToken: had });
+    const baca = r => { try { const x = r.input || R.Isi.parseJson(r.text, r.stop); return x && typeof x === 'object' ? x : null; } catch (e) { return null; } };
     try {
-      const res = await R.Isi.hantar(t, { kunciMod: 'bengkel:' + t.model, system, content: [{ type: 'text', text: seksyen, cache_control: { type: 'ephemeral' } }, { type: 'text', text: user }], skema: SKEMA, alat: ALAT, hadToken: HAD_TOKEN[mod] });
-      const data = res.input || R.Isi.parseJson(res.text, res.stop); if (!data || typeof data !== 'object') throw { code: 'json' };
-      if (B.id !== idKerja || !B.d) { B.busy = ''; return; } d = B.d;
-      const hasil = bersihHasil(mod, data, snap); const masuk = res.usage ? res.usage.masuk + (res.usage.cacheBaca || 0) + (res.usage.cacheTulis || 0) : 0, keluar = res.usage ? res.usage.keluar : 0;
-      const sesi = { id: idBaru('s'), masa: Date.now(), mod, model: t.model, token: res.usage ? { masuk, keluar } : null, jenis: d.jenis, bahasa: d.bahasa, tahap: d.tahap, bahan: snap.map(b => ({ l: b.l, id: b.id, pengarang: b.pengarang, tahun: b.tahun, saya: b.saya })), hasil };
+      let res = await hantar(user, HAD_TOKEN[mod]); kira(res); let data = baca(res); let terpotong = false; let ulang = false;
+      if (res.stop === 'max_tokens') {
+        /* jawapan mencapai had token: ulang sekali dengan had yang lebih besar dan arahan supaya lebih ringkas */
+        ulang = true; B.ulang = true; if (B.id === idKerja) renderHasil();
+        try { const res2 = await hantar(user + NOTA_RINGKAS, HAD_ULANG); kira(res2); const data2 = baca(res2); if (data2) { res = res2; data = data2; terpotong = res2.stop === 'max_tokens'; } else terpotong = true; }
+        catch (e2) { console.warn('bengkel: ulangan selepas jawapan terpotong gagal', e2); terpotong = true; }
+      }
+      if (!data) { rekod(); throw { code: 'json', stop: res.stop }; }
+      if (B.id !== idKerja || !B.d) { B.busy = ''; B.ulang = false; return; } d = B.d;
+      const hasil = bersihHasil(mod, data, snap); const masuk = guna.masuk, keluar = guna.keluar, panggil = guna.panggil;
+      const sesi = { id: idBaru('s'), masa: Date.now(), mod, model: t.model, token: { masuk, keluar }, jenis: d.jenis, bahasa: d.bahasa, tahap: d.tahap, bahan: snap.map(b => ({ l: b.l, id: b.id, pengarang: b.pengarang, tahun: b.tahun, saya: b.saya, lain: b.lain.map(x => ({ pengarang: x.pengarang, tahun: x.tahun })), dalam: b.dalam ? { pengarang: b.dalam.pengarang, tahun: b.dalam.tahun } : null })), hasil, terpotong, tk: tandaBahan(snap) };
       const m = maju(); const tb = snap.map(b => b.id + ':' + b.teks.length).join('|'); sesi.tb = tb;
       /* ramalan hubungan dikira sekali sahaja bagi satu set bahan, iaitu sebelum Prof Dr melihat dapatan pembantu */
       if (mod !== 'semak' && d.ramal) { sesi.ramal = d.ramal; sesi.ramalTepat = hasil.kesesuaian.status === 'tidak' ? d.ramal === 'tiada' : hasil.hubungan.some(x => x.jenis === d.ramal); if (!(d.sesi || []).some(x => x.tb === tb && x.mod !== 'semak')) { m.ramal.jumlah += 1; if (sesi.ramalTepat) m.ramal.betul += 1; } }
       if (mod === 'semak') { const g = BD.kesanGaya(d.tulisan, { bahasa: d.bahasa }); const sc = sesiContoh(); const td = sc ? BD.tindih(d.tulisan, contohTeks(sc), 4) : null; sesi.tulisan = String(d.tulisan || '').slice(0, H.tulisan); sesi.skor = g.cukup ? g.skor : null; sesi.tindih = td && td.cukup ? td.peratus : null; m.semak.push({ masa: sesi.masa, tahap: d.tahap, gaya: hasil.semakan.gaya, skor: sesi.skor, tindih: sesi.tindih }); m.semak = m.semak.slice(-80); const pn = BD.cariPenanda(d.tulisan, d.bahasa); Object.keys(pn.kategori).forEach(k => { m.fungsi[k] = (m.fungsi[k] || 0) + 1; }); }
       else m[mod] = (m[mod] || 0) + 1;
       simpanMaju();
-      d.sesi = [sesi].concat(d.sesi || []).slice(0, H.sesi); d.token = { masuk: (d.token.masuk || 0) + masuk, keluar: (d.token.keluar || 0) + keluar, panggil: (d.token.panggil || 0) + 1 }; B.sesi = 0; B.sorot = null; B.sorotI = null; B.tutup = false; simpan(true);
-      B.busy = ''; renderBahan(); renderHasil(); renderTangga(); renderSenarai();
-      const st = hasil.kesesuaian.status; toast((mod === 'semak' ? 'Semakan siap' : st === 'tidak' ? 'Bahan tidak sesuai disintesis; lihat sebab dan cadangan ganti' : mod === 'rangka' ? 'Rangka siap' : 'Contoh sintesis siap') + (res.usage ? ' (token masuk ' + angka(masuk) + ', keluar ' + angka(keluar) + ')' : ''), st === 'tidak' && mod !== 'semak');
-      const blok = $('#bsSesi'); if (blok) blok.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    } catch (e) { B.busy = ''; renderHasil(); toast('Pembantu sintesis gagal: ' + R.Isi.msg(e), true); }
+      d.sesi = [sesi].concat(d.sesi || []).slice(0, H.sesi); d.token = { masuk: (d.token.masuk || 0) + masuk, keluar: (d.token.keluar || 0) + keluar, panggil: (d.token.panggil || 0) + panggil }; guna.masuk = guna.keluar = guna.panggil = 0; B.sesi = 0; B.sorot = null; B.sorotI = null; B.tutup = false; simpan(true);
+      B.busy = ''; B.ulang = false; renderBahan(); renderHasil(); renderTangga(); renderSenarai();
+      const st = hasil.kesesuaian.status; const tiadaCadang = mod !== 'semak' && st !== 'tidak' && !hasil.sintesis.length;
+      toast((mod === 'semak' ? 'Semakan siap' : st === 'tidak' ? 'Bahan tidak sesuai disintesis; lihat sebab dan cadangan ganti' : tiadaCadang ? 'Jawapan pembantu terpotong sebelum cadangan sempat ditulis; minta sekali lagi' : mod === 'rangka' ? 'Rangka siap' : 'Contoh sintesis siap') + ' (' + (ulang ? 'jawapan pertama terpotong, diulang sekali; ' : '') + 'token masuk ' + angka(masuk) + ', keluar ' + angka(keluar) + ')', (st === 'tidak' && mod !== 'semak') || tiadaCadang);
+      const blok = mod === 'semak' ? $('#bsSemakan') : $('#bsSesi'); if (blok) blok.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } catch (e) { rekod(); B.busy = ''; B.ulang = false; renderHasil(); toast('Pembantu sintesis gagal: ' + (e && e.code === 'json' ? 'jawapan pembantu tidak dapat dibaca' + (e.stop === 'max_tokens' ? ' kerana terpotong pada had token' : '') + '. Cuba sekali lagi; jika berulang, kurangkan bilangan ayat bahan. Token panggilan itu tetap direkod pada kerja ini.' : R.Isi.msg(e)), true); }
   }
 
   /* ---- hantar ke RAM seksyen sasaran ---- */
@@ -456,18 +662,39 @@ ${arahan}`;
     toast('Kerja dipadam daripada senarai', false, { label: 'Batal', fn: async () => { B.indeks.senarai[id].padam = false; B.indeks.senarai[id].masa = Date.now(); await simpanIndeks([id]); muat(id); renderSemua(); } });
   }
   async function tampalBanyak() {
-    if (!B.d) return; const ok = await R.richModal('Tampal banyak ayat', `<p>Tampal ayat-ayat di bawah. Setiap perenggan (dipisahkan oleh baris kosong atau baris baharu) menjadi satu ayat bahan. Jika perenggan berakhir dengan sitasi seperti <i>(Saha et al., 2020)</i> atau bermula dengan <i>Saha et al. (2020)</i>, pengarang dan tahunnya diisi automatik; semak semula sebelum meneruskan.</p><textarea id="bsTampal" class="modal-in" rows="10" placeholder="Guru besar berperanan memastikan guru bermotivasi untuk melaksanakan perubahan teknologi (Saha et al., 2020).\n\nSchmitt (2021) mendapati persekitaran kolaboratif memupuk rasa pemilikan bersama."></textarea>`, 'Masukkan', 'Batal'); if (!ok) return;
+    if (!B.d) return; const ok = await R.richModal('Tampal banyak ayat', `<p>Tampal ayat-ayat di bawah. Setiap perenggan (dipisahkan oleh baris kosong atau baris baharu) menjadi satu ayat bahan. Jika perenggan berakhir dengan sitasi seperti <i>(Saha et al., 2020)</i> atau <i>(Schmitt, 2021; Saha et al., 2020)</i>, atau bermula dengan <i>Saha et al. (2020)</i>, pengarang dan tahunnya diisi automatik; beberapa sitasi dalam satu kurungan menjadi beberapa sitasi pada kad yang sama, dan <i>seperti yang dipetik dalam</i> ditanda sebagai sitasi sekunder. Semak semula sebelum meneruskan.</p><textarea id="bsTampal" class="modal-in" rows="10" placeholder="Guru besar berperanan memastikan guru bermotivasi untuk melaksanakan perubahan teknologi (Saha et al., 2020).\n\nSchmitt (2021) mendapati persekitaran kolaboratif memupuk rasa pemilikan bersama."></textarea>`, 'Masukkan', 'Batal'); if (!ok) return;
     const teks = String((R.richModal.values || {}).bsTampal || ''); const bhg = teks.replace(/\r/g, '').split(/\n+/).map(x => x.trim()).filter(x => BD.patah(x) >= 3); if (!bhg.length) { toast('Tiada ayat dikesan', true); return; }
     B.d.bahan = B.d.bahan.filter(b => String(b.teks || '').trim() || String(b.pengarang || '').trim()); let masuk = 0;
-    bhg.forEach(x => { if (B.d.bahan.length >= H.bahan) return; const sit = BD.kesanSitasi(x); const b = bahanBaru({ teks: x.slice(0, H.aksaraBahan) }); const akhir = sit.filter(c => c.bentuk === 'kurungan'); const hujung = /\(([^()]*)\)\s*[.!?]?\s*$/.exec(x);
-      if (hujung && akhir.length && sit.filter(c => c.pos === hujung.index).length === 1) { const c = sit.find(k => k.pos === hujung.index); b.pengarang = c.pengarang; b.tahun = c.tahun; const m = /(?:m\.?\s?s\.?|hlm\.?|pp?\.?)\s*([\d-]+)/i.exec(hujung[1]); if (m) b.ms = m[1]; b.teks = (x.slice(0, hujung.index).trim().replace(/[,\s]+$/, '') + '.').replace(/\.\.$/, '.').slice(0, H.aksaraBahan); }
-      else if (sit.length && sit[0].bentuk === 'naratif' && sit[0].pos < 60) { b.pengarang = sit[0].pengarang; b.tahun = sit[0].tahun; }
+    bhg.forEach(x => { if (B.d.bahan.length >= H.bahan) return; const sit = BD.kesanSitasi(x); const b = bahanBaru({ teks: x.slice(0, H.aksaraBahan) }); const hujung = /\(([^()]*)\)\s*[.!?]?\s*$/.exec(x); const akhir = hujung ? sit.filter(c => c.pos === hujung.index && c.bentuk === 'kurungan') : [];
+      if (hujung && akhir.length && akhir.length === sit.filter(c => c.pos === hujung.index).length) {
+        const dibaca = akhir.find(c => c.peranan === 'dibaca'); const asal = akhir.filter(c => c !== dibaca); const m = /(?:m\.?\s?s\.?|hlm\.?|pp?\.?)\s*([\d-]+)/i.exec(hujung[1]);
+        tetapSumber(b, (asal.length ? asal : akhir).map((c, i) => ({ pengarang: c.pengarang, tahun: c.tahun, ms: m && i === 0 && akhir.length === 1 ? m[1] : '' })), dibaca && asal.length ? { pengarang: dibaca.pengarang, tahun: dibaca.tahun, ms: '' } : null);
+        b.teks = (x.slice(0, hujung.index).trim().replace(/[,\s]+$/, '') + '.').replace(/\.\.$/, '.').slice(0, H.aksaraBahan);
+      } else if (sit.length && sit[0].bentuk === 'naratif' && sit[0].pos < 60) { b.pengarang = sit[0].pengarang; b.tahun = sit[0].tahun; }
       B.d.bahan.push(b); masuk++; });
-    while (B.d.bahan.length < 2) B.d.bahan.push(bahanBaru()); simpan(); renderBahan(); toast(masuk + ' ayat dimasukkan' + (bhg.length > masuk ? '; had ' + H.bahan + ' ayat bagi satu kerja' : '') + '. Semak pengarang dan tahun setiap ayat.');
+    while (B.d.bahan.length < 2) B.d.bahan.push(bahanBaru()); simpan(); renderBahan(); renderCadang(); toast(masuk + ' ayat dimasukkan' + (bhg.length > masuk ? '; had ' + H.bahan + ' ayat bagi satu kerja' : '') + '. Semak pengarang dan tahun setiap ayat.');
   }
   async function salin(teks, apa) { try { await navigator.clipboard.writeText(teks); toast(apa); } catch (e) { toast('Salinan gagal; pilih teks dan salin secara manual', true); } }
-  function sorotAyat(i) { const s = sesiSemasa(); if (!s || !s.hasil.sintesis[i]) return; const labs = s.hasil.sintesis[i].sumber; const ids = s.bahan.filter(b => labs.includes(b.l)).map(b => b.id); const sama = B.sorotI === i; B.sorotI = sama ? null : i; B.sorot = sama ? null : ids; $$('#bsBahan .bs-kad').forEach(k => k.classList.toggle('sorot', !sama && ids.includes(k.dataset.bid))); $$('#bsSesi [data-bs="sorot"]').forEach(el => { const on = !sama && +el.dataset.i === i; el.classList.toggle('on', on); if (el.hasAttribute('aria-pressed')) el.setAttribute('aria-pressed', on); }); if (!sama && ids.length) { const k = $(`#bsBahan .bs-kad[data-bid="${ids[0]}"]`); if (k) k.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } }
+  /* Klik satu ayat cadangan: serlahkan kad bahan yang menyokongnya dan tunjukkan teks bahan itu di bawah cadangan. */
+  function sorotAyat(i) {
+    const s = sesiCadang(); if (!s || !s.hasil.sintesis[i]) return; const labs = s.hasil.sintesis[i].sumber; const ids = s.bahan.filter(b => labs.includes(b.l)).map(b => b.id); const sama = B.sorotI === i; B.sorotI = sama ? null : i; B.sorot = sama ? null : ids;
+    $$('#bsBahan .bs-kad').forEach(k => k.classList.toggle('sorot', !sama && ids.includes(k.dataset.bid)));
+    $$('#bsMeja .bs-ay[data-bs="sorot"], #bsMeja .bs-bedah li[data-bs="sorot"]').forEach(el => { const on = !sama && +el.dataset.i === i; el.classList.toggle('on', on); if (el.hasAttribute('aria-pressed')) el.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    renderSumberAyat();
+  }
+  /* Salin cadangan pembantu ke Tulisan saya untuk disunting; tulisan sedia ada boleh dipulihkan melalui Batal. */
+  async function salinKeSaya() {
+    const d = B.d; const s = sesiCadang(); const ta = $('#bsTulisan'); if (!d || !s || s.mod === 'rangka' || !ta) return; const teks = contohTeks(s).slice(0, H.tulisan); const lama = String(d.tulisan || '');
+    if (lama.trim() === teks.trim()) { toast('Cadangan ini sudah berada dalam Tulisan saya. Sunting di sebelah kanan.'); ta.focus(); return; }
+    if (s.hasil.sintesis.some(a => a.asing && a.asing.length) && !(await R.confirmBox('Cadangan ini memuatkan sitasi di luar bahan', 'Ayat bertanda merah menyebut sumber yang tiada dalam bahan. Jika disalin, buang atau betulkan sitasi itu semasa menyunting.', 'Salin juga', false))) return;
+    if (lama.trim() && !(await R.confirmBox('Ganti Tulisan saya dengan cadangan?', 'Tulisan saya sudah berisi ' + BD.patah(lama) + ' patah perkataan. Cadangan pembantu akan menggantikannya; tulisan asal boleh dipulihkan melalui butang Batal sejurus selepas ini.', 'Ganti', false))) return;
+    if (B.d !== d) return; const el = $('#bsTulisan'); if (!el) return;
+    const tetap = v => { d.tulisan = v; el.value = v; B.fokusTulisan = { s: v.length, e: v.length }; simpan(); kemasLatar(); kemasSemakTulisan(); renderSemakan(); };
+    tetap(teks); try { el.focus(); el.setSelectionRange(0, 0); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+    toast('Cadangan disalin ke Tulisan saya. Sunting struktur ayat dan pilihan kata sebelum dijadikan teks rasmi.', false, lama.trim() ? { label: 'Batal', fn: () => { if (B.d === d && $('#bsTulisan') === el) tetap(lama); } } : undefined);
+  }
   function bukaPustaka(k) { const w = $('#bsPustakaWrap'); if (!w) return; w.open = true; R.lsSet('rslr_bengkel_pustaka_buka', true); if (k) B.pst.k = k; renderPustaka(); w.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  const kadDari = el => { const kad = el.closest('.bs-kad'); const id = el.dataset.bid || (kad && kad.dataset.bid) || ''; return { kad, b: B.d ? B.d.bahan.find(x => x.id === id) : null }; };
 
   function onClick(e) {
     const a = e.target.closest('[data-bs]'); if (!a) return; const k = a.dataset.bs; const d = B.d;
@@ -475,6 +702,7 @@ ${arahan}`;
     if (k === 'baru') { baru(false); return; }
     if (k === 'buka') { if (a.dataset.id !== B.id) { simpanSegera(); muat(a.dataset.id); renderSemua(); } return; }
     if (k === 'kemajuan') { kemajuan(); return; } if (k === 'asas') { asas(); return; }
+    if (k === 'senarai') { R.lsSet(LS_SENARAI, !R.lsGet(LS_SENARAI, false)); kemasFokus(); return; }
     if (k === 'pstk') { bukaPustaka(a.dataset.k); return; }
     if (k === 'pstbhs') { B.pst.bhs = a.dataset.b; renderPustaka(); return; }
     if (k === 'guna' || k === 'sisip') { sisip(a.dataset.f, a.dataset.k || ''); return; }
@@ -486,32 +714,53 @@ ${arahan}`;
     else if (k === 'padam') padam();
     else if (k === 'tambah' || k === 'saya') { if (d.bahan.length >= H.bahan) { toast('Had ' + H.bahan + ' ayat bagi satu kerja. Satu perenggan elok memikul satu idea; cipta kerja baharu bagi idea seterusnya.', true); return; } const b = bahanBaru({ saya: k === 'saya' }); d.bahan.push(b); simpan(); renderBahan(); const ta = $(`#bsBahan .bs-kad[data-bid="${b.id}"] ${k === 'saya' ? 'textarea' : '[data-bsb="pengarang"]'}`); if (ta) ta.focus(); if (k === 'saya' && d.jenis === 'auto') toast('Petua: pilih jenis "Dapatan sendiri dengan kajian lepas" bagi perbincangan Bab 5'); }
     else if (k === 'tampal') tampalBanyak();
-    else if (k === 'buang') { const kad = a.closest('.bs-kad'); d.bahan = d.bahan.filter(b => b.id !== kad.dataset.bid); while (d.bahan.length < 2) d.bahan.push(bahanBaru()); simpan(); renderBahan(); }
+    else if (k === 'buang') { const kad = a.closest('.bs-kad'); d.bahan = d.bahan.filter(b => b.id !== kad.dataset.bid); while (d.bahan.length < 2) d.bahan.push(bahanBaru()); simpan(); renderBahan(); renderCadang(); }
+    else if (k === 'laintambah') { const { b } = kadDari(a); if (!b || b.saya) return; if (1 + b.lain.length >= H.sumberAyat) { toast('Had ' + H.sumberAyat + ' sitasi bagi satu ayat', true); return; } b.lain.push(sumberKemas({})); simpan(); renderBahan(); const baris = $$(`#bsBahan .bs-kad[data-bid="${b.id}"] .bs-lain-b:not(.dlm) [data-bsl="pengarang"]`); if (baris.length) baris[baris.length - 1].focus(); }
+    else if (k === 'lainbuang') { const { b } = kadDari(a); const baris = a.closest('.bs-lain-b'); if (!b || !baris) return; b.lain.splice(+baris.dataset.li, 1); simpan(); renderBahan(); renderCadang(); }
+    else if (k === 'dalamtambah') { const { b } = kadDari(a); if (!b || b.saya) return; if (!b.dalam) b.dalam = sumberKemas({}); simpan(); renderBahan(); const inp = $(`#bsBahan .bs-kad[data-bid="${b.id}"] [data-bsd="pengarang"]`); if (inp) inp.focus(); }
+    else if (k === 'dalambuang') { const { b } = kadDari(a); if (!b) return; b.dalam = null; simpan(); renderBahan(); renderCadang(); }
+    else if (k === 'sit') { const { b } = kadDari(a); if (b) baikSitasi(b.id, a.dataset.cara); }
+    else if (k === 'sitsemua') baikSemua();
+    else if (k === 'tahunrepo' || k === 'tahunkekal') { const { b } = kadDari(a); if (!b) return; const lama = { tahun: b.tahun, repoOk: b.repoOk || '' }; if (k === 'tahunrepo') b.tahun = String(a.dataset.t || ''); else b.repoOk = String(a.dataset.k || ''); selepasSitasi(); toast((labelKad(b.id) || 'Ayat') + (k === 'tahunrepo' ? ': tahun ditulis ganti kepada ' + b.tahun : ': tahun pada kad dikekalkan'), false, { label: 'Batal', fn: () => { if (B.d !== d) return; Object.assign(b, lama); selepasSitasi(); } }); }
     else if (k === 'jalan') jalan(a.dataset.mod);
-    else if (k === 'tutup') { B.tutup = !B.tutup; renderHasil(); }
+    else if (k === 'tutup') { B.tutup = !B.tutup; B.sorotI = null; B.sorot = null; $$('#bsBahan .bs-kad.sorot').forEach(x => x.classList.remove('sorot')); renderCadang(); }
     else if (k === 'sorot') sorotAyat(+a.dataset.i);
-    else if (k === 'salincontoh') { const s = sesiSemasa(); if (s) salin(contohTeks(s), 'Contoh disalin. Tulis semula dengan ayat sendiri sebelum dijadikan teks akhir.'); }
-    else if (k === 'ramcontoh') { const s = sesiSemasa(); if (s) hantarRam(kepalaRam('Contoh sintesis pembantu (belum diparafrasa)') + `<p>${esc(contohTeks(s))}</p>`, 'Contoh'); }
-    else if (k === 'ramtulisan') { const t = String(d.tulisan || '').trim(); if (BD.patah(t) < 5) { toast('Tulisan saya masih kosong', true); return; } const sc = sesiContoh(); const td = sc ? BD.tindih(t, contohTeks(sc), 4) : null; const hantar = () => hantarRam(kepalaRam('Sintesis tulisan Prof Dr') + perenggan(t), 'Tulisan saya'); if (td && td.cukup && td.peratus >= 45) R.confirmBox('Tulisan ini masih hampir dengan contoh', td.peratus + '% rangkaian empat patah perkataan sama dengan contoh pembantu. Hantar ke RAM juga? Prof Dr masih boleh mengolahnya di sana sebelum dipindahkan ke ASAL.', 'Hantar juga', false).then(ok => { if (ok) hantar(); }); else hantar(); }
+    else if (k === 'warna') { const w = warna(); if (a.dataset.k in w) { w[a.dataset.k] = !w[a.dataset.k]; simpanWarna(); renderCadang(); renderSemakan(); kemasLatar(); } }
+    else if (k === 'warnasaya') { const w = warna(); w.saya = !w.saya; simpanWarna(); renderSayaBar(); kemasLatar(); }
+    else if (k === 'fokus') { B.fokus = !B.fokus; kemasFokus(); const m = $('#bsMeja'); if (m && B.fokus) m.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    else if (k === 'kecadang') { const m = $('#bsMeja'); if (m) m.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    else if (k === 'kesaya') salinKeSaya();
+    else if (k === 'salincontoh') { const s = sesiCadang(); if (s) salin(contohTeks(s), 'Cadangan disalin. Sunting dengan ayat sendiri sebelum dijadikan teks akhir.'); }
+    else if (k === 'ramcontoh') { const s = sesiCadang(); if (s) hantarRam(kepalaRam('Cadangan sintesis pembantu (belum disunting)') + `<p>${esc(contohTeks(s))}</p>`, 'Cadangan'); }
+    else if (k === 'ramtulisan') { const t = String(d.tulisan || '').trim(); if (BD.patah(t) < 5) { toast('Tulisan saya masih kosong', true); return; } const sc = sesiContoh(); const td = sc ? BD.tindih(t, contohTeks(sc), 4) : null; const hantar = () => hantarRam(kepalaRam('Sintesis tulisan Prof Dr') + perenggan(t), 'Tulisan saya'); if (td && td.cukup && td.peratus >= 45) R.confirmBox('Tulisan ini masih hampir dengan cadangan', td.peratus + '% rangkaian empat patah perkataan sama dengan cadangan pembantu. Hantar ke RAM juga? Prof Dr masih boleh mengolahnya di sana sebelum dipindahkan ke ASAL.', 'Hantar juga', false).then(ok => { if (ok) hantar(); }); else hantar(); }
     else if (k === 'salintulisan') salin(String(d.tulisan || ''), 'Tulisan saya disalin');
     else if (k === 'sasar' || k === 'bukasek') { const s = sesiSemasa(); const x = s && s.hasil.letak[+a.dataset.i]; if (!x || !x.ruj) return; if (k === 'sasar') { d.sasaran = x.ruj; simpan(); const sel = $('#bsSasaran'); if (sel) sel.innerHTML = htmlSasaran(); kemasSitasi(); renderHasil(); toast('Sasaran tulisan ditetapkan'); } else bukaSasaran(x.ruj); }
     else if (k === 'tahapguna') { d.tahap = +a.dataset.n; simpan(); const sel = $('#bsTahap'); if (sel) sel.value = String(d.tahap); renderTangga(); renderHasil(); }
   }
   function simpanSegera() { if (B.d) simpan(true); }
+  /* Pilihan "Nama (Tahun)" daripada senarai repositori dipecahkan kepada pengarang dan tahun. */
+  function pecahRepo(el, selTahun) { const m = /^(.*\S)\s*\(((?:1[89]|20)\d{2}[a-z]?)\)\s*$/.exec(el.value); const r = m && sumberRepo().find(s => s.teks === el.value.trim()); if (!m || !r) return null; el.value = m[1]; const th = el.parentElement && el.parentElement.querySelector(selTahun); if (th) th.value = m[2]; return { pengarang: m[1], tahun: m[2], rekod: r.id }; }
   function onInput(e) {
     const el = e.target; if (el.id === 'bsPstQ') { B.pst.q = el.value; clearTimeout(B.timers.q); B.timers.q = setTimeout(renderPustaka, 180); return; } const d = B.d; if (!d) return;
-    if (el.dataset.bsb) { const kad = el.closest('.bs-kad'); const b = kad && d.bahan.find(x => x.id === kad.dataset.bid); if (!b) return; b[el.dataset.bsb] = el.value; if (el.dataset.bsb === 'pengarang') { b.rekod = ''; const m = /^(.*\S)\s*\(((?:1[89]|20)\d{2}[a-z]?)\)\s*$/.exec(el.value); const r = m && sumberRepo().find(s => s.teks === el.value.trim()); if (m && r) { b.pengarang = m[1]; b.tahun = m[2]; b.rekod = r.id; el.value = m[1]; const th = kad.querySelector('[data-bsb="tahun"]'); if (th) th.value = m[2]; } } simpan(); clearTimeout(B.timers.b); B.timers.b = setTimeout(kemasSemakBahan, 300); return; }
+    const lewat = () => { clearTimeout(B.timers.b); B.timers.b = setTimeout(() => { kemasSemakBahan(); if (sesiSemasa()) { const k = $('#bsSesi .bs-kes'); if (k) k.outerHTML = htmlKesesuaian(sesiSemasa()); } const bs = $('#bsMeja .bs-basi'); const s = sesiCadang(); if (!!bs !== !!(s && s.tk && s.tk !== tandaBahan(snapBahan()))) renderCadang(); }, 300); };
+    if (el.dataset.bsb || el.dataset.bsl || el.dataset.bsd) {
+      const kad = el.closest('.bs-kad'); const b = kad && d.bahan.find(x => x.id === kad.dataset.bid); if (!b) return;
+      if (el.dataset.bsb) { b[el.dataset.bsb] = el.value; if (el.dataset.bsb === 'pengarang') { b.rekod = ''; const p = pecahRepo(el, '[data-bsb="tahun"]'); if (p) { b.pengarang = p.pengarang; b.tahun = p.tahun; b.rekod = p.rekod; } } }
+      else if (el.dataset.bsl) { const baris = el.closest('.bs-lain-b'); const x = baris && b.lain[+baris.dataset.li]; if (!x) return; x[el.dataset.bsl] = el.value; if (el.dataset.bsl === 'pengarang') { const p = pecahRepo(el, '[data-bsl="tahun"]'); if (p) { x.pengarang = p.pengarang; x.tahun = p.tahun; } } }
+      else { if (!b.dalam) b.dalam = sumberKemas({}); b.dalam[el.dataset.bsd] = el.value; if (el.dataset.bsd === 'pengarang') { const p = pecahRepo(el, '[data-bsd="tahun"]'); if (p) { b.dalam.pengarang = p.pengarang; b.dalam.tahun = p.tahun; } } }
+      simpan(); lewat(); return;
+    }
     const m = el.dataset.bsm; if (!m) return;
     if (m === 'tajuk') { d.tajuk = el.value; simpan(); clearTimeout(B.timers.t); B.timers.t = setTimeout(renderSenarai, 400); }
     else if (m === 'konteks') { d.konteks = el.value; simpan(); }
-    else if (m === 'tulisan') { d.tulisan = el.value; B.fokusTulisan = { s: el.selectionStart, e: el.selectionEnd }; simpan(); clearTimeout(B.timers.w); B.timers.w = setTimeout(kemasSemakTulisan, 350); }
+    else if (m === 'tulisan') { d.tulisan = el.value; B.fokusTulisan = { s: el.selectionStart, e: el.selectionEnd }; simpan(); kemasLatar(); clearTimeout(B.timers.w); B.timers.w = setTimeout(() => { kemasSemakTulisan(); const sm = $('#bsSemakan .bs-semakan'); if (sm) renderSemakan(); }, 350); }
   }
   function onChange(e) {
     const el = e.target; const d = B.d; if (!d || el.tagName !== 'SELECT') return;
     if (el.dataset.bsb === 'medan') { isiDariRekod(el); return; }
     const m = el.dataset.bsm; if (!m) return;
     if (m === 'sesi') { B.sesi = +el.value || 0; B.sorot = null; B.sorotI = null; B.tutup = false; renderBahan(); renderHasil(); return; }
-    if (m === 'bahasa') { d.bahasa = el.value === 'en' ? 'en' : 'ms'; B.pst.bhs = ''; simpan(); kemasSitasi(); renderHasil(); renderPustaka(); }
+    if (m === 'bahasa') { d.bahasa = el.value === 'en' ? 'en' : 'ms'; B.pst.bhs = ''; simpan(); kemasSitasi(); const ta = $('#bsTulisan'); if (ta) { ta.lang = d.bahasa; ta.placeholder = phTulisan(d.bahasa); } renderHasil(); kemasLatar(); renderPustaka(); }
     else if (m === 'sitasi') { d.sitasi = ['upsi', 'apa'].includes(el.value) ? el.value : ''; simpan(); kemasSemakTulisan(); }
     else if (m === 'ramal') { d.ramal = BD.HUBUNGAN_PETA[el.value] ? el.value : ''; simpan(); }
     else if (m === 'jenis') { d.jenis = BD.JENIS_PETA[el.value] ? el.value : 'auto'; simpan(); renderJenisKet(); kemasSemakBahan(); }
@@ -525,7 +774,7 @@ ${arahan}`;
     b.teks = teks; b.rekod = r.id; const ta = kad.querySelector('textarea'); if (ta) { ta.value = teks; ta.focus(); } simpan(); kemasSemakBahan();
     toast('Diisi daripada medan "' + m[1] + '". Medan ini catatan Prof Dr tentang artikel itu; kekalkan ayat yang berkenaan sahaja.');
   }
-  function renderSemua() { renderSenarai(); renderEditor(); if (!B.d) renderPustaka(); }
+  function renderSemua() { renderSenarai(); renderEditor(); if (!B.d) renderPustaka(); kemasFokus(); }
   /* Data sampingan dimuat di latar supaya paparan pertama tidak menunggu awan: pustaka, kemajuan, seksyen tesis dan seksyen artikel. */
   async function muatLatar() {
     try { await muatSampingan(); } catch (e) {}
@@ -547,9 +796,12 @@ ${arahan}`;
     root.addEventListener('click', onClick); root.addEventListener('input', onInput); root.addEventListener('change', onChange);
     root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-bs][tabindex]')) { e.preventDefault(); e.target.click(); } });
     root.addEventListener('focusout', e => { if (e.target.id === 'bsTulisan') B.fokusTulisan = { s: e.target.selectionStart, e: e.target.selectionEnd }; });
-    root.addEventListener('toggle', e => { if (e.target.id === 'bsPustakaWrap') R.lsSet('rslr_bengkel_pustaka_buka', e.target.open); }, true);
+    root.addEventListener('toggle', e => { if (e.target.id === 'bsPustakaWrap') R.lsSet('rslr_bengkel_pustaka_buka', e.target.open); else if (e.target.id === 'bsBedahWrap') R.lsSet(LS_BEDAH, e.target.open); }, true);
+    /* lapisan warna mengikut kotak tulisan: tatal (jika ada) disegerakkan, dan ketinggian dikira semula apabila lebar tetingkap berubah */
+    root.addEventListener('scroll', e => { if (e.target && e.target.id === 'bsTulisan') { const l = e.target.parentElement && e.target.parentElement.querySelector('.bs-ta-latar'); if (l) l.scrollTop = e.target.scrollTop; } }, true);
+    window.addEventListener('resize', () => { clearTimeout(B.timers.r); B.timers.r = setTimeout(kemasLatar, 120); });
     window.addEventListener('pagehide', simpanSegera);
   }
   pasang();
-  return { show, baru, jalan, muat, simpan, sistem, tugas, bersihHasil, seksyenSenarai, hantarRam, renderSemua, renderHasil, renderPustaka, kemajuan, asas, pustaka, maju, SKEMA, BD, state: B };
+  return { show, baru, jalan, muat, simpan, sistem, tugas, bersihHasil, seksyenSenarai, hantarRam, renderSemua, renderHasil, renderCadang, renderPustaka, kemasLatar, kemajuan, asas, pustaka, maju, isuKad, baikSitasi, baikSemua, snapBahan, SKEMA, BD, state: B };
 }
