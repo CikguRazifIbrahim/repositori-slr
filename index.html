@@ -1338,6 +1338,47 @@ table.bs-banding-w{border-collapse:collapse;font-size:12px;margin:6px 0;width:10
   #bsCadang>.bs-perenggan,.bs-ta-wrap{min-height:200px}
 }
 @media (max-width:520px){.bs-lain-b{padding-left:0}.bs-lain-b.dlm{margin-left:0}.bs-banding-w{font-size:11px}.bs-banding-w th,.bs-banding-w td{padding:2px 3px}}
+/* menu Sintesis v1.28.0: Arah hujah saya (medan pilihan di bawah Konteks perbincangan), soal jawab dengan pembantu, tanda ayat arah hujah */
+.bs-arah{border:1px dashed var(--line-strong);border-radius:8px;padding:8px 10px;margin:-4px 0 10px;background:color-mix(in srgb,var(--surface-2) 45%,transparent)}
+.bs-arah:empty{display:none}
+.bs-ar-h{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;font-size:12.5px}
+.bs-ar-h .tag{font-size:11px;padding:1px 7px}
+.bs-ar-ket{margin:2px 0 6px}
+.bs-ar-cip{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.bs-ar-kump{font-size:11.5px;font-weight:700;color:var(--muted)}
+.bs-ar-cip .bs-cip+.bs-ar-kump{margin-left:10px}
+.bs-ar-cip .bs-cip.buka{border-color:var(--accent-line);background:var(--accent-soft)}
+.bs-ar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px;margin-top:8px}
+.bs-ar-grid:empty{display:none}
+.bs-ar-k{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;background:var(--surface);padding:7px 9px;min-width:0;display:flex;flex-direction:column;gap:3px}
+.bs-ar-l{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.bs-ar-l label{font-size:13px;font-weight:700}
+.bs-ar-l .tag{font-size:11px;padding:1px 7px}
+.bs-ar-l .spacer{flex:1}
+.bs-ar-t,.bs-soal-j{display:block;width:100%;border:1px solid var(--line-strong);border-radius:6px;padding:6px 8px;font-size:14px;line-height:1.45;background:var(--surface);color:var(--fg);font-family:inherit;resize:vertical;min-height:2.6em}
+.bs-ar-st{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.bs-ar-st:empty{display:none}
+.bs-ar-st .chip,.bs-ar-cb .chip{font-size:11.5px;padding:1px 8px}
+.bs-ar-sj{margin-top:8px;font-size:13px;line-height:1.45}
+.bs-ar-sj>summary{cursor:pointer;font-weight:700;font-size:12.5px}
+.bs-ar-sj>summary .help{font-weight:400;margin-left:6px}
+.bs-sj-b{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 6px;align-items:start;margin-top:6px}
+.bs-sj-q{grid-column:1/-1}
+ol.bs-soal-l{margin:4px 0 6px 1.3em;padding:0}
+ol.bs-soal-l li{margin-bottom:7px}
+.bs-soal-q{margin-bottom:3px}
+.bs-soal .bs-acts{margin:4px 0}
+.bs-sandar{border-color:var(--warn);background:color-mix(in srgb,var(--warn-soft) 40%,var(--surface))}
+.bs-perenggan.bs-contoh .bs-ay.gerak{border-bottom:2px solid var(--accent)}
+.bs-perenggan.bs-contoh .bs-ay.gerak::before{content:counter(bsay) "\00a0" attr(data-gr);font-size:10.5px;line-height:1.3;vertical-align:1px;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:4px;padding:0 5px;margin-right:4px;white-space:nowrap}
+.bs-gr-contoh{flex:none;display:inline-block;width:22px;height:11px;border-radius:3px;background:var(--accent-soft);border:1px solid var(--accent-line);border-bottom:2px solid var(--accent);align-self:center}
+.bs-ar-cb{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:4px}
+.bs-ar-cb b{font-weight:600}
+.bs-bedah-g{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12px;color:var(--muted)}
+.tag.bs-gr-tag{font-size:11px;padding:1px 7px;background:var(--accent-soft);color:var(--accent)}
+.tag.g-ada{background:var(--ok-soft);color:var(--ok)} .tag.g-separa{background:var(--warn-soft);color:var(--warn)} .tag.g-tiada{background:var(--bad-soft);color:var(--bad)}
+.bs-ar-petua .bs-pautan{font-size:12px}
+@media (max-width:520px){.bs-ar-grid{grid-template-columns:minmax(0,1fr)}.bs-ar-cip .bs-cip+.bs-ar-kump{margin-left:0;flex-basis:100%}}
 </style>
 </head>
 <body>
@@ -1550,7 +1591,7 @@ table.bs-banding-w{border-collapse:collapse;font-size:12px;margin:6px 0;width:10
 
 <main id="bengkel" class="view" hidden>
   <div class="tul-head">
-    <div><h1>Sintesis</h1><div class="sub">Ruang berlatih mensintesis ayat daripada beberapa artikel. Tampal ayat berserta sitasinya ke kanvas BAHAN (satu ayat boleh memikul beberapa sitasi), nyatakan konteks perbincangan, dan pembantu mengelaskan setiap ayat, menyemak sitasinya, memetakan idea serta menulis Cadangan Sintesis yang berwarna. Prof Dr menyalin cadangan itu ke Tulisan saya di sebelahnya, menyuntingnya menjadi ayat sendiri, meminta semakan dan menghantarnya ke RAM. Disimpan automatik ke awan.</div></div>
+    <div><h1>Sintesis</h1><div class="sub">Ruang berlatih mensintesis ayat daripada beberapa artikel. Tampal ayat berserta sitasinya ke kanvas BAHAN (satu ayat boleh memikul beberapa sitasi), nyatakan konteks perbincangan dan, jika mahu, arah hujah Prof Dr (jurang, pertentangan atau pendirian), dan pembantu mengelaskan setiap ayat, menyemak sitasinya, memetakan idea serta menulis Cadangan Sintesis yang berwarna. Prof Dr menyalin cadangan itu ke Tulisan saya di sebelahnya, menyuntingnya menjadi ayat sendiri, meminta semakan dan menghantarnya ke RAM. Disimpan automatik ke awan.</div></div>
     <span class="spacer"></span>
     <div class="tul-acts">
       <button class="btn" data-bs="senarai" id="bsBtnSenarai" aria-pressed="false" title="Sembunyikan atau tunjukkan senarai kerja sintesis di kiri supaya ruang kerja lebih lebar">Sembunyi senarai kerja</button>
@@ -1563,7 +1604,7 @@ table.bs-banding-w{border-collapse:collapse;font-size:12px;margin:6px 0;width:10
     <section id="bsEditor" class="tul-editor"></section>
   </div>
   <details class="bs-pustaka" id="bsPustakaWrap"><summary>Pustaka: penanda wacana, kata kerja pelaporan dan istilah sintesis <span class="help">klik frasa untuk memasukkannya ke Tulisan saya dan menyalinnya</span></summary><div id="bsPustaka"></div></details>
-  <div class="harian-note">Setiap kerja sintesis disimpan dalam awan (meta/bengkel) dan pada peranti: ayat bahan berserta sumbernya, konteks, lapan sesi pembantu yang terakhir dan Tulisan saya. Pembantu hanya menggunakan ayat yang ditampal; ia tidak menambah fakta atau sitasi, dan sitasi di luar bahan ditanda merah. Pembetulan sitasi pada kad (butang Tulis ganti) hanya menulis nama dan tahun yang benar-benar tertulis dalam teks ayat, dan boleh dibatalkan. Setiap permintaan lazimnya satu panggilan API Anthropic dengan kunci Prof Dr sendiri (menu tiga titik, Tetapan); jika jawapan terpotong, aplikasi mengulang sekali. Semakan kesesuaian dan sitasi awal, warna dalam Tulisan saya, pengesan gaya laporan lawan sintesis dan Pustaka berjalan pada peranti tanpa token. Cadangan pembantu ialah bahan untuk disunting; teks rasmi ialah tulisan Prof Dr sendiri selepas disunting dan disemak.</div>
+  <div class="harian-note">Setiap kerja sintesis disimpan dalam awan (meta/bengkel) dan pada peranti: ayat bahan berserta sumbernya, konteks, arah hujah dan soal jawab dengan pembantu, lapan sesi pembantu yang terakhir dan Tulisan saya. Dakwaan tentang sumber hanya diambil daripada ayat yang ditampal; pembantu tidak menambah fakta atau sitasi, pendirian yang Prof Dr nyatakan ditulis sebagai suara penulis tanpa sitasi, dan sitasi di luar bahan ditanda merah. Pembetulan sitasi pada kad (butang Tulis ganti) hanya menulis nama dan tahun yang benar-benar tertulis dalam teks ayat, dan boleh dibatalkan. Setiap permintaan lazimnya satu panggilan API Anthropic dengan kunci Prof Dr sendiri (menu tiga titik, Tetapan); jika jawapan terpotong, aplikasi mengulang sekali. Semakan kesesuaian dan sitasi awal, warna dalam Tulisan saya, pengesan gaya laporan lawan sintesis dan Pustaka berjalan pada peranti tanpa token. Cadangan pembantu ialah bahan untuk disunting; teks rasmi ialah tulisan Prof Dr sendiri selepas disunting dan disemak.</div>
 </main>
 
 <main id="rekod" class="view" hidden>

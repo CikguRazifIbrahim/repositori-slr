@@ -55,7 +55,48 @@ export const TAHAP = [
   { n: 2, k: 'rangka', nama: 'Rangka untuk dilengkapkan', ringkas: 'Pembantu memberi peta idea dan rangka ayat berlompang; Prof Dr melengkapkannya.', butang: 'Minta rangka', ket: 'Pembantu tidak lagi menulis perenggan penuh. Prof Dr memilih penanda wacana dan melengkapkan setiap ayat, kemudian meminta semakan.' },
   { n: 3, k: 'semak', nama: 'Saya tulis dahulu', ringkas: 'Prof Dr menulis sintesis sendiri; pembantu hanya menyemak dan memberi maklum balas.', butang: 'Semak tulisan saya', ket: 'Tahap berdikari. Pembantu menilai sama ada tulisan itu sintesis atau laporan, menyemak kesetiaan kepada sumber, dan mencadangkan pembaikan tanpa menulis semula perenggan.' }
 ];
-export const HAD = { bahan: 10, aksaraBahan: 1500, konteks: 1200, tulisan: 6000, sesi: 8, minPatahTulisan: 15, sumberAyat: 6 };
+export const HAD = { bahan: 10, aksaraBahan: 1500, konteks: 1200, tulisan: 6000, sesi: 8, minPatahTulisan: 15, sumberAyat: 6, arah: 500, jawab: 500, soal: 12 };
+
+/* ---- arah hujah (pilihan): pendirian penulis yang dinyatakan sebelum pembantu menulis, supaya pembantu tidak meneka dan tidak bertanya semula.
+   Gerakan dipilih daripada Graff et al. (2018), Bab 1, 4, 6, 7 dan 15: yang lazim sahaja. Nama medan, soalan pandu dan contoh isian ditulis
+   sendiri dalam Bahasa Melayu; tiada templat buku disalin. Semua medan pilihan.
+   k = kunci; kump = kumpulan; ms = nama medan; pendek = label pada ayat cadangan; tanya = soalan pandu; ph = contoh isian;
+   bab = sandaran dalam buku; fungsi = fungsi ayat yang lazim menzahirkannya; pst = kategori Pustaka yang berkaitan;
+   arahan = cara pembantu menzahirkannya dalam perenggan. ---- */
+export const ARAH_KUMP = [['tonjol', 'Yang mesti ditonjolkan'], ['pendirian', 'Pendirian saya']];
+const A_ = (k, kump, ms, pendek, tanya, ph, bab, fungsi, pst, arahan) => ({ k, kump, ms, pendek, tanya, ph, bab, fungsi, pst, arahan });
+export const ARAH = [
+  A_('jurang', 'tonjol', 'Jurang yang mesti ditonjolkan', 'Jurang', 'Apakah yang belum dikaji atau belum terjawab oleh sumber ini?',
+    'Contohnya: Ketiga-tiga kajian menguji hubungan langsung sahaja; belum ada yang menguji pengurusan pengetahuan sebagai pengantara di sekolah rendah.',
+    'Bab 15', 'jurang', 'jurang', 'Tulis jurang ini sebagai satu ayat tersendiri berfungsi "jurang", bukan klausa sampingan, selepas ayat yang menunjukkan apa yang sudah dikaji. Hadkan kepada sumber yang diteliti.'),
+  A_('kontra', 'tonjol', 'Pertentangan antara sumber', 'Pertentangan', 'Sumber mana yang menentang sumber mana, dan tentang apa? Label seperti A1 dan A3 boleh digunakan.',
+    'Contohnya: A1 dan A2 mendapati hubungan yang signifikan, tetapi A3 tidak. Pertentangan ini mesti dinyatakan terus, bukan disorok.',
+    'Bab 1 dan 15', 'banding', 'beza', 'Zahirkan pertentangan ini dalam ayat berfungsi "banding" yang menamakan kedua-dua pihak dengan sitasi masing-masing. Jika BAHAN tidak menunjukkan pertentangan itu, jangan reka: kekalkan apa yang BAHAN nyatakan dan terangkan dalam "nota".'),
+  A_('penting', 'tonjol', 'Mengapa penting, dan kepada siapa', 'Kepentingan', 'Siapakah yang berkepentingan dengan hujah ini, dan apakah akibatnya jika ia diabaikan?',
+    'Contohnya: Penting kepada guru besar kerana latihan tanpa perkongsian pengetahuan belum tentu mengubah amalan guru; inilah yang kajian saya uji.',
+    'Bab 7', 'kait', 'sebab', 'Tutup perenggan dengan ayat berfungsi "kait" yang menyatakan kepentingan ini: siapa yang berkepentingan dan apa akibatnya bagi perbincangan atau kajian Prof Dr.'),
+  A_('tambah', 'pendirian', 'Setuju, dengan tambahan', 'Setuju dan tambah', 'Prof Dr bersetuju dengan sumber mana, dan apakah yang Prof Dr tambah kepada pandangannya?',
+    'Contohnya: Saya bersetuju dengan A1 bahawa sokongan guru besar penting, dan menambah bahawa sokongan itu berfungsi melalui perkongsian pengetahuan sesama guru.',
+    'Bab 4', 'tafsir', 'tambah', 'Selepas bukti sumber yang dipersetujui, tulis ayat suara penulis yang menyatakan persetujuan itu berserta tambahan Prof Dr. Tambahan itu milik penulis, maka tidak bersitasi.'),
+  A_('syarat', 'pendirian', 'Setuju, dengan syarat', 'Setuju bersyarat', 'Dalam keadaan apa, bagi siapa atau dalam konteks apa pandangan sumber itu Prof Dr terima?',
+    'Contohnya: Dapatan A1 saya terima bagi sekolah yang lengkap prasarananya; bagi sekolah luar bandar ia belum tentu benar.',
+    'Bab 4 dan 15', 'syarat', 'syarat', 'Tulis ayat berfungsi "syarat" yang menyatakan bila, bagi siapa atau dalam konteks apa pandangan sumber itu diterima, mengikut syarat yang Prof Dr nyatakan.'),
+  A_('separaYa', 'pendirian', 'Setengah setuju: ya, tetapi', 'Ya, tetapi', 'Bahagian mana yang Prof Dr terima, dan apakah keberatan Prof Dr? Penekanan jatuh pada keberatan.',
+    'Contohnya: Saya terima dapatan A2 tentang kesan kepimpinan, tetapi tidak menerima andaian bahawa kesan itu sama bagi semua guru.',
+    'Bab 4', 'tafsir', 'pendirian', 'Tulis satu ayat yang mengakui dahulu bahagian yang diterima, kemudian menyatakan keberatan Prof Dr sebagai klausa utama supaya penekanan jatuh pada keberatan.'),
+  A_('separaTidak', 'pendirian', 'Setengah tidak setuju: tidak, tetapi', 'Tidak, tetapi', 'Apakah yang Prof Dr tolak, dan bahagian mana yang tetap diterima? Penekanan jatuh pada bahagian yang diterima.',
+    'Contohnya: Saya tidak bersetuju dengan cara A3 mengukur kompetensi, tetapi menerima kesimpulannya bahawa latihan sahaja tidak mencukupi.',
+    'Bab 4', 'tafsir', 'pendirian', 'Tulis satu ayat yang menyatakan dahulu apa yang tidak diterima, kemudian bahagian yang tetap diterima sebagai klausa utama supaya penekanan jatuh pada bahagian yang diterima.'),
+  A_('tolak', 'pendirian', 'Tidak setuju, kerana', 'Tidak setuju', 'Pandangan atau dapatan mana yang Prof Dr tolak, dan apakah alasannya? Alasan yang lazim: faktor yang tertinggal, bukti yang tidak lengkap, andaian yang boleh dipersoalkan, atau logik yang bercanggah.',
+    'Contohnya: Saya tidak bersetuju dengan kesimpulan A2 kerana kajiannya tidak mengambil kira budaya sekolah.',
+    'Bab 4', 'tafsir', 'nilai', 'Nyatakan dahulu pandangan sumber itu dengan adil dan bersitasi, kemudian tulis ayat suara penulis yang menyatakan ketidaksetujuan berserta alasan Prof Dr. Alasan itu milik penulis, maka tidak bersitasi kecuali BAHAN menyokongnya.'),
+  A_('bantah', 'pendirian', 'Bantahan yang dijangka', 'Bantahan dijawab', 'Apakah bantahan yang mungkin dibangkitkan oleh pemeriksa atau pembaca, dan apakah jawapan Prof Dr?',
+    'Contohnya: Pemeriksa mungkin berkata dapatan luar negara tidak sesuai dengan sekolah di Malaysia. Saya akui konteksnya berbeza, tetapi mekanisme sokongan itu tetap relevan.',
+    'Bab 6', 'tafsir', 'pendirian', 'Suarakan bantahan ini dengan adil, kemudian jawab dengan pendirian Prof Dr; jawapan boleh mengakui sebahagian bantahan sambil mengekalkan hujah. Kedua-duanya suara penulis dan tidak bersitasi.')
+];
+export const ARAH_PETA = Object.fromEntries(ARAH.map(a => [a.k, a]));
+/* Medan arah hujah yang berisi, mengikut susunan ARAH; ruang berlebihan dipadatkan dan panjang dihadkan. */
+export function arahIsi(arah) { const a = arah && typeof arah === 'object' ? arah : {}; return ARAH.map(x => ({ k: x.k, teks: String(typeof a[x.k] === 'string' ? a[x.k] : '').replace(/\s+/g, ' ').trim().slice(0, HAD.arah) })).filter(x => x.teks); }
 
 /* ---- glosari istilah sintesis ---- */
 export const GLOSARI = [
@@ -157,6 +198,23 @@ export function tindih(a, b, n) {
   for (let i = 0; i < A.length; i++) (pos.get(A[i]) || []).forEach(j => { let k = 0; while (i + k < A.length && j + k < B.length && A[i + k] === B[j + k]) k++; if (k > larian) larian = k; });
   return { peratus: Math.round((sama / ga) * 100), larian, cukup: true };
 }
+
+/* ---- soalan pembantu: kunci padanan, pengesan soalan yang ditanya semula dengan ayat lain, dan cincang ringkas ---- */
+export const kunciSoalan = q => tanpaDiakritik(String(q || '').toLowerCase()).replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+const HENTI_SOAL = new Set(HENTI_MS.concat(HENTI_EN, ['adakah', 'apakah', 'apa', 'mana', 'manakah', 'bagaimana', 'bagaimanakah', 'mengapa', 'mengapakah', 'kenapa', 'siapa', 'siapakah', 'bila', 'bilakah', 'sama', 'ada', 'prof', 'perenggan', 'ayat', 'sumber', 'bahan', 'mahu', 'hendak', 'ingin', 'perlu', 'boleh', 'does', 'what', 'which', 'how', 'why', 'whether', 'should', 'would', 'you', 'your', 'want', 'paragraph']));
+/* Akar kasar bagi padanan soalan sahaja: imbuhan lazim dibuang supaya "ditonjolkan" dan "tonjolkan" dianggap kata yang sama. */
+const akarKasar = w => { let x = w.replace(/(?:kah|lah|nya)$/, ''); if (x.length > 5) x = x.replace(/(?:kan|an|i)$/, ''); if (x.length > 5) x = x.replace(/^(?:di|ber|ter|per|ke|se)/, ''); return x.length >= 3 ? x : w; };
+const isiSoalan = q => new Set(kataNorm(q).filter(w => w.length > 2 && !HENTI_SOAL.has(w)).map(akarKasar));
+const labelSoalan = q => Array.from(new Set(String(q || '').toUpperCase().match(/\bA\d{1,2}\b/g) || [])).sort().join(',');
+/* Dua soalan dianggap serupa apabila merujuk label bahan yang sama dan sekurang-kurangnya tiga perempat kata isi soalan yang lebih pendek
+   terdapat dalam soalan yang satu lagi. Soalan dengan dua kata isi sahaja dipadankan hanya jika kedua-duanya ada dan soalan yang satu lagi
+   tidak membawa lebih daripada satu kata isi tambahan; soalan yang lebih pendek daripada itu dipadankan hanya jika sama tepat. */
+export function soalanSerupa(a, b) {
+  const ka = kunciSoalan(a), kb = kunciSoalan(b); if (!ka || !kb) return false; if (ka === kb) return true; if (labelSoalan(a) !== labelSoalan(b)) return false;
+  const A = isiSoalan(a), B = isiSoalan(b); const kecil = Math.min(A.size, B.size), besar = Math.max(A.size, B.size); if (kecil < 2) return false; let sama = 0; A.forEach(w => { if (B.has(w)) sama++; });
+  return kecil === 2 ? sama === 2 && besar <= 3 : sama / kecil >= 0.75;
+}
+export function cincang(s) { let h = 5381; const t = String(s == null ? '' : s); for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0; return h.toString(36); }
 
 /* Sumber satu ayat bahan: sumber utama (pengarang, tahun, ms) diikuti sumber tambahan (lain). Satu ayat boleh memikul beberapa sitasi.
    dalam = artikel yang benar-benar dibaca apabila ayat itu sitasi sekunder ("seperti yang dipetik dalam"). */
@@ -502,6 +560,7 @@ export const SUMBER = {
   petric: S_('Petrić (2007)', 'Petrić, B. (2007). Rhetorical functions of citations in high- and low-rated master\'s theses. Journal of English for Academic Purposes, 6(3), 238-253.', 'https://doi.org/10.1016/j.jeap.2007.09.002', 'abstrak'),
   dbp: S_('Dewan Bahasa dan Pustaka (t.t.)', 'Dewan Bahasa dan Pustaka. (t.t.). Khidmat Nasihat Bahasa [jawapan tentang kata hubung dan penanda wacana; tarikh setiap jawapan dicatat pada entri berkenaan]. Pusat Rujukan Persuratan Melayu. Dicapai pada 11 November 2026.', 'https://prpm.dbp.gov.my/Cari1?keyword=penanda+wacana&d=175768&', 'laman rasmi'),
   apa86: S_('American Psychological Association (2022)', 'American Psychological Association. (2022, Julai). Secondary sources. APA Style [panduan bagi Seksyen 8.6, Publication Manual of the American Psychological Association, edisi ke-7]. Dicapai pada 12 November 2026.', 'https://apastyle.apa.org/style-grammar-guidelines/citations/secondary-sources', 'laman rasmi'),
+  graff: S_('Graff et al. (2018)', 'Graff, G., Birkenstein, C., & Durst, R. (2018). "They say / I say": The moves that matter in academic writing, with readings (ed. ke-4). W. W. Norton & Company.', 'https://library.usi.edu/record/1373372', 'Bab 1, 4, 6, 7 dan 15 daripada salinan yang dimuat naik oleh Prof Dr; pautan ialah rekod katalog perpustakaan'),
   upsi: S_('Universiti Pendidikan Sultan Idris (2024)', 'Universiti Pendidikan Sultan Idris. (2024). Garis panduan penulisan tesis/disertasi (diluluskan Senat Bil. 5/2023 pada 16 Mei 2023; dikemas kini November 2024).', 'https://postgrad.upsi.edu.my/thesis/1-1_TesisMalay.pdf', 'laman rasmi')
 };
 /* Peraturan menu Sintesis dan sandarannya. kuat: jenis dan kekuatan bukti, dinyatakan terus terang. */
@@ -521,5 +580,6 @@ export const ASAS = [
   { t: 'Bentuk Bahasa Melayu dalam Pustaka dan senarai Bentuk dielakkan bersandar pada jawapan Khidmat Nasihat Bahasa Dewan Bahasa dan Pustaka, dengan tarikh jawapan dicatat. Jawapan DBP kadangkala berubah mengikut masa; apabila berbeza, jawapan yang lebih baharu diutamakan dan perbezaannya dinyatakan. Rangka ayat dalam Pustaka ditulis sendiri untuk aplikasi ini, dan pengelasan kata kerja pelaporan Melayu ialah pengelasan kerja aplikasi.', kuat: 'rujukan rasmi bahasa', s: ['dbp'] },
   { t: 'Sitasi naratif menggunakan "dan", sitasi dalam kurungan menggunakan "&". Bagi beberapa sumber dalam satu kurungan, garis panduan tesis UPSI (16.10.2) menyusun mengikut tahun bermula yang terkini, sedangkan APA 7 menyusun mengikut abjad; pilih pada tetapan Susunan sitasi dan sahkan dengan penyelia.', kuat: 'garis panduan universiti', s: ['upsi'] },
   { t: 'Satu ayat bahan boleh memikul beberapa sitasi, dan sitasi sekunder ditanda supaya tidak disitasi seolah-olah dibaca terus. APA 7 (Seksyen 8.6) menamakan sumber asal, diikuti "as cited in" dan sumber yang benar-benar dibaca, contohnya (Rabbitt, 1982, as cited in Lyon et al., 2014); hanya sumber yang dibaca masuk ke senarai rujukan, dan sitasi sekunder digunakan secara berhemat kerana amalan yang baik ialah membaca sumber asal. Garis panduan tesis UPSI yang disemak pada 12 November 2026 tidak memuatkan peraturan khusus tentang sitasi sekunder, maka bentuk APA 7 digunakan. Padanan Melayu "seperti yang dipetik dalam" ialah ketetapan aplikasi dan wajar disahkan dengan penyelia. Pembetulan sitasi hanya menulis nama dan tahun yang benar-benar tertulis dalam teks ayat bahan.', kuat: 'manual gaya dan ketetapan aplikasi', s: ['apa86', 'upsi'] },
+  { t: 'Medan pilihan Arah hujah saya meminta Prof Dr menyatakan pendiriannya sebelum pembantu menulis, dan apa-apa yang dinyatakan di situ, dalam Konteks perbincangan atau sebagai jawapan kepada soalan pembantu tidak ditanya semula. Sembilan medan itu diambil daripada gerakan yang lazim dalam Graff et al. (2018): memulakan dengan pandangan orang lain dan perbahasan yang sedang berlangsung (Bab 1); tiga cara memberi respons, iaitu tidak bersetuju dengan alasan, bersetuju dengan kelainan, serta bersetuju dan tidak bersetuju serentak dengan penekanan pada salah satunya (Bab 4); menjangka bantahan pembaca dan menjawabnya tanpa melepaskan pendirian (Bab 6); menyatakan siapa yang berkepentingan dan apa akibatnya (Bab 7); dan, dalam bab sains sosial tulisan Erin Ackerman, menyatakan bahawa sesuatu pandangan betul tetapi perlu disyaratkan atau diluaskan, serta mengenal pasti jurang (Bab 15). Nama medan, soalan pandu dan contoh isian ditulis sendiri dalam Bahasa Melayu; templat buku itu tidak disalin. Tanda pada ayat cadangan dan senarai "bersandar pada kenyataan Prof Dr" ialah ketetapan aplikasi supaya pendirian penulis tidak tersalah anggap sebagai dapatan sumber.', kuat: 'buku panduan retorik, bukan kajian empirikal; lima bab dibaca daripada salinan Prof Dr', s: ['graff'] },
   { t: 'Had bukti: tiada kajian yang ditemui menguji reka bentuk ini (contoh daripada model diikuti parafrasa oleh pelajar) dalam kalangan calon kedoktoran atau dalam Bahasa Melayu. Ukuran kemajuan yang paling boleh dipercayai ialah tulisan Tahap 3 dan penilaian penyelia, bukan skor pengesan gaya.', kuat: 'had', s: [] }
 ];
