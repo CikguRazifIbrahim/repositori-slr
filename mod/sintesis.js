@@ -53,7 +53,7 @@ export function initSintesis(R) {
       if (a.tema && a.tema === b.tema) { skor += 1; sebab.push('tema sama'); }
       const tb = teoriDalam(b); const tSama = ta.filter(t => tb.includes(t)); if (tSama.length) { skor += Math.min(2, tSama.length) * 1.2; sebab.push('teori sepunya: ' + tSama.slice(0, 3).join(', ')); }
       if (a.rekaBentuk && a.rekaBentuk === b.rekaBentuk) { skor += 0.4; sebab.push('reka bentuk ' + a.rekaBentuk.toLowerCase()); }
-      if (a.jenisKesan && a.jenisKesan === b.jenisKesan && /Perantaraan|Kedua-dua/.test(a.jenisKesan)) { skor += 0.5; sebab.push('kedua-dua menguji kesan perantaraan'); }
+      if (a.jenisKesan && a.jenisKesan === b.jenisKesan && /Perantaraan|Kedua-dua/.test(a.jenisKesan)) { skor += 0.5; sebab.push('kedua-dua menguji kesan pengantaraan'); }
       if (a.peringkat && a.peringkat === b.peringkat) { skor += 0.5; sebab.push('peringkat ' + a.peringkat.toLowerCase()); }
       if (a.negara && normT(a.negara) === normT(b.negara)) { skor += 0.4; sebab.push('negara ' + a.negara); }
       if (a.asasTeori && a.asasTeori === b.asasTeori && a.asasTeori !== 'Tiada') { skor += 0.3; sebab.push('asas teori ' + a.asasTeori.toLowerCase()); }

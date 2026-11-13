@@ -91,7 +91,7 @@ export const ELAK = [
   'R1 exemplar menyatakan jurang terletak pada perkara yang sudah dikaji. Baiki: R1 menyebut yang sudah dikaji, R2 menyebut yang belum dikaji.',
   'Rujukan kabur "this development" dalam J1. Baiki: namakan hubungan itu.',
   'Label konstruk berubah (DKM menjadi KM) dan frasa "these two variables" bagi tiga konstruk. Baiki: label seragam dan bilangan tepat.',
-  'Soalan dan objektif exemplar tidak meliputi kesan langsung IV ke DV dan perantaraan walaupun kedua-duanya dihipotesiskan. Baiki: jajaran satu banding satu termasuk perantaraan.',
+  'Soalan dan objektif exemplar tidak meliputi kesan langsung IV ke DV dan pengantaraan walaupun kedua-duanya dihipotesiskan. Baiki: jajaran satu banding satu termasuk pengantaraan.',
   'Entri rujukan Razzaq et al. (2019) dalam exemplar tidak sepadan dengan huraian dalam teks. Baiki: semak padanan teks dengan entri rujukan bagi setiap kajian yang dikritik.',
   'Nada "failed to address" terhadap kajian yang tidak berniat mengkaji DV. Baiki: "did not examine".'
 ];
@@ -137,7 +137,7 @@ function pecahAyat(teks) {
 
 /* ---- Kad Model dan Matriks Ketinggalan ---- */
 /* Elemen model: konstruk paksi (keluarga yang dikongsi kajian yang dikritik; tidak perlu ditinggalkan), setiap pemboleh ubah,
-   konteks (peringkat dan negara) dan perantaraan (jika model mempunyai perantara). */
+   konteks (peringkat dan negara) dan pengantaraan (jika model mempunyai perantara). */
 const pecahSinonim = teks => { const [nama, ...al] = String(teks || '').split('|'); return [nama.trim()].concat(al.join(',').split(/[,;]/).map(s => s.trim())).filter(Boolean); };
 export function elemen(t) {
   const x = tetapan(t); const pv = ((t && t.pemboleh) || []).filter(v => v && v.nama); const out = [];
@@ -145,7 +145,7 @@ export function elemen(t) {
   pv.forEach((v, i) => out.push({ k: 'v' + i, jenis: 'pv', nama: v.nama, kata: [v.nama].concat(String(v.alias || '').split(/[,;]/).map(s => s.trim()).filter(Boolean)) }));
   if (x.peringkat) out.push({ k: 'peringkat', jenis: 'peringkat', nama: 'Konteks: ' + x.peringkat, nilai: x.peringkat });
   if (String(x.negara || '').trim()) out.push({ k: 'negara', jenis: 'negara', nama: 'Negara: ' + x.negara.trim(), nilai: x.negara.trim() });
-  const perantara = x.perantara == null ? pv.length >= 3 : !!x.perantara; if (perantara) out.push({ k: 'perantara', jenis: 'perantara', nama: 'Kesan perantaraan' });
+  const perantara = x.perantara == null ? pv.length >= 3 : !!x.perantara; if (perantara) out.push({ k: 'perantara', jenis: 'perantara', nama: 'Kesan pengantaraan' });
   return out;
 }
 /* Nilai automatik satu sel: 'a' dikongsi, 't' ditinggalkan, '?' belum pasti (medan rekod kosong). */
@@ -181,7 +181,7 @@ export function meter(ctx, u) {
   if (!mx.el.length) butir.push('Tetapkan pemboleh ubah (butang Tetapkan di atas Pandu Tulis) dan konteks dalam panel DNA jurang supaya Matriks Ketinggalan dapat dibina.');
   else {
     komp.push(uk.n ? (uk.n - uk.tanpa.length) / uk.n : 0); komp.push(Math.min(1, uk.layak / 4)); komp.push(uk.ulasan ? 1 : 0.5);
-    if (uk.tanpa.length) butir.push(`Elemen model yang belum dimiliki mana-mana kritikan dalam Matriks Ketinggalan: ${uk.tanpa.join('; ')}. Cari kajian yang meninggalkan elemen ini, atau tandakan slot [PERLU SUMBER] dalam tulisan.${mx.el.some(e => e.jenis === 'perantara' && uk.tanpa.includes(e.nama)) ? ' Bagi kesan perantaraan, kritikan yang lazim ialah kajian yang menguji kesan langsung IV ke DV sahaja tanpa perantara (gerakan K-PERANAN).' : ''}`);
+    if (uk.tanpa.length) butir.push(`Elemen model yang belum dimiliki mana-mana kritikan dalam Matriks Ketinggalan: ${uk.tanpa.join('; ')}. Cari kajian yang meninggalkan elemen ini, atau tandakan slot [PERLU SUMBER] dalam tulisan.${mx.el.some(e => e.jenis === 'perantara' && uk.tanpa.includes(e.nama)) ? ' Bagi kesan pengantaraan, kritikan yang lazim ialah kajian yang menguji kesan langsung IV ke DV sahaja tanpa perantara (gerakan K-PERANAN).' : ''}`);
     if (uk.layak < 3) butir.push(`Hanya ${uk.layak} artikel sumber empirikal layak dikritik (berkongsi sekurang-kurangnya satu elemen atau konstruk paksi dan meninggalkan sekurang-kurangnya satu elemen); DNA memerlukan tiga hingga lima.${mx.el.some(e => e.jenis === 'paksi') ? '' : ' Isi Konstruk paksi dalam Kad Model supaya kajian sekeluarga (contohnya pengurusan pengetahuan umum) dikira berkongsi.'}`);
     if (!uk.ulasan) butir.push('Tiada ulasan (sorotan sistematik, ulasan skop atau meta-analisis) dalam artikel sumber untuk gerakan K-ULASAN; tambah satu jika ada.');
   }
@@ -208,7 +208,7 @@ export function meter(ctx, u) {
     const elTeks = mx.el.filter(e => e.jenis === 'pv' || e.jenis === 'peringkat');
     if (elTeks.length && ayK.length) { const gab = ayK.join(' '); const belum = elTeks.filter(e => !ada(gab, e.jenis === 'pv' ? e.kata : [e.nilai].concat(KATA_PERINGKAT[e.nilai] || []))); komp.push((elTeks.length - belum.length) / elTeks.length);
       if (belum.length) butir.push(`Elemen yang belum disebut dalam mana-mana ayat kritikan: ${belum.map(e => e.nama).join('; ')}. Prinsip pemetaan memerlukan setiap elemen ditinggalkan oleh sekurang-kurangnya satu kajian yang dikritik.`); }
-    if (mx.el.some(e => e.jenis === 'perantara') && ay.some(s => /\?\s*$/.test(s) || /\bobjektif\b|\bobjectives?\b/i.test(s))) { soalanMed = ay.some(s => (/\?\s*$/.test(s) || /\bobjektif\b|\bobjectives?\b/i.test(s)) && RE_PERANTARA.test(s)); if (!soalanMed) { komp.push(0.5); butir.push('Model mempunyai perantara tetapi soalan atau objektif perantaraan belum dikesan; jajarkan SK, OK dan hipotesis satu banding satu.'); } }
+    if (mx.el.some(e => e.jenis === 'perantara') && ay.some(s => /\?\s*$/.test(s) || /\bobjektif\b|\bobjectives?\b/i.test(s))) { soalanMed = ay.some(s => (/\?\s*$/.test(s) || /\bobjektif\b|\bobjectives?\b/i.test(s)) && RE_PERANTARA.test(s)); if (!soalanMed) { komp.push(0.5); butir.push('Model mempunyai perantara tetapi soalan atau objektif pengantaraan belum dikesan; jajarkan SK, OK dan hipotesis satu banding satu.'); } }
   }
   const nilai = komp.length ? Math.round(100 * komp.reduce((s, x) => s + x, 0) / komp.length) : 0;
   const status = n < 40 ? 'info' : (kritik < 2 || (mx.el.length && uk.tanpa.length > mx.el.length / 2)) ? 'gagal' : butir.length ? 'amaran' : 'ok';
@@ -239,7 +239,7 @@ ARAHAN DNA: Bina rantaian K hanya daripada sel "ditinggalkan" yang disokong meda
 }
 export const arahanBincang = () => 'ARAHAN DNA BAGI RANGKA: namakan setiap baris rangka dengan kod DNA (contohnya "J2", "K-HASIL", "R1", "T2") mengikut urutan seni bina berkod; bagi setiap baris K, nyatakan kajian, apa yang dikaji, latar dan elemen yang ditinggalkannya berdasarkan Matriks Ketinggalan. Dalam amaran, sebut elemen model yang belum ada pemilik dan dakwaan negatif yang perlu disandarkan.';
 export const arahanCadangan = en => `ARAHAN DNA BAGI CADANGAN: label fungsi setiap perenggan menyenaraikan kod DNA ayat-ayatnya mengikut urutan, contohnya [Kitaran 2: W4 J2 K-HASIL K-KONTEKS]. Selepas perenggan ${en ? 'DECISIONS FOR PROF DR' : 'KEPUTUSAN UNTUK PROF DR'}, tulis satu perenggan pendek bermula "${en ? 'UNION TEST' : 'UJI KESATUAN'}:" yang memadankan setiap elemen model dengan kajian yang memilikinya, dan satu perenggan bermula "${en ? 'HONEST NOTE' : 'NOTA JUJUR'}:" yang menyenaraikan setiap dakwaan negatif relatif berserta skopnya, setiap sitasi sekunder dan setiap penanda [PERLU SUMBER: ...].`;
-export const arahanSemak = () => 'ARAHAN DNA BAGI SEMAKAN: nilai juga sama ada tiga kitaran wujud dan setiap satu ditutup dengan tujuan; setiap ayat kritikan bermula dengan pengarang-tahun dan membawa penanda ketinggalan; rantaian mengikut arah DV dahulu; R1 menyebut yang sudah dikaji dan R2 yang belum dikaji; tiada dakwaan negatif mutlak; setiap elemen model dimiliki sekurang-kurangnya satu kritikan; serta soalan, objektif dan hipotesis sejajar satu banding satu termasuk perantaraan.';
+export const arahanSemak = () => 'ARAHAN DNA BAGI SEMAKAN: nilai juga sama ada tiga kitaran wujud dan setiap satu ditutup dengan tujuan; setiap ayat kritikan bermula dengan pengarang-tahun dan membawa penanda ketinggalan; rantaian mengikut arah DV dahulu; R1 menyebut yang sudah dikaji dan R2 yang belum dikaji; tiada dakwaan negatif mutlak; setiap elemen model dimiliki sekurang-kurangnya satu kritikan; serta soalan, objektif dan hipotesis sejajar satu banding satu termasuk pengantaraan.';
 
 /* ---- paparan panel J dalam folder Pendahuluan ---- */
 export function ringkasan(ctx) {

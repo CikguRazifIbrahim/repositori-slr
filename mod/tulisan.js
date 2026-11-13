@@ -305,14 +305,17 @@ export function initTulisan(R, konfig) {
       [1, 'Prosedur Pengumpulan Data'], [1, 'Kaedah Analisis Data'], [2, 'Penyediaan dan Pemeriksaan Awal Data'], [2, 'Analisis Statistik Deskriptif'], [2, 'Analisis Statistik Inferensi'],
       [3, 'Analisis Faktor Pengesahan (CFA)'], [3, 'Penilaian Kesahan dan Kebolehpercayaan Konstruk'], [3, 'Analisis Laluan dan Penilaian Model Berstruktur'], [3, 'Analisis Kesan Perantara'],
       [2, 'Rumusan Persoalan Kajian, Hipotesis dan Analisis Data'], [1, 'Pertimbangan Etika'], [1, 'Rumusan']],
-    4: [[1, 'Pendahuluan'], [1, 'Profil Responden dan Kadar Respons'], [1, 'Penyediaan dan Pemeriksaan Data'], [2, 'Data Hilang dan Nilai Ekstrem'], [2, 'Normaliti dan Multikolineariti'], [2, 'Bias Kaedah Sepunya'],
+    4: [[1, 'Pendahuluan'], [1, 'Profil Responden dan Kadar Pulangan'], [1, 'Penyediaan dan Pemeriksaan Data'], [2, 'Data Hilang dan Nilai Ekstrem'], [2, 'Normaliti dan Multikolineariti'], [2, 'Bias Kaedah Sepunya'],
       [1, 'Analisis Deskriptif Pemboleh Ubah Kajian'], [2, 'Tahap Kepimpinan Digital Guru Besar'], [2, 'Tahap Pengurusan Pengetahuan Digital Organisasi'], [2, 'Tahap Kompetensi Digital Guru'],
-      [1, 'Penilaian Model Pengukuran'], [2, 'Analisis Faktor Pengesahan (CFA)'], [2, 'Kesahan Konvergen dan Diskriminan'], [2, 'Kebolehpercayaan Konstruk'],
-      [1, 'Penilaian Model Berstruktur'], [2, 'Indeks Padanan Model'], [2, 'Pengujian Hipotesis Kesan Langsung (H1 hingga H3)'], [2, 'Pengujian Kesan Perantara (H4)'],
+      [1, 'Penilaian Model Pengukuran'], [2, 'Analisis Faktor Pengesahan (CFA)'], [2, 'Kesahan Menumpu dan Mencapah'], [2, 'Kebolehpercayaan Konstruk'],
+      [1, 'Penilaian Model Berstruktur'], [2, 'Indeks Kesepadanan Model'], [2, 'Pengujian Hipotesis Kesan Langsung (H1 hingga H3)'], [2, 'Pengujian Kesan Perantara (H4)'],
       [1, 'Perbandingan Sekolah Bandar dan Luar Bandar'], [1, 'Rumusan Dapatan Mengikut Soalan Kajian'], [1, 'Rumusan']],
     5: [[1, 'Pendahuluan'], [1, 'Ringkasan Kajian'], [1, 'Perbincangan Dapatan Kajian'], [2, 'Tahap Kepimpinan Digital, Pengurusan Pengetahuan Digital Organisasi dan Kompetensi Digital Guru'], [2, 'Pengaruh Kepimpinan Digital Guru Besar terhadap Kompetensi Digital Guru'], [2, 'Pengaruh Kepimpinan Digital Guru Besar terhadap Pengurusan Pengetahuan Digital Organisasi'], [2, 'Pengaruh Pengurusan Pengetahuan Digital Organisasi terhadap Kompetensi Digital Guru'], [2, 'Pengurusan Pengetahuan Digital Organisasi sebagai Perantara'], [2, 'Perbandingan Sekolah Bandar dan Luar Bandar'],
       [1, 'Implikasi Kajian'], [2, 'Implikasi Teori'], [2, 'Implikasi Amalan'], [2, 'Implikasi Dasar'], [1, 'Batasan Kajian'], [1, 'Cadangan Kajian Lanjutan'], [1, 'Kesimpulan']]
   };
+  /* Tajuk templat yang ditukar mengikut senarai istilah Prof Dr (v1.31.0). Tajuk lama yang sudah ada dalam bab dikira sebagai tajuk yang sama,
+     supaya butang subtopik tidak menambah pendua; tajuk yang sudah disimpan tidak diubah. */
+  const TAJUK_LAMA = { 'Profil Responden dan Kadar Pulangan': 'Profil Responden dan Kadar Respons', 'Kesahan Menumpu dan Mencapah': 'Kesahan Konvergen dan Diskriminan', 'Indeks Kesepadanan Model': 'Indeks Padanan Model' };
   const ARAS_MAKS = 3;
   function tanpaNombor(t) { return String(t || '').replace(/^\s*\d+(\.\d+)*\.?\s+/, '').trim(); }
   /* Nombor seksyen dikira daripada kedudukan dan aras (seperti tajuk berbilang aras Word): 2.3, 2.3.1, 2.3.1.1. Lompatan aras yang tidak sah
@@ -337,7 +340,7 @@ export function initTulisan(R, konfig) {
   }
   function isiTemplat(n, opts) {
     opts = opts || {}; const d = doc(n); const lama = senarai(n); const ada = new Set(lama.map(id => norm(d.seksyen[id].tajuk)).filter(Boolean));
-    const baru = []; (cfg.templat(n) || []).forEach(([aras, tajuk]) => { if (opts.semua || !ada.has(norm(tajuk))) { const id = idBaru(); d.seksyen[id] = { tajuk, teks: '', cipta: Date.now(), masa: Date.now(), patah: 0, aras, sumber: { jenis: 'templat' } }; baru.push(id); } });
+    const baru = []; (cfg.templat(n) || []).forEach(([aras, tajuk]) => { if (opts.semua || !(ada.has(norm(tajuk)) || (TAJUK_LAMA[tajuk] && ada.has(norm(TAJUK_LAMA[tajuk]))))) { const id = idBaru(); d.seksyen[id] = { tajuk, teks: '', cipta: Date.now(), masa: Date.now(), patah: 0, aras, sumber: { jenis: 'templat' } }; baru.push(id); } });
     if (!baru.length) return 0;
     d.susunan = opts.depan ? baru.concat(lama) : lama.concat(baru); d.templat = true; d.masa = Date.now(); simpanLokal(n, d);
     const patch = { seksyen: {}, susunan: d.susunan, masa: d.masa, templat: true }; baru.forEach(id => { patch.seksyen[id] = d.seksyen[id]; }); simpanAwan(n, patch); return baru.length;

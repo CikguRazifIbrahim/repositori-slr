@@ -4,6 +4,8 @@
    laporan berstruktur: profil, perbandingan setiap bahagian, penilaian teknikal, laporan keseluruhan ringkas dan refleksi
    terhadap kajian Prof Dr. Hanya artikel yang semua medan A hingga F sudah diisi boleh dibandingkan; jika belum, amaran dan
    butang ke rekod dipaparkan. Laporan agen disimpan (meta/banding_<kunci> dan salinan tempatan) supaya tidak perlu dijana semula. */
+import { PIAWAI_RINGKAS } from './bahasa-data.js';
+
 export function initBanding(R) {
   const { $, $$, esc, toast, GROUPS } = R;
   const B = { a: '', b: '', laporan: null, simpanan: null, busy: false, hasil: false, kayu: '', pasangan: [], sibukPeta: false };
@@ -189,7 +191,7 @@ export function initBanding(R) {
     return `Anda ialah Agen Banding Prof Dr Claude, penilai literatur akademik kepada seorang calon PhD (dipanggil Prof Dr) di Universiti Pendidikan Sultan Idris. Tugas anda: membandingkan DUA artikel kepala ke kepala berdasarkan medan ekstrak Bahagian A hingga F yang telah diisi dalam Repositori SLR (bukan teks penuh PDF), seperti laporan teknikal perbandingan dua pemain.
 
 Peraturan:
-1. Bahasa Melayu Malaysia baku, laras akademik; istilah Malaysia (guru besar, dapatan, kajian); jangan gunakan sempang em atau en.
+1. Bahasa Melayu Malaysia baku, laras akademik setaraf tesis PhD; jangan gunakan sempang em atau en. Ikut PIAWAIAN BAHASA di bawah, termasuk senarai istilah Prof Dr.
 2. Sifar fabrikasi: hujah hanya daripada medan yang diberi. Jika sesuatu medan tidak memadai untuk dinilai, nyatakan "maklumat dalam rekod tidak memadai" dan jangan mengandaikan. Jangan mereka angka, nama atau rujukan.
 3. Namakan artikel sebagai Artikel 1 dan Artikel 2 secara konsisten, boleh disertai Penulis (Tahun).
 4. Skor setiap dimensi ialah integer 0 hingga 100 dengan asas yang dinyatakan dalam ulasan; bezakan skor hanya apabila medan memberi alasan. Dimensi tepat seperti dalam skema, lapan kesemuanya, dan perbandingan bahagian tepat enam, A hingga F mengikut urutan.
@@ -198,6 +200,8 @@ Peraturan:
 7. Ringkas dan padat; perenggan prosa, bukan senarai berbutir; nilai rentetan dalam satu perenggan.
 9. Peta dimensi: bagi setiap artikel senaraikan setiap konstruk dengan peranan (bebas, perantara, penyederhana, bersandar, kawalan), kerangka atau instrumen sumbernya, dan dimensi serta subdimensinya tepat seperti yang dinyatakan dalam medan konstruk, definisi, teori dan instrumen; jika rekod tidak menyatakan dimensi, pulangkan senarai dimensi kosong dan bukan tekaan. Perbandingan dimensi menamakan dimensi yang dikongsi, yang hanya ada pada satu artikel, dan implikasinya kepada instrumen Prof Dr.
 8. Format output: SATU objek JSON mengikut skema yang disediakan (atau melalui alat laporan_banding jika alat itu diberi), tanpa teks pengantar.
+
+${PIAWAI_RINGKAS}
 
 Profil kajian Prof Dr:
 ${profil}`;

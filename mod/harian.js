@@ -141,7 +141,7 @@ export function initHarian(R) {
     { l: 'tinjauan soal selidik', w: 2, rx: /\bsurvey(?:s|ed)?\b|\bquestionnaires?\b|\bLikert\b/i },
     { l: 'SEM', w: 3, rx: /\bstructural equation\b|\bSEM\b|\bPLS-?SEM\b|\bpartial least squares?\b|\bAMOS\b|\bpath (?:analysis|model(?:ing|ling)?)\b/i },
     { l: 'CB-SEM/AMOS', w: 1, rx: /\bAMOS\b|\bcovariance-?based\b|\bCB-?SEM\b/i },
-    { l: 'perantara (mediasi)', w: 3, rx: /\bmediat(?:ing|ion|or|ors|es|ed)\b|\bindirect effects?\b/i },
+    { l: 'pengantaraan (mediation)', w: 3, rx: /\bmediat(?:ing|ion|or|ors|es|ed)\b|\bindirect effects?\b/i },
     { l: 'penyederhana', w: 1, rx: /\bmoderat(?:ing|ion|or|ors|es|ed)\b/i },
     { l: 'responden guru', w: 2, rx: /\b\d{2,}\s+(?:school |primary |elementary )?teachers\b|\bteachers?\s+(?:were|participated|responded|completed|rated|surveyed|perceived)\b|\bsample[^.]{0,80}\bteachers\b|\bteacher respondents\b|\bteachers['’]\s+(?:perceptions?|perspectives?|views?|ratings?|responses?)\b|\bamong (?:school |primary |elementary )?teachers\b|\bdata (?:were |was )?collected from[^.]{0,40}teachers\b/i },
     { l: 'guru besar atau pengetua', w: 1, rx: /\bprincipals?\b|\bhead ?teachers?\b|\bheadmasters?\b|\bschool leaders?\b/i },

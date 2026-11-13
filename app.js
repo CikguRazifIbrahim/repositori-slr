@@ -6,6 +6,7 @@ import { initHarian } from './mod/harian.js';
 import { initPeta } from './mod/peta.js';
 import { initWeb } from './mod/web.js';
 import { initIsi } from './mod/isi.js';
+import { initBahasa } from './mod/bahasa.js';
 import { initBanding } from './mod/banding.js';
 import { initTulisan } from './mod/tulisan.js';
 import { initArtikel } from './mod/artikel.js';
@@ -13,7 +14,7 @@ import { initSintesis } from './mod/sintesis.js';
 import { initBengkel } from './mod/bengkel.js';
 import { initKumpulan } from './mod/kumpulan.js';
 import { initKalendar } from './mod/kalendar.js';
-const VERSION = '1.30.2';
+const VERSION = '1.31.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -55,7 +56,7 @@ const GROUPS = [
   { id: 'secB', letter: 'B', title: 'Isi kajian', sub: 'Medan 3 dan 4', medan: [
     { n: 3, title: 'Objektif dan konstruk', fields: [
       { k: 'objektif', label: 'Objektif kajian', type: 'textarea', rows: 2, wide: true, help: 'Perkara yang hendak dibuktikan, dalam satu atau dua ayat.' },
-      { k: 'konstruk', label: 'Konstruk dan peranannya', type: 'textarea', rows: 3, wide: true, help: 'Pemboleh ubah bebas, perantara, moderator dan bersandar, berserta dimensi setiap satu.' }
+      { k: 'konstruk', label: 'Konstruk dan peranannya', type: 'textarea', rows: 3, wide: true, help: 'Pemboleh ubah bebas, perantara, penyederhana dan bersandar, berserta dimensi setiap satu.' }
     ] },
     { n: 4, title: 'Definisi dan teori', fields: [
       { k: 'definisi', label: 'Definisi konstruk', type: 'textarea', rows: 3, wide: true, help: 'Takrif dalam ayat sendiri, disertai petikan asal pendek dan muka surat.' },
@@ -67,17 +68,17 @@ const GROUPS = [
     { n: 5, title: 'Reka bentuk dan sampel', fields: [
       { k: 'rekaBentuk', label: 'Reka bentuk', type: 'select', opts: ['Kuantitatif', 'Kualitatif', 'Kaedah campuran', 'Ulasan atau sintesis', 'Konseptual'] },
       { k: 'penilai', label: 'Siapa menilai siapa', type: 'select', opts: ['Penilaian kendiri', 'Guru menilai guru besar', 'Guru besar menilai diri', 'Pelbagai penilai', 'Tidak berkenaan'], help: 'Preseden bagi reka bentuk penilaian silang.' },
-      { k: 'sampel', label: 'Sampel dan persampelan', type: 'textarea', rows: 2, wide: true, help: 'Siapa, berapa ramai dan cara dipilih.' }
+      { k: 'sampel', label: 'Sampel dan persampelan', type: 'textarea', rows: 2, wide: true, help: 'Siapa, berapa ramai, cara dipilih dan kadar pulangan.' }
     ] },
     { n: 6, title: 'Instrumen dan analisis', fields: [
-      { k: 'instrumen', label: 'Instrumen', type: 'textarea', rows: 3, wide: true, help: 'Sumber adaptasi, bilangan item, skala, alfa Cronbach, CR dan AVE.' },
+      { k: 'instrumen', label: 'Instrumen', type: 'textarea', rows: 3, wide: true, help: 'Sumber adaptasi, bilangan item, skala, Cronbach Alpha, CR dan AVE.' },
       { k: 'teknik', label: 'Teknik analisis', type: 'text', help: 'CB-SEM, PLS-SEM, regresi, analisis tematik.' },
       { k: 'perisian', label: 'Perisian dan prosedur', type: 'text', help: 'AMOS, SmartPLS, bootstrapping 5,000.' }
     ] }
   ] },
   { id: 'secD', letter: 'D', title: 'Dapatan', sub: 'Medan 7 dan 8', medan: [
     { n: 7, title: 'Dapatan utama', fields: [
-      { k: 'dapatan', label: 'Dapatan utama', type: 'textarea', rows: 5, wide: true, help: 'Pekali laluan, nilai p, R kuasa dua, kesan tidak langsung dan jenis perantaraan. Masukkan laluan yang tidak signifikan, berserta muka surat.' }
+      { k: 'dapatan', label: 'Dapatan utama', type: 'textarea', rows: 5, wide: true, help: 'Pekali laluan, nilai p, R kuasa dua, kesan tidak langsung dan jenis pengantaraan. Masukkan laluan yang tidak signifikan, berserta muka surat.' }
     ] },
     { n: 8, title: 'Cabaran dan implikasi', fields: [
       { k: 'cabaran', label: 'Cabaran yang dilaporkan', type: 'textarea', rows: 2, wide: true, help: 'Halangan kepada kepimpinan digital, perkongsian pengetahuan atau kompetensi digital guru.' },
@@ -645,7 +646,7 @@ function openFlip(id, idx, page) {
 
 /* ---------- rendering: record form ---------- */
 function buildForm() {
-  $('#form').innerHTML = GROUPS.map(g => `<section id="${g.id}" class="group"><h2>${g.letter}. ${esc(g.title)} <small>${esc(g.sub)}</small><span class="ai-wrap"><span class="ai-stat" data-aistat="${g.letter}" hidden></span><button type="button" class="btn btn-sm btn-ai" data-isi="${g.letter}" title="Claude membaca keseluruhan PDF artikel ini dan mengisi medan bahagian ${g.letter} yang masih kosong sebagai draf">Mohon Prof Dr Claude isikan</button></span></h2>${g.medan.map(m => `<div class="medan"><h3><b>${m.n}</b>${esc(m.title)}</h3><div class="fgrid">${m.fields.map(fieldHtml).join('')}</div>${m.n === 12 ? '<div id="sintesisPanel" class="sin-panel"></div>' : ''}</div>`).join('')}</section>`).join('');
+  $('#form').innerHTML = GROUPS.map(g => `<section id="${g.id}" class="group"><h2>${g.letter}. ${esc(g.title)} <small>${esc(g.sub)}</small><span class="ai-wrap"><span class="ai-stat" data-aistat="${g.letter}" hidden></span><span class="ai-stat bh-stat" data-bhstat="${g.letter}" role="button" tabindex="0" hidden></span><button type="button" class="btn btn-sm btn-bh" data-piawai="${g.letter}" title="Agen bahasa memiawaikan teks bahagian ${g.letter} kepada Bahasa Melayu Malaysia akademik mengikut senarai istilah Prof Dr. Pindaan dipaparkan dahulu untuk disemak; angka dan petikan tidak disentuh">Piawaikan bahasa</button><button type="button" class="btn btn-sm btn-ai" data-isi="${g.letter}" title="Claude membaca keseluruhan PDF artikel ini dan mengisi medan bahagian ${g.letter} yang masih kosong sebagai draf">Mohon Prof Dr Claude isikan</button></span></h2>${g.medan.map(m => `<div class="medan"><h3><b>${m.n}</b>${esc(m.title)}</h3><div class="fgrid">${m.fields.map(fieldHtml).join('')}</div>${m.n === 12 ? '<div id="sintesisPanel" class="sin-panel"></div>' : ''}</div>`).join('')}</section>`).join('');
 }
 function fieldHtml(f) {
   const id = 'f_' + f.k; const wide = f.wide ? ' wide' : ''; const help = f.help ? `<div class="help">${esc(f.help)}</div>` : '';
@@ -676,7 +677,7 @@ function writeControl(k, v) {
   if (el.value !== s) el.value = s;
   if (f && f.lain) segarLain(f); else if (LAIN_FIELD[k]) segarLain(LAIN_FIELD[k]);
 }
-function fillForm(d) { ALL_KEYS.forEach(k => writeControl(k, d[k])); renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); if (R.Sintesis) R.Sintesis.render(d); }
+function fillForm(d) { ALL_KEYS.forEach(k => writeControl(k, d[k])); renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); if (R.Bahasa) R.Bahasa.renderStat(d); if (R.Sintesis) R.Sintesis.render(d); }
 function mergeIntoForm() {
   const d = S.docs.get(S.currentId); if (!d) return;
   const dirty = S.dirty[S.currentId] || new Set(); const active = document.activeElement;
@@ -686,7 +687,7 @@ function mergeIntoForm() {
     if (el && active === el) return;
     writeControl(k, d[k]);
   });
-  renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); if (R.Sintesis) R.Sintesis.render(d);
+  renderRecordHead(d); renderFiles(d); if (R.Isi) R.Isi.renderStat(d); if (R.Bahasa) R.Bahasa.renderStat(d); if (R.Sintesis) R.Sintesis.render(d);
 }
 function renderRecordHead(d) {
   const t = (d.penulis || 'Penulis belum diisi') + (d.tahun ? ' (' + d.tahun + ')' : '');
@@ -816,14 +817,17 @@ async function showDiag() {
 }
 async function showTetapan() {
   const meta = await DB.getMeta(); const cur = meta && meta.openalexKey ? String(meta.openalexKey) : '';
-  const ak = meta && meta.anthropicKey ? String(meta.anthropicKey) : ''; const am = (meta && meta.anthropicModel) || Isi.MODEL_DEFAULT; const prof = (meta && meta.profilKajian) || '';
+  const ak = meta && meta.anthropicKey ? String(meta.anthropicKey) : ''; const am = (meta && meta.anthropicModel) || Isi.MODEL_DEFAULT; const prof = (meta && meta.profilKajian) || ''; const ba = Isi.BAHASA_AUTO.some(x => x[0] === (meta && meta.bahasaAuto)) ? meta.bahasaAuto : Isi.BAHASA_AUTO[0][0];
   const okk = await richModal('Tetapan', `<div class="help">Kunci API OpenAlex (disyorkan, percuma). Tanpa kunci, carian harian berkongsi bajet awam kecil (kira-kira 100 carian sehari untuk semua pengguna pada alamat IP yang sama) dan boleh ditolak dengan ralat 429. Dengan kunci, bajet ialah 1,000 carian sehari untuk Prof Dr sahaja. Cara: buka <a href="https://openalex.org/settings/api" target="_blank" rel="noopener">openalex.org/settings/api</a>, daftar akaun percuma, salin kunci dan tampal di bawah.</div><label for="tetKey">Kunci API OpenAlex</label><input id="tetKey" class="modal-in" type="text" autocomplete="off" value="${esc(cur)}" placeholder="kosongkan untuk tidak menggunakan kunci">
     <div class="help"><b>Mohon Prof Dr Claude isikan.</b> Kunci API Anthropic (akaun Console Anthropic, berbayar mengikut penggunaan, kira-kira beberapa sen setiap bahagian). Cara: buka <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>, daftar, tambah kredit, cipta API key dan tampal di bawah. Kunci dihantar hanya ke api.anthropic.com daripada aplikasi ini.</div><label for="tetAk">Kunci API Anthropic</label><input id="tetAk" class="modal-in" type="password" autocomplete="off" value="${esc(ak)}" placeholder="sk-ant-...">
     <label for="tetModel">Model</label><select id="tetModel" class="modal-in">${Isi.MODELS.map(([v, l]) => `<option value="${esc(v)}"${v === am ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+    <div class="help">Temperature, Top-K dan Top-P tidak dihantar oleh aplikasi ini: dokumentasi API Anthropic meminta ketiga-tiganya ditinggalkan bagi model keluarga 5.5, dan Sonnet 5.5 serta Opus 5.5 menolak permintaan yang menetapkannya (ralat 400). Bahasa keluaran dikawal melalui piawaian bahasa (senarai istilah Prof Dr) dalam arahan setiap agen dan melalui Agen Bahasa.</div>
+    <label for="tetBahasa">Agen Bahasa selepas "Mohon Prof Dr Claude isikan"</label><select id="tetBahasa" class="modal-in">${Isi.BAHASA_AUTO.map(([v, l]) => `<option value="${esc(v)}"${v === ba ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+    <div class="help">Agen Bahasa memiawaikan teks medan kepada Bahasa Melayu Malaysia akademik dalam satu panggilan kecil tambahan selepas setiap isian, dan satu panggilan sahaja bagi Isi semua bahagian (teks medan sahaja, bukan PDF; lazimnya beberapa ribu token). Butang Piawaikan bahasa pada setiap bahagian rekod sentiasa tersedia bagi teks yang sudah ada, dan menu tiga titik menyediakan Semakan bahasa semua rekod tanpa token.</div>
     <label for="tetProfil">Profil kajian Prof Dr (digunakan untuk bahagian E dan F; kosongkan untuk profil lalai)</label><textarea id="tetProfil" class="modal-in" rows="7" placeholder="${esc(Isi.PROFIL_DEFAULT.slice(0, 160))}...">${esc(prof)}</textarea>`, 'Simpan', 'Batal');
   if (!okk) return;
   const v = richModal.values || {};
-  const patch = { openalexKey: String(v.tetKey ?? cur).trim(), anthropicKey: String(v.tetAk ?? ak).trim(), anthropicModel: String(v.tetModel || am).trim() || Isi.MODEL_DEFAULT, profilKajian: String(v.tetProfil ?? prof).trim() };
+  const patch = { openalexKey: String(v.tetKey ?? cur).trim(), anthropicKey: String(v.tetAk ?? ak).trim(), anthropicModel: String(v.tetModel || am).trim() || Isi.MODEL_DEFAULT, profilKajian: String(v.tetProfil ?? prof).trim(), bahasaAuto: Isi.BAHASA_AUTO.some(x => x[0] === v.tetBahasa) ? v.tetBahasa : ba };
   const st = await DB.setMeta(patch);
   if (st && st.awan === false) toast('Tetapan disimpan pada peranti ini sahaja; Firestore menolak penulisan ke koleksi meta (' + ((st.err && st.err.code) || 'ralat') + '). Terbitkan peraturan Firestore supaya tetapan dikongsi semua peranti.', true);
   else toast('Tetapan disimpan');
@@ -1154,6 +1158,7 @@ $('#moreMenu').addEventListener('click', async e => {
   else if (x === 'drive-redirect') { const okk = await confirmBox('Sambung Drive melalui lencongan', 'Aplikasi akan beralih ke halaman kebenaran Google dan kembali ke sini selepas akses dibenarkan. Perubahan yang belum dihantar disimpan dahulu.', 'Teruskan', false); if (okk) Drive.connectRedirect(); }
   else if (x === 'diag') { await showDiag(); }
   else if (x === 'tetapan') { await showTetapan(); }
+  else if (x === 'bahasa-semua') { await Bahasa.laporanSemua(); }
   else if (x === 'tul-naik') { goView('tulisan'); $('#tulFail').click(); }
   else if (x === 'tul-turun') { goView('tulisan'); Tulisan.muatTurun(); }
   else if (x === 'pasang') { if (S.installPrompt) { S.installPrompt.prompt(); try { await S.installPrompt.userChoice; } catch (er) {} S.installPrompt = null; $('#btnInstall').hidden = true; } }
@@ -1366,6 +1371,7 @@ const Harian = initHarian(R); R.Harian = Harian;
 const Peta = initPeta(R); R.Peta = Peta;
 const Web = initWeb(R); R.Web = Web;
 const Isi = initIsi(R); R.Isi = Isi;
+const Bahasa = initBahasa(R); R.Bahasa = Bahasa;
 const Banding = initBanding(R); R.Banding = Banding;
 const Tulisan = initTulisan(R); R.Tulisan = Tulisan;
 const Artikel = initArtikel(R, initTulisan); R.Artikel = Artikel;

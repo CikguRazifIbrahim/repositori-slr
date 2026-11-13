@@ -37,7 +37,7 @@ export function initPrisma(X) {
     }
     if (d.guna2 && dikenal2 > 0) { if (dinilai2 < 0) isu.push(`Kaedah lain: laporan tidak diperoleh (${angka(num(d.tidak2))}) melebihi rekod dikenal pasti (${angka(dikenal2)}).`); else if (masuk2 < 0) isu.push(`Kaedah lain: laporan dikecualikan (${angka(nSebab2)}) melebihi laporan dinilai (${angka(dinilai2)}).`); }
     if (isi(d.laporan) && laporan < kajian && kajian > 0) isu.push(`Laporan kajian yang dimasukkan (${angka(laporan)}) kurang daripada bilangan kajian (${angka(kajian)}).`);
-    const dok = C.doc(); const nSumber = dok ? C.sumberAda(dok).length : 0; if (kajian > 0 && nSumber && nSumber !== kajian) info.push(`Kajian dimasukkan (${angka(kajian)}) berbeza daripada artikel sumber yang dipilih bagi artikel ini (${nSumber}). Ini dibenarkan (had sumber ${C.HAD_SUMBER}), tetapi angka dalam teks mesti mengikut rajah.`);
+    const dok = C.doc(); const nSumber = dok ? C.sumberAda(dok).length : 0; if (kajian > 0 && nSumber && nSumber !== kajian) info.push(`Kajian dimasukkan (${angka(kajian)}) berbeza daripada artikel sumber yang dipilih bagi artikel ini (${nSumber}). Ini dibenarkan, tetapi angka dalam teks mesti mengikut rajah.`);
     const lengkap = adaPang.length > 0 && !tanpaRentetan.length && !tanpaTarikh.length && !tanpaN.length && dikenal > 0 && isi(d.pendua) && isi(d.dikecualikan) && kajian > 0 && !isu.length;
     return { d, nPang, dikenal, buang, disaring, dicari, dinilai, nSebab, masuk1, dikenal2, dinilai2, nSebab2, masuk2, kajian, laporan, isu, info, lengkap, adaPang };
   }

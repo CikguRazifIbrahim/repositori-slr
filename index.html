@@ -220,6 +220,19 @@ button.chip{cursor:pointer}
 .group h2 .ai-wrap{margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--font-body)}
 .btn-ai{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line);font-weight:700}
 .btn-ai:disabled{opacity:.7}
+.btn-bh{color:var(--accent);border-color:var(--accent-line);font-weight:600} .btn-bh:disabled{opacity:.7}
+.bh-stat{cursor:pointer} .bh-stat.warn{color:var(--warn);background:var(--warn-soft)}
+.bh-medan{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0;background:var(--surface)}
+.bh-pilih{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .bh-pilih small{color:var(--muted)}
+.bh-dua{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px} .bh-dua>div{min-width:0} .bh-dua span{display:block;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)} .bh-dua p{margin:4px 0 0;font-size:13.5px;line-height:1.5;overflow-wrap:anywhere}
+.bh-dua mark{background:var(--warn-soft);color:var(--fg);border-radius:3px;padding:0 2px}
+.bh-senarai{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.bh-baris{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface)}
+.bh-bil{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap} .bh-nama{min-width:0} .bh-nama b{display:block;font-size:13.5px;overflow-wrap:anywhere} .bh-nama small{display:block;color:var(--muted);font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.bh-n{font-size:12.5px;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:2px 9px}
+@media (max-width:640px){.bh-baris{grid-template-columns:auto 1fr auto} .bh-baris .btn{grid-column:1 / -1;justify-self:start}}
+.bh-pindaan{margin:8px 0 0;padding-left:18px;font-size:13px;line-height:1.5} .bh-pindaan s{color:var(--bad)} .bh-pindaan b{color:var(--ok)} .bh-pindaan i{color:var(--muted)} .bh-pindaan small{color:var(--muted);margin-right:4px}
+@media (max-width:640px){.bh-dua{grid-template-columns:1fr}}
 .ai-stat{font-size:11.5px;font-weight:600;color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:2px 8px;text-transform:none;letter-spacing:0}
 .modal-card select.modal-in,.modal-card textarea.modal-in{width:100%;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-size:14px;margin:6px 0 12px;background:var(--surface);font-family:inherit}
 .modal-card{max-height:92vh;overflow:auto}
@@ -772,6 +785,7 @@ body.web-open{overflow:hidden}
 .pd-kj-acts{margin-top:8px}
 .pd-notis{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px}
 .pd-notis .btn{margin:0 4px}
+.art-token.had{background:var(--bad-soft);color:var(--bad)}
 .pd-sedia{border:1px dashed var(--line-strong);border-radius:10px;padding:12px 14px;margin-top:8px}
 .pd-sedia h3{margin:0 0 6px;font-size:15px}
 .pd-pratonton{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
@@ -1427,7 +1441,8 @@ ol.bs-soal-l li{margin-bottom:7px}
           <button data-x="diag">Diagnostik Drive</button>
           <button data-x="tul-naik">Muat naik fail MS Word (Tulisan Tesis)</button>
           <button data-x="tul-turun">Muat turun fail MS Word (Tulisan Tesis)</button>
-          <button data-x="tetapan">Tetapan (kunci OpenAlex)</button>
+          <button data-x="bahasa-semua">Semakan bahasa semua rekod (tanpa token)</button>
+          <button data-x="tetapan">Tetapan (kunci API, model, Agen Bahasa)</button>
           <button data-x="pasang" id="btnInstall" hidden>Pasang sebagai aplikasi</button>
           <button data-x="keluar">Log keluar</button>
           <div class="menu-note" id="menuVersi"></div>
@@ -1570,7 +1585,7 @@ ol.bs-soal-l li{margin-bottom:7px}
 
 <main id="artikel" class="view" hidden>
   <div class="tul-head">
-    <div><h1>Artikel Penerbitan</h1><div class="sub">Ruang menulis artikel jurnal dan persidangan daripada artikel dalam repositori: pilih jenis artikel, dapatkan cadangan tajuk daripada pembayang, kumpulkan sehingga 15 artikel sumber, tanya agen tentang semua artikel sumber itu sekali gus, dan tulis seksyen dengan ASAL dan RAM. Disimpan automatik ke awan.</div></div>
+    <div><h1>Artikel Penerbitan</h1><div class="sub">Ruang menulis artikel jurnal dan persidangan daripada artikel dalam repositori: pilih jenis artikel, dapatkan cadangan tajuk daripada pembayang, kumpulkan artikel sumber tanpa had bilangan, tanya agen tentang semua artikel sumber itu sekali gus, dan tulis seksyen dengan ASAL dan RAM. Disimpan automatik ke awan.</div></div>
     <span class="spacer"></span>
     <div class="tul-acts">
       <button id="btnArtBaru" class="btn btn-primary" title="Cipta artikel penerbitan baharu">Artikel baharu</button>
@@ -1595,7 +1610,7 @@ ol.bs-soal-l li{margin-bottom:7px}
       <section id="artEditor" class="tul-editor"></section>
     </div>
   </div>
-  <div class="harian-note">Setiap artikel penerbitan disimpan dalam awan (meta/penerbitan) dan pada peranti, berserta jenis, senarai artikel sumber (maksimum 15, dikumpulkan mengikut status bacaan, dengan meter kelengkapan Bahagian A hingga F dan butang ke rekod) dan soal jawab yang merangkumi semua artikel sumber (maksimum 10 soalan; setiap soalan satu panggilan API Anthropic dengan kunci API Prof Dr, menghantar medan A hingga F semua artikel sumber, ringkasan laporan Banding sedia ada antara sumber dan soal jawab terdahulu, bukan PDF; amaran kos dengan anggaran token dipaparkan sebelum setiap soalan). Editor seksyen, ASAL dan RAM, warna, jadual, rajah, Word masuk dan keluar serta sejarah versi adalah sama seperti Tulisan Tesis. Pembantu tajuk di bawah medan Tajuk artikel: tulis pembayang dan jawab soalan pandu mengikut jenis artikel, agen mencadangkan tiga atau lima tajuk dalam tetingkap timbul (satu panggilan API yang kecil dengan amaran kos), klik satu cadangan untuk mengisi medan Tajuk, dan tajuk itu kekal boleh disunting bila-bila masa; meter Semakan tajuk menyemak tajuk rasmi tanpa agen dan tanpa kos.</div>
+  <div class="harian-note">Setiap artikel penerbitan disimpan dalam awan (meta/penerbitan) dan pada peranti, berserta jenis, senarai artikel sumber (tiada had bilangan, tetapi semakin banyak artikel, semakin banyak token bagi setiap panggilan agen; dikumpulkan mengikut status bacaan, dengan meter kelengkapan Bahagian A hingga F dan butang ke rekod) dan soal jawab yang merangkumi semua artikel sumber (maksimum 10 soalan; setiap soalan satu panggilan API Anthropic dengan kunci API Prof Dr, menghantar medan A hingga F semua artikel sumber, ringkasan laporan Banding sedia ada antara sumber dan soal jawab terdahulu, bukan PDF; amaran kos dengan anggaran token dipaparkan sebelum setiap soalan). Editor seksyen, ASAL dan RAM, warna, jadual, rajah, Word masuk dan keluar serta sejarah versi adalah sama seperti Tulisan Tesis. Pembantu tajuk di bawah medan Tajuk artikel: tulis pembayang dan jawab soalan pandu mengikut jenis artikel, agen mencadangkan tiga atau lima tajuk dalam tetingkap timbul (satu panggilan API yang kecil dengan amaran kos), klik satu cadangan untuk mengisi medan Tajuk, dan tajuk itu kekal boleh disunting bila-bila masa; meter Semakan tajuk menyemak tajuk rasmi tanpa agen dan tanpa kos.</div>
 </main>
 
 <main id="bengkel" class="view" hidden>
@@ -1630,6 +1645,7 @@ ol.bs-soal-l li{margin-bottom:7px}
           <span class="spacer"></span>
           <button id="btnViewPdf" class="btn btn-sm btn-primary" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4zM8 18v2h8v-2"/></svg>Lihat PDF</button>
           <button id="btnIsiSemua" class="btn btn-sm btn-ai" hidden title="Claude membaca keseluruhan PDF dan mengisi semua medan kosong bahagian A hingga F sebagai draf">Isi semua bahagian (A hingga F)</button>
+          <button id="btnPiawaiSemua" class="btn btn-sm btn-bh" hidden title="Agen bahasa memiawaikan teks semua bahagian rekod ini kepada Bahasa Melayu Malaysia akademik dalam satu panggilan; pindaan dipaparkan dahulu untuk disemak">Piawaikan bahasa (A hingga F)</button>
           <button id="btnSplit" class="btn btn-sm" hidden title="Baca PDF di sebelah borang"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg>Pandangan berpecah</button>
         </div>
         <h1 id="rekodTitle">Artikel</h1>

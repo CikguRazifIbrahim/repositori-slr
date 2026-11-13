@@ -1,22 +1,26 @@
 /* "Mohon Prof Dr Claude isikan": pembantu yang membaca keseluruhan PDF artikel dan mengisi medan satu bahagian
    (A hingga F) sebagai draf permulaan. Panggilan dibuat terus dari pelayar ke API Anthropic dengan kunci API
    Prof Dr sendiri (disimpan dalam Tetapan). Hanya medan yang masih kosong diisi; nilai yang sudah ditulis dikekalkan. */
+import { PIAWAI_PENUH } from './bahasa-data.js';
+
 export function initIsi(R) {
   const { $, $$, esc, toast, GROUPS, FIELD_BY_KEY } = R;
   const API = 'https://api.anthropic.com/v1/messages';
   const MODEL_DEFAULT = 'claude-sonnet-5-5';
   const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (seimbang, disyorkan)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (paling pantas dan murah)'], ['claude-opus-5-5', 'Claude Opus 5.5 (paling teliti, kos tertinggi)']];
+  /* Agen Bahasa selepas isian (mod/bahasa.js): nilai pertama ialah lalai. */
+  const BAHASA_AUTO = [['sentiasa', 'Sentiasa, selepas setiap isian (lalai)'], ['perlu', 'Hanya apabila pengesan menemui istilah untuk dipiawaikan (jimat token)'], ['tidak', 'Tidak; saya panggil sendiri melalui butang Piawaikan bahasa']];
   const SKIP = new Set(['catatan']);
   const I = { cache: new Map(), busy: new Set(), semua: false, mod: {} };
   const PROFIL_DEFAULT = `Tajuk: Pengaruh Kepimpinan Digital Guru Besar terhadap Kompetensi Digital Guru dengan Pengurusan Pengetahuan Organisasi sebagai Perantara di Sekolah Rendah Negeri Perak (calon PhD, Universiti Pendidikan Sultan Idris).
 Model: pemboleh ubah bebas Kepimpinan Digital Guru Besar (KD; kerangka ISTE Standards for Education Leaders 2024, lima dimensi: Penyokong Kewarganegaraan Digital, Perancang Berwawasan, Pemimpin Pemerkasa, Pereka Bentuk Sistem, Pembelajar Berhubung); pemboleh ubah perantara Pengurusan Pengetahuan Organisasi (PPO; Model SECI Nonaka dan Takeuchi: Sosialisasi, Eksternalisasi, Kombinasi, Internalisasi, serta konsep Ba dan Pandangan Berasaskan Pengetahuan Grant 1996; dilihat sebagai amalan dan tahap amalan); pemboleh ubah bersandar Kompetensi Digital Guru (KDG; DigCompEdu Redecker 2017, enam bidang, 22 kompetensi).
 Hipotesis: H1 KD mempengaruhi KDG secara langsung; H2 KD mempengaruhi PPO; H3 PPO mempengaruhi KDG; H4 PPO mengantara hubungan KD dengan KDG (kesan tidak langsung a x b).
-Teori penambat: Kepimpinan Transformasional (Bass), Teori Kognitif Sosial (Bandura), SECI dan Ba (Nonaka), KBV (Grant), model kesan perantara kepimpinan sekolah (Hallinger dan Heck 1998), kepimpinan berorientasikan pengetahuan (Donate dan Sanchez de Pablo 2015). Prinsip: laluan tingkah laku, bukan model penerimaan teknologi (TAM, UTAUT tidak sejajar).
-Metodologi: kuantitatif, bukan eksperimen, keratan rentas, tinjauan soal selidik; guru menilai guru besar (penilaian silang) dan menilai diri bagi PPO dan KDG; sekolah rendah Negeri Perak dengan perbandingan bandar dan luar bandar; persampelan kelompok berstrata pelbagai peringkat; instrumen 138 item (KD 61, KDG 37, PPO 40), skala kekerapan 1 hingga 10; kesahan kandungan (CVI pakar), EFA dan CFA; analisis CB-SEM dengan IBM SPSS Amos; pengujian perantara dengan bootstrap 5,000 resampel dan selang keyakinan terbetul pincang 95 peratus mengikut tipologi Zhao, Lynch dan Chen (2010).
+Teori sandaran: Kepimpinan Transformasi (Bass), Teori Kognitif Sosial (Bandura), SECI dan Ba (Nonaka), KBV (Grant), model kesan pengantaraan kepimpinan sekolah (Hallinger dan Heck 1998), kepimpinan berorientasikan pengetahuan (Donate dan Sanchez de Pablo 2015). Prinsip: laluan tingkah laku, bukan model penerimaan teknologi (TAM, UTAUT tidak sejajar).
+Metodologi: kuantitatif, bukan eksperimen, keratan rentas, tinjauan soal selidik; guru menilai guru besar (penilaian silang) dan menilai diri bagi PPO dan KDG; sekolah rendah Negeri Perak dengan perbandingan bandar dan luar bandar; persampelan kelompok berstrata pelbagai peringkat; instrumen 138 item (KD 61, KDG 37, PPO 40), skala kekerapan 1 hingga 10; kesahan kandungan (CVI pakar), EFA dan CFA; analisis CB-SEM dengan IBM SPSS Amos; pengujian pengantaraan dengan 5,000 sampel bootstrap dan selang keyakinan bootstrapping terbetul bias 95 peratus mengikut tipologi Zhao, Lynch dan Chen (2010).
 Bab tesis: Bab 1 Pengenalan dan pernyataan masalah; Bab 2 Sorotan literatur (konsep dan teori KD, PPO, KDG; kajian lepas; kerangka konseptual); Bab 3 Metodologi; Bab 4 Dapatan; Bab 5 Perbincangan.`;
 
   /* ---- tetapan ---- */
-  async function tetapan() { let m = {}; try { m = (await R.db().getMeta()) || {}; } catch (e) {} return { key: String(m.anthropicKey || '').trim(), model: String(m.anthropicModel || MODEL_DEFAULT).trim() || MODEL_DEFAULT, profil: String(m.profilKajian || '').trim() || PROFIL_DEFAULT }; }
+  async function tetapan() { let m = {}; try { m = (await R.db().getMeta()) || {}; } catch (e) {} return { key: String(m.anthropicKey || '').trim(), model: String(m.anthropicModel || MODEL_DEFAULT).trim() || MODEL_DEFAULT, profil: String(m.profilKajian || '').trim() || PROFIL_DEFAULT, bahasaAuto: BAHASA_AUTO.some(x => x[0] === m.bahasaAuto) ? m.bahasaAuto : BAHASA_AUTO[0][0] }; }
 
   /* ---- teks penuh artikel ---- */
   function pageText(items) {
@@ -47,9 +51,9 @@ Bab tesis: Bab 1 Pengenalan dan pernyataan masalah; Bab 2 Sorotan literatur (kon
   const PANDUAN = {
     A: 'Ambil butiran daripada kepala artikel (jurnal, jilid, isu, halaman, DOI, tahun terbit sebenar). "rujukan": susun rujukan APA 7 lengkap daripada maklumat yang ada dalam PDF; jika jilid atau halaman tiada, tinggalkan bahagian itu dan jangan mereka. "penulis": nama keluarga penulis pertama diikuti "et al." jika tiga penulis atau lebih, atau "A dan B" jika dua. "jenis": ikut reka bentuk sebenar artikel; jika artikel itu kertas prosiding persidangan (contohnya terbit dalam prosiding atau siri Procedia), pilih "Prosiding" kerana reka bentuknya dicatat pada medan "rekaBentuk"; pilih "Lain-lain" hanya jika tiada pilihan lain yang sepadan. "indeks" dan "kuartil": hanya jika artikel sendiri menyatakannya, jika tidak "Tidak pasti". "negara": negara lokasi kutipan data. "peringkat" dan "lokasi": ikut sampel kajian. "tema": tema utama yang paling hampir dengan konstruk teras artikel.',
     B: '"objektif": perkara yang hendak dibuktikan, satu hingga dua ayat. "konstruk": senaraikan setiap konstruk dengan peranannya (bebas, perantara, penyederhana, bersandar, kawalan) dan dimensinya; gunakan titik koma antara konstruk. "definisi": takrif setiap konstruk teras dalam ayat sendiri, disertai petikan asal pendek dalam tanda petik dan muka surat. "teori": nama teori atau model yang dijadikan asas serta sumber primernya seperti yang disitasi artikel (penulis dan tahun). "asasTeori": Tingkah laku bagi teori kepimpinan, organisasi atau kognitif sosial; Teknologi bagi TAM, UTAUT, TPB penerimaan teknologi; Kedua-dua jika digabung.',
-    C: '"rekaBentuk": ikut artikel. "penilai": siapa menilai siapa, misalnya guru menilai guru besar bermakna guru menjadi responden yang menilai pemimpin. "sampel": siapa, berapa ramai, cara dipilih, kadar respons, dengan muka surat. "instrumen": sumber adaptasi setiap skala, bilangan item, jenis skala, alfa Cronbach, CR dan AVE jika dilaporkan, dengan muka surat. "teknik": teknik analisis utama (contoh CB-SEM, PLS-SEM, regresi berganda, analisis tematik). "perisian": perisian dan prosedur (contoh AMOS, SmartPLS, bootstrapping 5,000).',
-    D: '"dapatan": laporkan setiap laluan atau hipotesis dengan pekali (beta), nilai p atau t, R kuasa dua, kesan tidak langsung dan jenis perantaraan jika ada; masukkan juga laluan yang tidak signifikan; setiap angka dengan muka surat; gunakan titik koma antara dapatan; padatkan kepada kira-kira 1,500 aksara (dapatan paling penting dahulu). "cabaran": halangan atau cabaran yang dilaporkan berkaitan kepimpinan digital, perkongsian pengetahuan atau kompetensi digital guru. "implikasi": kesimpulan artikel serta implikasi teori dan implikasi amalan atau dasar seperti yang dinyatakan pengarang.',
-    E: '"batasan": batasan dan cadangan kajian lanjutan yang diakui pengarang sendiri, dengan muka surat. "jurang": jurang yang terserlah daripada artikel ini dan cara kajian Prof Dr (lihat profil) boleh mengisinya; nyatakan secara spesifik (konteks, populasi, teori, kaedah atau empirikal). "jenisJurang": pilih jenis jurang yang berkaitan. "kekuatan": kekuatan metodologi dan sumbangan artikel. "kelemahan": kritikan kritis, misalnya bias kaedah sepunya, sampel kecil atau bukan rawak, dakwaan sebab akibat daripada data keratan rentas, kesahan instrumen tidak dilaporkan. "mmat": nilai lima kriteria MMAT 2018 bagi kategori reka bentuk berkenaan (contoh kuantitatif deskriptif: persampelan relevan, sampel mewakili, pengukuran sesuai, risiko bias bukan respons rendah, analisis statistik sesuai); tulis setiap kriteria sebagai Ya, Tidak atau Tidak pasti dengan sebab ringkas.',
+    C: '"rekaBentuk": ikut artikel. "penilai": siapa menilai siapa, misalnya guru menilai guru besar bermakna guru menjadi responden yang menilai pemimpin. "sampel": siapa, berapa ramai, cara dipilih, taburan sampel dan kadar pulangan, dengan muka surat. "instrumen": sumber adaptasi setiap skala, bilangan item, jenis skala, nilai Cronbach Alpha, kebolehpercayaan komposit (CR) dan purata varians diekstrak (AVE) jika dilaporkan, dengan muka surat. "teknik": teknik analisis utama (contoh CB-SEM, PLS-SEM, regresi berganda, analisis tematik). "perisian": perisian dan prosedur (contoh AMOS, SmartPLS, bootstrapping 5,000).',
+    D: '"dapatan": laporkan setiap laluan atau hipotesis dengan pekali (beta), nilai p atau t, R kuasa dua, kesan tidak langsung dan jenis pengantaraan (penuh, separa, pelengkap, bersaing atau tidak langsung sahaja) jika ada; masukkan juga laluan yang tidak signifikan; setiap angka dengan muka surat; gunakan titik koma antara dapatan; padatkan kepada kira-kira 1,500 aksara (dapatan paling penting dahulu). "cabaran": halangan atau cabaran yang dilaporkan berkaitan kepimpinan digital, perkongsian pengetahuan atau kompetensi digital guru. "implikasi": kesimpulan artikel serta implikasi teori dan implikasi amalan atau dasar seperti yang dinyatakan pengarang.',
+    E: '"batasan": batasan dan cadangan kajian lanjutan yang diakui pengarang sendiri, dengan muka surat. "jurang": jurang yang terserlah daripada artikel ini dan cara kajian Prof Dr (lihat profil) boleh mengisinya; nyatakan secara spesifik (konteks, populasi, teori, kaedah atau empirikal). "jenisJurang": pilih jenis jurang yang berkaitan. "kekuatan": kekuatan metodologi dan sumbangan artikel. "kelemahan": kritikan kritis, misalnya bias kaedah sepunya, sampel kecil atau bukan rawak, dakwaan sebab akibat daripada data keratan rentas, kesahan instrumen tidak dilaporkan. "mmat": nilai lima kriteria MMAT 2018 bagi kategori reka bentuk berkenaan (contoh kuantitatif deskriptif: persampelan relevan, sampel mewakili, pengukuran sesuai, risiko bias akibat responden tidak membalas rendah, analisis statistik sesuai); tulis setiap kriteria sebagai Ya, Tidak atau Tidak pasti dengan sebab ringkas.',
     F: '"relevansi": Tinggi jika artikel mengkaji sekurang-kurangnya dua daripada tiga konstruk kajian Prof Dr (kepimpinan digital atau kepimpinan sekolah, pengurusan atau perkongsian pengetahuan, kompetensi digital guru) dalam konteks sekolah dengan kaedah kuantitatif; Sederhana-Tinggi jika satu konstruk teras dengan kaedah yang serupa atau dua konstruk dengan kaedah berbeza; Sederhana jika satu konstruk; Rendah jika hanya konteks umum. "jenisKesan": kesan yang diuji artikel (Langsung, Perantaraan, Kedua-dua, Tiada). "alasanRelevansi": satu ayat. "padananKdPpo": YA jika artikel memberi bukti empirikal atau hujah teori bagi hubungan kepimpinan (digital) dengan pengurusan atau perkongsian pengetahuan; "padananPpoKdg": YA jika bagi hubungan pengurusan pengetahuan dengan kompetensi digital guru; TIDAK jika hubungan itu tidak disentuh; Tidak pasti jika hanya tersirat. "bandingan": bandingkan dengan artikel lain dalam repositori Prof Dr yang disenaraikan (selari, bercanggah atau melanjutkan), rujuk sebagai Penulis (Tahun); jika senarai kosong, tulis "Tiada artikel lain untuk dibandingkan buat masa ini". "bab": bab tesis yang paling sesuai memetik artikel ini. "subtopik": cadangan subtopik Bab 2 secara umum, contohnya 2.x Kepimpinan digital dan pengurusan pengetahuan. "jejak": rujukan dalam artikel yang perlu dibaca daripada teks asal, terutamanya teori atau instrumen yang dipetik secara sekunder, dalam bentuk Penulis (Tahun) dan nama karya.'
   };
   function spec(letter) {
@@ -77,8 +81,8 @@ Bab tesis: Bab 1 Pengenalan dan pernyataan masalah; Bab 2 Sorotan literatur (kon
     return `Anda ialah Prof Dr Claude, pembantu penyelidikan akademik kepada seorang calon PhD (dipanggil Prof Dr) di Universiti Pendidikan Sultan Idris. Tugas anda: membaca TEKS PENUH satu artikel jurnal dan mengisi medan ekstrak Jadual Sorotan Literatur Sistematik sebagai DRAF PERMULAAN yang akan disemak dan diperhalusi sendiri oleh Prof Dr selepas beliau membaca artikel itu.
 
 Peraturan yang mesti dipatuhi:
-1. Bahasa: Bahasa Melayu Malaysia baku, laras akademik setaraf penulisan Scopus dan Web of Science; gunakan istilah Malaysia (guru besar, dapatan, kajian, responden), bukan Indonesia. Nama konstruk, teori dan istilah teknikal Inggeris boleh dikekalkan dalam kurungan apabila membantu. Jangan gunakan sempang em atau en; gunakan koma, titik bertindih atau perkataan "hingga".
-2. Sifar fabrikasi: tulis hanya apa yang dinyatakan dalam teks artikel. Jangan mereka angka, saiz sampel, nama instrumen, nilai alfa Cronbach, teori, rujukan atau nombor muka surat. Jika artikel tidak melaporkan sesuatu, tulis "Tiada dalam artikel". Jika anda tidak pasti, tulis "Tidak pasti" dan nyatakan sebabnya secara ringkas.
+1. Bahasa: Bahasa Melayu Malaysia baku, laras akademik setaraf tesis PhD dan penulisan Scopus serta Web of Science. Artikel lazimnya berbahasa Inggeris, maka setiap medan teks ialah terjemahan: ikut PIAWAIAN BAHASA di hujung arahan ini, termasuk senarai istilah Prof Dr, dan semak setiap medan terhadapnya sebelum memulangkan jawapan. Nama konstruk, teori dan istilah teknikal Inggeris boleh dikekalkan dalam kurungan apabila membantu. Jangan gunakan sempang em atau en; gunakan koma, titik bertindih atau perkataan "hingga".
+2. Sifar fabrikasi: tulis hanya apa yang dinyatakan dalam teks artikel. Jangan mereka angka, saiz sampel, nama instrumen, nilai Cronbach Alpha, teori, rujukan atau nombor muka surat. Jika artikel tidak melaporkan sesuatu, tulis "Tiada dalam artikel". Jika anda tidak pasti, tulis "Tidak pasti" dan nyatakan sebabnya secara ringkas.
 3. Jejak halaman: setiap angka statistik, definisi dan batasan disertai muka surat dalam bentuk (m.s. N) berdasarkan penanda [m.s. N] dalam teks artikel.
 4. Salin tepat hanya tiga perkara: rujukan, angka statistik dan petikan definisi pendek (dalam tanda petik, bahasa asal). Selebihnya tulis dalam ayat sendiri yang padat, analitik dan bersifat sintesis.
 5. Medan pilihan: pilih TEPAT satu pilihan daripada senarai yang diberi dan salin ejaannya tepat. Medan pilihan berbilang: pulangkan senarai JSON yang merupakan subset senarai pilihan (boleh kosong).
@@ -87,7 +91,9 @@ Peraturan yang mesti dipatuhi:
 8. Format output: SATU objek JSON sahaja mengikut skema yang disediakan (atau melalui alat isi_medan jika alat itu diberi), tanpa teks pengantar, tanpa penutup dan tanpa pagar kod. Kunci tepat seperti yang diminta; kunci medan yang tidak diminta ditinggalkan, atau jika skema mewajibkannya, diisi dengan "-". Nilai rentetan dalam satu perenggan.
 
 Profil kajian Prof Dr:
-${profil}`;
+${profil}
+
+${PIAWAI_PENUH}`;
   }
   function taskPrompt(letter, sp, d, lainTeks) {
     const kosong = sp.fields.filter(f => nilaiKosong(d[f.k])); const berisi = sp.fields.filter(f => !nilaiKosong(d[f.k]));
@@ -143,6 +149,9 @@ Pulangkan JSON sekarang.`;
     if (mod === 'alat') return !m || /tool/.test(m);
     return false;
   }
+  /* Temperature, Top-K dan Top-P sengaja TIDAK dihantar. Dokumentasi API meminta ketiga-tiganya ditinggalkan bagi model keluarga 5.5:
+     Sonnet 5.5 dan Opus 5.5 menolak permintaan yang menetapkannya dengan ralat 400, dan halaman Haiku 5.5 meminta ia ditinggalkan.
+     Bahasa dan gaya dikawal melalui arahan (PIAWAIAN BAHASA dalam bahasa-data.js) dan Agen Bahasa (bahasa.js). Disemak 14 November 2026. */
   const HAD_TOKEN = 8192, HAD_TOKEN_ULANG = 16384;
   /* Penghantar generik (digunakan oleh "isi medan" dan modul lain seperti Banding Artikel): mod skema -> alat -> teks dengan ingatan
      mod bagi setiap kunci (model atau tujuan:model). content ialah senarai blok kandungan pengguna; skema ialah JSON Schema jawapan;
@@ -284,24 +293,36 @@ Pulangkan JSON sekarang.`;
       patch.aiIsi = Object.assign({}, d1.aiIsi || {}, { [letter]: stat });
       await R.writeNow(id, patch);
       if (R.S.currentId === id) { R.mergeIntoForm(); renderStat(R.S.docs.get(id)); }
+      /* Agen Bahasa: isian disimpan DAHULU, kemudian medan teks yang baru diisi dipiawaikan (panggilan kecil, teks medan sahaja) dan
+         pindaannya disimpan sebagai tulisan kedua. Kegagalan atau kelewatan agen tidak menjejaskan isian yang sudah disimpan. */
+      let bahasa = null;
+      if (R.Bahasa && diisi.length && !opts.tangguhBahasa) {
+        setBtn(letter, 'Agen bahasa memiawaikan istilah', true);
+        try { bahasa = await R.Bahasa.selepasIsi(t, id, letter, patch, diisi); } catch (e) { console.warn('isi: Agen Bahasa gagal bagi bahagian', letter, e); bahasa = { gagal: R.Bahasa.msg(e) }; }
+      }
       const kekal = sp.fields.length - kosong.length;
-      if (!opts.senyap) toast(`Bahagian ${letter}: ${diisi.length} medan diisi sebagai draf${kekal ? ', ' + kekal + ' medan sedia ada dikekalkan' : ''}${ditolak.length ? '; pilihan tidak padan: ' + ditolak.join(', ') : ''}. Sila semak selepas membaca.`);
-      return { diisi: diisi.length, kekal, ditolak, usage: res.usage };
+      const rb = R.Bahasa ? R.Bahasa.ringkas(bahasa) : ''; const teksBahasa = rb ? '; ' + rb : '';
+      if (!opts.senyap) toast(`Bahagian ${letter}: ${diisi.length} medan diisi sebagai draf${kekal ? ', ' + kekal + ' medan sedia ada dikekalkan' : ''}${ditolak.length ? '; pilihan tidak padan: ' + ditolak.join(', ') : ''}${teksBahasa}. Sila semak selepas membaca.`, !!(bahasa && bahasa.gagal));
+      return { diisi: diisi.length, kekal, ditolak, usage: res.usage, bahasa, patch, kunci: diisi };
     } catch (e) { if (!opts.senyap) toast('Bahagian ' + letter + ' gagal: ' + msg(e), true); throw e; }
     finally { I.busy.delete(kunci); setBtn(letter, null, false); }
   }
   async function isiSemua(id) {
     if (I.semua) return; I.semua = true; const btn = $('#btnIsiSemua'); if (btn) { btn.disabled = true; }
-    const hasil = []; let gagal = null;
+    const hasil = []; let gagal = null; const terkumpul = []; let t = null;
     try {
-      const t = await tetapan(); if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
+      t = await tetapan(); if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
       if (!R.lsGet('rslr_isi_faham', false)) { const okk = await R.confirmBox('Isi semua bahagian A hingga F', 'Teks penuh PDF dihantar ke API Anthropic dengan kunci Prof Dr; enam panggilan berturut-turut (bahagian berikutnya lebih murah kerana cache). Hanya medan kosong diisi.', 'Faham, teruskan', false); if (!okk) return; R.lsSet('rslr_isi_faham', true); }
       for (const g of GROUPS) {
         if (btn) btn.textContent = 'Mengisi bahagian ' + g.letter + ' daripada F';
-        try { const r = await isi(id, g.letter, { senyap: true }); if (r) hasil.push(g.letter + ': ' + r.diisi); } catch (e) { gagal = g.letter + ' (' + msg(e) + ')'; break; }
+        try { const r = await isi(id, g.letter, { senyap: true, tangguhBahasa: true }); if (r) { hasil.push(g.letter + ': ' + r.diisi); if (r.patch && r.kunci && r.kunci.length) terkumpul.push({ letter: g.letter, patch: r.patch, diisi: r.kunci }); } } catch (e) { gagal = g.letter + ' (' + msg(e) + ')'; break; }
       }
+      /* Agen Bahasa dipanggil SEKALI bagi semua bahagian yang baru diisi (isian setiap bahagian sudah disimpan). */
+      let bahasa = null;
+      if (R.Bahasa && terkumpul.length) { if (btn) btn.textContent = 'Agen bahasa memiawaikan istilah'; try { bahasa = await R.Bahasa.selepasIsiSemua(t, id, terkumpul); } catch (e) { console.warn('isi: Agen Bahasa gagal selepas Isi semua', e); bahasa = { gagal: R.Bahasa.msg(e) }; } }
+      const rb = R.Bahasa ? R.Bahasa.ringkas(bahasa) : '';
       const jumlah = hasil.reduce((s, x) => s + (parseInt(x.split(': ')[1], 10) || 0), 0);
-      toast(`Isi semua selesai: ${jumlah} medan diisi sebagai draf (${hasil.join(', ')})${gagal ? '. Terhenti pada bahagian ' + gagal : ''}. Sila semak selepas membaca.`, !!gagal);
+      toast(`Isi semua selesai: ${jumlah} medan diisi sebagai draf (${hasil.join(', ')})${rb ? '; ' + rb : ''}${gagal ? '. Terhenti pada bahagian ' + gagal : ''}. Sila semak selepas membaca.`, !!gagal || !!(bahasa && bahasa.gagal));
     } finally { I.semua = false; if (btn) { btn.disabled = false; btn.textContent = 'Isi semua bahagian (A hingga F)'; } }
   }
   function renderStat(d) {
@@ -311,5 +332,5 @@ Pulangkan JSON sekarang.`;
   }
   $('#form').addEventListener('click', e => { const b = e.target.closest('[data-isi]'); if (!b) return; e.preventDefault(); isi(R.S.currentId, b.dataset.isi).catch(() => {}); });
   const bs = $('#btnIsiSemua'); if (bs) bs.addEventListener('click', () => isiSemua(R.S.currentId));
-  return { isi, isiSemua, renderStat, tetapan, MODELS, MODEL_DEFAULT, PROFIL_DEFAULT, bacaArtikel, hantar, parseJson, msg, nilaiKosong, SKIP, state: I };
+  return { isi, isiSemua, renderStat, tetapan, MODELS, MODEL_DEFAULT, PROFIL_DEFAULT, BAHASA_AUTO, systemPrompt, PANDUAN, bacaArtikel, hantar, parseJson, msg, nilaiKosong, SKIP, state: I };
 }

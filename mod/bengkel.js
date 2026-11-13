@@ -10,6 +10,7 @@
    Modul ini berbeza daripada mod/sintesis.js (Rantaian sintesis medan 12), yang menjejak hubungan antara rekod artikel. */
 import * as BD from './bengkel-data.js';
 import { GAYA_LALAI } from './pandu-data.js';
+import { PIAWAI_RINGKAS } from './bahasa-data.js';
 
 export function initBengkel(R) {
   const { $, $$, esc, toast } = R;
@@ -639,6 +640,8 @@ CARA KERJA (medan "langkah"): tiga hingga lima langkah ringkas yang menerangkan 
 HAD PANJANG (supaya jawapan tidak terpotong): "ringkas" tidak melebihi dua ayat; setiap "sebab", "cari", "huraian", "nota" dan setiap butiran "langkah", "bukti", "baik", "baiki", "sandar" serta "soalan" ialah satu ayat, tidak melebihi kira-kira 30 patah perkataan; "hubungan" tidak melebihi lima; "soalan" tidak melebihi dua; "sandar" tidak melebihi empat. Jangan ulang teks BAHAN dalam huraian. Had ini tidak terpakai kepada ayat dalam "sintesis".
 
 BAHASA OUTPUT: semua huraian (kesesuaian, sebab, huraian, langkah, letak, semakan, soalan, sandar, nota) dalam Bahasa Melayu Malaysia. Teks dalam "sintesis", rangka ayat dan "contohAyat" dalam BAHASA HASIL. Pulangkan JSON mengikut skema sahaja.
+
+${PIAWAI_RINGKAS}
 
 LATAR KAJIAN PROF DR (latar untuk memahami konteks sahaja; jangan masukkan ke dalam sintesis kecuali KONTEKS PERBINCANGAN memintanya):
 ${t.profil || ''}`;

@@ -7,6 +7,7 @@
    meta/tajuk_<id> (pembayang, jawapan, sesi cadangan, pilihan, tajuk terdahulu, token), berserta salinan tempatan. */
 import * as TD from './tajuk-data.js';
 import { GAYA_LALAI } from './pandu-data.js';
+import { PIAWAI_RINGKAS } from './bahasa-data.js';
 
 export function initTajuk(R, C) {
   const { $, esc, toast } = R; const { A } = C; const Bd = () => R.Banding;
@@ -62,7 +63,7 @@ export function initTajuk(R, C) {
     return baris.join('\n');
   }
   function sumberRingkas() {
-    const d = C.doc(); if (!d) return []; return C.sumberAda(d).slice(0, C.HAD_SUMBER).map((id, i) => { const r = Bd().rekod(id); return `${i + 1}. ${Bd().nama(r)}. ${String(r.tajuk || '').replace(/\s+/g, ' ').trim().slice(0, 220)}${r.tema ? ' [' + r.tema + ']' : ''}`; });
+    const d = C.doc(); if (!d) return []; return C.sumberAda(d).map((id, i) => { const r = Bd().rekod(id); return `${i + 1}. ${Bd().nama(r)}. ${String(r.tajuk || '').replace(/\s+/g, ' ').trim().slice(0, 220)}${r.tema ? ' [' + r.tema + ']' : ''}`; });
   }
   function cip() {
     const set = new Map(); pvPandu().forEach(v => set.set(v.nama.toLowerCase(), v.nama)); const d = C.doc(); const lain = (R.TEMA || [])[3];
@@ -113,6 +114,8 @@ CARA KERJA:
 6. Huruf besar: ${T.d.huruf === 'ayat' ? 'gaya ayat (hanya huruf pertama tajuk, huruf pertama selepas titik bertindih dan kata nama khas)' : b === 'en' ? 'gaya tajuk APA (huruf besar pada perkataan utama dan perkataan empat huruf atau lebih; kata sendi, kata hubung dan artikel pendek dengan huruf kecil kecuali di awal tajuk atau selepas titik bertindih)' : 'gaya tajuk Bahasa Melayu (huruf besar pada awal setiap perkataan kecuali kata sendi nama, kata hubung dan kata pemeri seperti di, ke, dari, daripada, dan, yang, untuk, dalam, dengan, terhadap, bagi, antara, kepada, tentang, melalui, atau, serta, apabila tidak berada di awal tajuk atau selepas titik bertindih; bagi kata ganda hanya unsur pertama berhuruf besar)'}.
 7. Gaya Prof Dr: ${b === 'en' ? 'Bahasa Inggeris akademik yang jelas' : 'Bahasa Melayu Malaysia baku dengan istilah Malaysia (guru besar, dapatan, kajian, pemboleh ubah, pengantara bagi mediator tetapi kekalkan "perantara" jika itu istilah yang ditulis oleh Prof Dr dalam pembayang, penyederhana bagi moderator); gunakan "dalam kalangan" (bukan "di kalangan"), "terhadap" selepas kesan atau pengaruh (bukan "ke atas") dan "antara ... dengan" bagi hubungan dua perkara; bina tajuk pada kata nama'}; jangan campurkan Bahasa Melayu dan Bahasa Inggeris dalam satu tajuk; jangan gunakan sempang em atau en; jangan gunakan istilah ini: ${g.larang}. Jika pola soalan digunakan, mulakan dengan "${b === 'en' ? 'How' : 'Bagaimana'}" atau "${b === 'en' ? 'Which' : 'Yang mana'}", bukan "${b === 'en' ? 'What is the level of' : 'Apakah'}" atau "${b === 'en' ? 'To what extent' : 'Sejauh mana'}", dan elakkan perkataan "${b === 'en' ? 'level' : 'tahap'}".
 8. Medan "sebab": satu atau dua ayat Bahasa Melayu tentang apa yang ditonjolkan oleh tajuk itu dan bila ia pilihan yang baik. Medan "unsur": senarai pendek unsur pembayang yang dimuat oleh tajuk (contohnya "pemboleh ubah bebas", "populasi", "konteks", "jenis kajian"). Medan "soalan": paling banyak ${HAD_SOALAN} soalan pendek kepada Prof Dr tentang maklumat yang, jika dijawab, akan menajamkan tajuk; senarai kosong jika pembayang sudah lengkap. Medan "nota": satu ayat jika ada perkara yang Prof Dr perlu tahu (contohnya unsur teras tiada, atau kata sebab-akibat tidak sepadan dengan reka bentuk); rentetan kosong jika tiada.
+
+${PIAWAI_RINGKAS}
 
 Profil kajian Prof Dr (latar sahaja, untuk memahami bidang dan istilah; jangan ambil pemboleh ubah, lokasi atau kaedah daripadanya kecuali disebut dalam pembayang):
 ${t.profil}`;

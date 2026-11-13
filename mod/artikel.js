@@ -1,16 +1,23 @@
 /* Artikel Penerbitan: ruang menulis artikel jurnal dan persidangan daripada artikel yang sudah ada dalam repositori. Setiap artikel
-   penerbitan mempunyai jenis (senarai jenis artikel akademik), sehingga 15 artikel sumber daripada repositori (dengan meter kelengkapan
+   penerbitan mempunyai jenis (senarai jenis artikel akademik), artikel sumber daripada repositori tanpa had bilangan (dengan meter kelengkapan
    Bahagian A hingga F dan butang ke rekod), soal jawab yang merangkumi semua artikel sumber (sehingga 10 soalan yang dijawab agen berdasarkan medan A hingga F
    setiap sumber, ringkasan laporan Agen Banding sedia ada antara sumber dan soalan terdahulu, dengan amaran kos sebelum setiap soalan), dan seksyen dengan editor ASAL dan RAM yang sama seperti Tulisan
    Tesis (kilang initTulisan dengan konfigurasi artikel: tiada Bab 1 hingga Bab 5, hanya seksyen). Simpanan: meta/penerbitan_indeks
    (senarai artikel) dan meta/penerbitan_<id> (seksyen, jenis, sumber, soalan), berserta salinan tempatan. */
 import { initPandu } from './pandu.js';
 import { initTajuk } from './tajuk.js';
+import { PIAWAI_RINGKAS } from './bahasa-data.js';
 
 export function initArtikel(R, initTulisan) {
   const { $, $$, esc, toast } = R;
   const A = { indeks: null, id: null, busy: false, laporan: null, laporanKunci: '' };
-  const HAD_SUMBER = 15, HAD_SOALAN = 10;
+  const HAD_SOALAN = 10;
+  /* Artikel sumber tidak lagi dihadkan (v1.31.0; dahulu 15). Kos token setiap panggilan agen bertambah dengan bilangan sumber, maka
+     peringatan token dipaparkan sentiasa dan dipertegas apabila sumber melebihi SUMBER_BANYAK atau anggaran token masuk melebihi
+     TOKEN_BESAR. Model keluarga 5.5 mempunyai tetingkap konteks 1 juta token; amaran had dipaparkan apabila anggaran melebihi TOKEN_HAD.
+     TOKEN_BESAR diletakkan di bawah 100,000 kerana Claude Haiku 5.5 mengenakan kadar lebih tinggi bagi permintaan melebihi 100,000 token
+     masuk (halaman harga Anthropic, disemak 14 November 2026), dan anggaran di sini belum mengira arahan serta soal jawab terdahulu. */
+  const SUMBER_BANYAK = 15, TOKEN_BESAR = 80000, TOKEN_HAD = 800000;
   const KUNCI_INDEKS = 'meta/penerbitan_indeks', LS_INDEKS = 'rslr_penerbitan_indeks', LS_SEMASA = 'rslr_penerbitan_semasa';
 
   /* ---- jenis artikel: kod, nama, keterangan ringkas ---- */
@@ -168,7 +175,7 @@ export function initArtikel(R, initTulisan) {
   function renderPanel() {
     const panel = $('#artPanel'), kosong = $('#artKosong'); if (!panel) return;
     const d = doc();
-    if (!d || !entri(A.id)) { panel.hidden = true; kosong.hidden = false; kosong.innerHTML = `<h3>${senaraiUnit().length ? 'Pilih artikel di atas' : 'Belum ada artikel penerbitan'}</h3><p>Setiap artikel mempunyai jenis, artikel sumber daripada repositori (sehingga ${HAD_SUMBER}), soal jawab merentas semua artikel sumber (sehingga ${HAD_SOALAN} soalan dijawab agen) dan seksyen dengan editor ASAL dan RAM seperti Tulisan Tesis. Tiada struktur bab yang tetap: tambah seksyen mengikut keperluan artikel.</p><button class="btn btn-primary" data-artbaru="1">Artikel baharu</button>`; return; }
+    if (!d || !entri(A.id)) { panel.hidden = true; kosong.hidden = false; kosong.innerHTML = `<h3>${senaraiUnit().length ? 'Pilih artikel di atas' : 'Belum ada artikel penerbitan'}</h3><p>Setiap artikel mempunyai jenis, artikel sumber daripada repositori (tanpa had bilangan), soal jawab merentas semua artikel sumber (sehingga ${HAD_SOALAN} soalan dijawab agen) dan seksyen dengan editor ASAL dan RAM seperti Tulisan Tesis. Tiada struktur bab yang tetap: tambah seksyen mengikut keperluan artikel.</p><button class="btn btn-primary" data-artbaru="1">Artikel baharu</button>`; return; }
     kosong.hidden = true; panel.hidden = false;
     renderKepala(d); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render(); if (Tajuk) Tajuk.render();
   }
@@ -189,7 +196,7 @@ export function initArtikel(R, initTulisan) {
     if (Tajuk) Tajuk.render();
   }
 
-  /* ---- artikel sumber (sehingga 15) ---- */
+  /* ---- artikel sumber (tanpa had bilangan) ---- */
   const Bd = () => R.Banding;
   /* Senarai sumber tidak ditapis secara automatik: rekod yang belum tiba daripada awan atau yang dipadam dipaparkan sebagai tidak ditemui
      supaya senarai Prof Dr tidak hilang; sumberAda() hanya untuk soal jawab. */
@@ -198,21 +205,25 @@ export function initArtikel(R, initTulisan) {
   function kelengkapanPenuh(rec) { const k = Bd().kelengkapan(rec); const semua = Bd().SEK.reduce((s, x) => s + x.fields.length, 0); const kosong = k.bahagian.reduce((s, b) => s + b.kosong.length, 0); return { k, peratus: semua ? Math.round(100 * (semua - kosong) / semua) : 0 }; }
   function renderSumber(d) {
     const el = $('#artSumber'); if (!el) return; const sumber = sumberSah(d); const dipilih = new Set(sumber);
-    const penuh = sumber.length >= HAD_SUMBER;
-    el.innerHTML = `<div class="art-sumber-pilih"><select id="artSumberSel"${penuh ? ' disabled' : ''}><option value="">${penuh ? 'Had ' + HAD_SUMBER + ' artikel dicapai; buang satu untuk menambah' : 'Tambah artikel sumber daripada repositori'}</option>${R.Kumpulan.pilihanHtml({ dipilih: sumber })}</select><span class="help"><b>${sumber.length}</b> daripada ${HAD_SUMBER} artikel dipilih. Pilih daripada senarai (dikelompokkan mengikut pemboleh ubah, dengan status bacaan dan kelengkapan pada setiap baris) untuk menambah; meter menunjukkan kelengkapan medan A hingga F setiap rekod, dan rekod yang belum lengkap elok dilengkapkan dahulu supaya soal jawab dan penulisan berpijak pada bukti.</span></div>
+    const anggaran = sumber.length ? anggarToken(teksSemuaSumber(d)) : 0;
+    el.innerHTML = `<div class="art-sumber-pilih"><select id="artSumberSel"><option value="">Tambah artikel sumber daripada repositori</option>${R.Kumpulan.pilihanHtml({ dipilih: sumber })}</select><span class="help"><b>${sumber.length}</b> artikel dipilih. Tiada had bilangan artikel sumber, tetapi semakin banyak artikel, semakin banyak token diperlukan bagi setiap soalan, cadangan tajuk dan panggilan Pandu Tulis${anggaran ? ' (anggaran semasa: ' + angka(anggaran) + ' token masuk bagi setiap soalan)' : ''}. Pilih daripada senarai (dikelompokkan mengikut pemboleh ubah, dengan status bacaan dan kelengkapan pada setiap baris) untuk menambah; meter menunjukkan kelengkapan medan A hingga F setiap rekod, dan rekod yang belum lengkap elok dilengkapkan dahulu supaya soal jawab dan penulisan berpijak pada bukti.</span></div>${peringatanToken(sumber.length, anggaran)}
       <div class="art-sumber-senarai">${sumber.length ? sumber.map((id, i) => { if (!R.S.docs.has(id)) return `<div class="art-row belum" data-sumber="${esc(id)}"><div class="art-no">${i + 1}</div><div class="avatar">?</div><div class="art-row-isi"><div class="nama">Rekod tidak ditemui dalam repositori</div><div class="tajuk">Mungkin belum dimuatkan daripada awan atau sudah dipadam. Jika kekal begini, buang daripada senarai.</div></div><div></div><div class="acts"><button class="btn btn-sm btn-danger" data-buang="${esc(id)}">Buang</button></div></div>`; const r = Bd().rekod(id); const { k, peratus } = kelengkapanPenuh(r); const dlmSoal = (d.soalan || []).some(q => q.idA === id || q.idB === id); return `<div class="art-row${k.ok ? '' : ' belum'}" data-sumber="${esc(id)}"><div class="art-no">${i + 1}</div><div class="avatar">${esc(inisial(r))}</div><div class="art-row-isi"><div class="nama">${esc(Bd().nama(r))} <span class="tag">Bil. ${esc(r.bil || '?')}</span> <span class="tag st">${esc(r.status || 'Belum dibaca')}</span>${(r.fail || []).length ? '' : ' <span class="tag">tiada PDF</span>'}${dlmSoal ? ' <span class="tag ai">dalam soal jawab</span>' : ''}</div><div class="tajuk">${esc(r.tajuk || 'Tajuk belum diisi')}</div><div class="art-meter" title="${peratus}% medan diisi"><span style="width:${peratus}%"></span></div></div><div class="band-lengkap" title="Kelengkapan Bahagian A hingga F">${k.bahagian.map(b => `<span class="${b.ok ? 'ok' : 'no'}" title="${esc(b.title + (b.ok ? ': lengkap' : ': kosong ' + b.kosong.join(', ')))}">${b.letter}</span>`).join('')}<span class="pct">${peratus}%</span></div><div class="acts"><button class="btn btn-sm${k.ok ? '' : ' btn-primary'}" data-bukarekod="${esc(id)}" title="${k.ok ? 'Buka rekod artikel ini' : 'Belum lengkap: ' + esc(k.bahagian.filter(b => !b.ok).map(b => b.letter).join(', ')) + '. Buka rekod untuk melengkapkan'}">Buka rekod</button>${(r.fail || []).length ? `<button class="btn btn-sm" data-flipart="${esc(id)}" title="Baca PDF dalam panel terapung">Baca</button>` : ''}<button class="btn btn-sm btn-danger" data-buang="${esc(id)}" title="Buang daripada senarai sumber artikel ini (rekod tidak dipadam)">Buang</button></div></div>`; }).join('') : '<div class="help">Belum ada artikel sumber. Pilih daripada senarai di atas.</div>'}</div>`;
     const sel = $('#artSumberSel'); if (sel) sel.addEventListener('change', async ev => { const id = ev.target.value; if (!id) return; await tambahSumber(id); });
-    const kira = $('#artSumberKira'); if (kira) kira.textContent = `(${sumber.length}/${HAD_SUMBER})`;
+    const kira = $('#artSumberKira'); if (kira) kira.textContent = `(${sumber.length})`;
+  }
+  function peringatanToken(n, anggaran) {
+    if (anggaran > TOKEN_HAD) return `<div class="pd-notis art-token had" id="artTokenNotis"><b>Amaran had konteks.</b> ${n} artikel sumber menghantar kira-kira ${angka(anggaran)} token masuk bagi setiap soalan, hampir dengan tetingkap konteks model (1 juta token). Panggilan agen mungkin ditolak; buang sumber yang tidak diperlukan bagi artikel ini.</div>`;
+    if (n > SUMBER_BANYAK || anggaran > TOKEN_BESAR) return `<div class="pd-notis art-token" id="artTokenNotis"><b>Peringatan token.</b> ${n} artikel sumber dipilih: setiap soalan menghantar kira-kira ${angka(anggaran)} token masuk (medan A hingga F semua sumber), dan panggilan Pandu Tulis turut menghantar bahan sumber. Soalan berturut-turut dalam lima minit lebih murah kerana cache.${anggaran > TOKEN_BESAR ? ' Anggaran ini menghampiri atau melebihi 100,000 token masuk: jika model dalam Tetapan ialah Claude Haiku 5.5, permintaan yang melebihi 100,000 token masuk dicaj pada kadar yang lebih tinggi (harga Anthropic pada November 2026).' : ''} Untuk menjimatkan token, kekalkan hanya sumber yang benar-benar digunakan dalam artikel ini.</div>`;
+    return '';
   }
   function inisial(d) { const w = String(d.penulis || '?').replace(/et al\.?/i, '').trim().split(/\s+/).filter(Boolean); return (w.slice(0, 2).map(x => x[0]).join('') || '?').toUpperCase(); }
   async function tambahSumber(id) {
     const d = doc(); if (!d) return; const sumber = sumberSah(d);
     if (sumber.includes(id)) { toast('Artikel itu sudah ada dalam senarai sumber'); return; }
-    if (sumber.length >= HAD_SUMBER) { toast(`Had ${HAD_SUMBER} artikel sumber bagi satu artikel penerbitan sudah dicapai. Buang satu artikel dahulu jika mahu menambah yang lain.`, true); renderSumber(d); return; }
     if (!R.S.docs.has(id)) { toast('Rekod itu tiada dalam repositori', true); return; }
     sumber.push(id); await simpanDoc({ sumber: d.sumber }); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render();
     const r = Bd().rekod(id); const k = Bd().kelengkapan(r);
-    toast(`${Bd().nama(r)} ditambah sebagai sumber (${sumber.length}/${HAD_SUMBER})${k.ok ? '' : '. Rekod ini belum lengkap Bahagian ' + k.bahagian.filter(b => !b.ok).map(b => b.letter).join(', ') + '; lengkapkan dahulu melalui Buka rekod'}`, !k.ok);
+    toast(`${Bd().nama(r)} ditambah sebagai sumber (${sumber.length} artikel sumber${sumber.length > SUMBER_BANYAK ? '; kira-kira ' + angka(anggarToken(teksSemuaSumber(d))) + ' token masuk bagi setiap soalan' : ''})${k.ok ? '' : '. Rekod ini belum lengkap Bahagian ' + k.bahagian.filter(b => !b.ok).map(b => b.letter).join(', ') + '; lengkapkan dahulu melalui Buka rekod'}`, !k.ok);
   }
   async function buangSumber(id) {
     const d = doc(); if (!d) return; const sumber = sumberSah(d); const i = sumber.indexOf(id); if (i < 0) return;
@@ -222,7 +233,7 @@ export function initArtikel(R, initTulisan) {
   }
 
   /* ---- soal jawab semua artikel sumber (sehingga 10 soalan) ----
-     Perbincangan merangkumi SEMUA artikel sumber artikel ini (sehingga 15): medan A hingga F setiap rekod dihantar dalam blok sistem
+     Perbincangan merangkumi SEMUA artikel sumber artikel ini (tanpa had bilangan): medan A hingga F setiap rekod dihantar dalam blok sistem
      (dicache oleh API supaya soalan berturut-turut lebih murah), berserta ringkasan laporan Agen Banding sedia ada antara sumber (sehingga
      lima) dan soal jawab terdahulu. Setiap soalan menampilkan amaran kos dengan anggaran token sebelum dihantar. */
   const anggarToken = teks => Math.round(String(teks || '').length / 3.6);
@@ -237,10 +248,10 @@ export function initArtikel(R, initTulisan) {
   function renderSoal(d) {
     const el = $('#artSoal'); if (!el) return; const s = sumberAda(d); const soalan = d.soalan || [];
     const kira = $('#artSoalKira'); if (kira) kira.textContent = `(${soalan.length}/${HAD_SOALAN})`;
-    if (!s.length) { el.innerHTML = `<div class="help">Pilih sekurang-kurangnya satu artikel sumber di atas; sesi soal jawab merangkumi semua artikel sumber artikel ini (sehingga ${HAD_SUMBER}).</div>${renderJawapan(d)}`; return; }
+    if (!s.length) { el.innerHTML = `<div class="help">Pilih sekurang-kurangnya satu artikel sumber di atas; sesi soal jawab merangkumi semua artikel sumber artikel ini.</div>${renderJawapan(d)}`; return; }
     const penuh = soalan.length >= HAD_SOALAN; const jumlahToken = soalan.reduce((t, q) => ({ masuk: t.masuk + ((q.token || {}).masuk || 0), keluar: t.keluar + ((q.token || {}).keluar || 0) }), { masuk: 0, keluar: 0 });
     const belum = s.map(id => ({ id, d: Bd().rekod(id), k: Bd().kelengkapan(Bd().rekod(id)) })).filter(x => !x.k.ok); const anggaran = anggarToken(teksSemuaSumber(d));
-    el.innerHTML = `<div class="art-skop"><b>Skop perbincangan:</b> ${s.length} daripada ${HAD_SUMBER} artikel sumber (medan A hingga F setiap rekod, bukan PDF); anggaran ${angka(anggaran)} token masuk bagi setiap soalan.${belum.length ? ` <span class="amaran">${belum.length} artikel belum lengkap A hingga F (${esc(belum.map(x => 'Bil. ' + (x.d.bil || '?') + ' ' + x.k.bahagian.filter(y => !y.ok).map(y => y.letter).join('')).join('; '))}); agen hanya menjawab daripada medan yang diisi.</span>` : ''}</div>
+    el.innerHTML = `<div class="art-skop"><b>Skop perbincangan:</b> ${s.length} artikel sumber (medan A hingga F setiap rekod, bukan PDF); anggaran ${angka(anggaran)} token masuk bagi setiap soalan.${s.length > SUMBER_BANYAK || anggaran > TOKEN_BESAR ? ' <span class="amaran">Semakin banyak artikel sumber, semakin banyak token bagi setiap soalan.</span>' : ''}${belum.length ? ` <span class="amaran">${belum.length} artikel belum lengkap A hingga F (${esc(belum.map(x => 'Bil. ' + (x.d.bil || '?') + ' ' + x.k.bahagian.filter(y => !y.ok).map(y => y.letter).join('')).join('; '))}); agen hanya menjawab daripada medan yang diisi.</span>` : ''}</div>
       <div id="artLaporan" class="art-laporan"></div>
       <div class="art-tanya"><div class="art-cadangan"><span class="lbl">Soalan pantas:</span>${CADANGAN.map((c, i) => `<button class="chip" data-cadangan="${i}" title="${esc(c)}">${esc(ringkas(c, 46))}</button>`).join('')}</div>
         <textarea id="artSoalan" rows="3" placeholder="Taip soalan Prof Dr tentang ${s.length} artikel sumber ini, contohnya: apakah limitasi yang berulang merentas artikel-artikel ini dan jurang yang sama yang boleh saya isi?"${penuh ? ' disabled' : ''}></textarea>
@@ -270,13 +281,15 @@ export function initArtikel(R, initTulisan) {
     return `Anda ialah Agen Soal Jawab Artikel Prof Dr Claude, pembantu penulisan artikel penerbitan kepada seorang calon PhD (dipanggil Prof Dr) di Universiti Pendidikan Sultan Idris. Prof Dr sedang menulis artikel penerbitan${j ? ' jenis "' + j.nama + '"' : ''}${e.tajuk ? ' bertajuk "' + e.tajuk + '"' : ''}. Tugas anda: menjawab SATU soalan Prof Dr tentang ${bahan.length} artikel sumber yang disenaraikan di bawah (Artikel 1 hingga Artikel ${bahan.length}) berdasarkan medan ekstrak Bahagian A hingga F yang telah diisi dalam Repositori SLR (bukan teks penuh PDF), dan, jika disertakan dalam mesej, ringkasan laporan Agen Banding sedia ada serta soalan dan jawapan terdahulu.
 
 Peraturan:
-1. Bahasa Melayu Malaysia baku, laras akademik; istilah Malaysia (guru besar, dapatan, kajian); jangan gunakan sempang em atau en.
+1. Bahasa Melayu Malaysia baku, laras akademik setaraf tesis PhD; jangan gunakan sempang em atau en. Ikut PIAWAIAN BAHASA di bawah, termasuk senarai istilah Prof Dr.
 2. Sifar fabrikasi: hujah hanya daripada bahan yang diberi. Jika medan tidak memadai untuk menjawab, nyatakan "maklumat dalam rekod tidak memadai" dan namakan artikel serta bahagian yang perlu dilengkapkan; jangan mengandaikan, mereka angka, nama atau rujukan.
 3. Rujuk artikel dengan Penulis (Tahun) dan, jika perlu bagi kejelasan, nombornya (Artikel 3). Apabila membuat dakwaan merentas artikel, nyatakan artikel mana yang menyokongnya dan artikel mana yang tidak menyentuhnya.
 4. Jawab terus dan jitu kepada soalan: dua hingga enam perenggan prosa yang padat, tanpa pengantar, tanpa penutup basa-basi, tanpa senarai berbutir kecuali soalan meminta senarai atau jadual; jika soalan meminta jadual, gunakan jadual teks ringkas dengan satu baris bagi setiap artikel.
 5. Jika soalan tentang pola, persamaan, perbezaan, limitasi berulang, jurang, kaedah atau konteks, sintesiskan merentas SEMUA artikel sumber (bukan dua sahaja): kumpulkan artikel mengikut pola yang sama, namakan pengecualian, dan sokong setiap dakwaan dengan medan yang berkenaan (contohnya sampel, instrumen, dapatan, batasan).
 6. Akhiri dengan satu perenggan pendek bermula "Untuk artikel Prof Dr:" yang menyatakan cara jawapan ini boleh digunakan dalam artikel yang sedang ditulis (justifikasi jurang, sintesis, kaedah atau perbincangan).
 7. Jika soalan meminta perenggan sintesis, tulis perenggan itu dalam gaya sorotan literatur dengan sitasi Penulis (Tahun), mengelompokkan artikel yang selari, menonjolkan yang bercanggah, dan menamakan jurang yang kekal.
+
+${PIAWAI_RINGKAS}
 
 Profil kajian Prof Dr:
 ${profil}
@@ -366,9 +379,9 @@ ${bahan.map(x => Bd().teksRekod(x.i, x.d)).join('\n\n')}`;
   }
   function peringatan() { Teks.peringatan(); }
   /* Pandu Tulis: folder mengikut jenis artikel dan acuan artikel contoh, soal jawab, cadangan ke RAM, meter dan semakan (mod/pandu.js). */
-  Pandu = initPandu(R, { A, Teks, doc, entri, JENIS_PETA, STRUKTUR, sumberAda, HAD_SUMBER, onTetapan: () => { if (Tajuk) Tajuk.render(); } });
+  Pandu = initPandu(R, { A, Teks, doc, entri, JENIS_PETA, STRUKTUR, sumberAda, onTetapan: () => { if (Tajuk) Tajuk.render(); } });
   /* Pembantu Tajuk: pembayang tajuk, cadangan agen dalam tetingkap timbul dan semakan tajuk (mod/tajuk.js). */
-  Tajuk = initTajuk(R, { A, Teks, doc, entri, JENIS_PETA, sumberAda, HAD_SUMBER, Pandu, tetapTajuk, medanTajuk });
+  Tajuk = initTajuk(R, { A, Teks, doc, entri, JENIS_PETA, sumberAda, Pandu, tetapTajuk, medanTajuk });
   let timerSaiz = null; window.addEventListener('resize', () => { clearTimeout(timerSaiz); timerSaiz = setTimeout(() => medanTajuk(), 150); });
-  return { show, artikelBaru, padamArtikel, tambahSumber, buangSumber, tanya, padamSoalan, jawapanKeRam, renderPanel, muatIndeks, senaraiUnit, peringatan, JENIS, STRUKTUR, CADANGAN, HAD_SUMBER, HAD_SOALAN, Teks, Pandu, Tajuk, tetapTajuk, state: A };
+  return { show, artikelBaru, padamArtikel, tambahSumber, buangSumber, tanya, padamSoalan, jawapanKeRam, renderPanel, muatIndeks, senaraiUnit, peringatan, peringatanToken, JENIS, STRUKTUR, CADANGAN, SUMBER_BANYAK, HAD_SOALAN, Teks, Pandu, Tajuk, tetapTajuk, state: A };
 }
