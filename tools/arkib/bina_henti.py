@@ -1,6 +1,9 @@
-"""Bina data/scopus_henti.json daripada senarai judul yang dihentikan liputannya oleh Scopus.
+"""ARKIB (v1.30.0). Sejak v1.30.1, data/scopus_henti.json dibina oleh tools/bina_scopus.py daripada fail rasmi Scopus.
+Skrip dan senarai ini disimpan sebagai rekod cara senarai sementara v1.30.0 dibina.
 
-Guna:  python3 tools/bina_henti.py tools/scopus_henti_ogos2026.txt data/scopus_henti.json
+Bina data/scopus_henti.json daripada senarai judul yang dihentikan liputannya oleh Scopus.
+
+Guna:  python3 tools/arkib/bina_henti.py tools/arkib/scopus_henti_ogos2026.txt <fail keluaran.json>
 
 Fail sumber ialah teks biasa, satu judul sebaris:
     TAJUK | ISSN | EISSN | PERUBAHAN | TAHUN LIPUTAN AKHIR | EDISI
