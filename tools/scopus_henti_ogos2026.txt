@@ -1,0 +1,302 @@
+# Sumber: Scopus Discontinued Titles (Elsevier), "Status (recently discontinued titles in bold): August 2026", salinan PDF Perpustakaan UTHM
+# https://ptta.uthm.edu.my/images/Picture/Research%20Support/Predatory%20Journal/Discontinued%20title%20Aug%202026.pdf
+# dibaca 13 Nov 2026 melalui WebFetch (beberapa laluan mengikut julat huruf dan kata kunci), disilang dengan edisi Februari 2026:
+# https://library.uthm.edu.my/images/Picture/Research Support/Predatory Journal/Discontinued title February 2026.pdf
+# Format: TAJUK | ISSN | EISSN | PERUBAHAN | TAHUN LIPUTAN AKHIR | EDISI (A = Ogos 2026, F = Februari 2026 sahaja)
+Academic Journal of Interdisciplinary Studies | 22813993 | 22814612 | Discontinuation | 2024 | A
+Additives for Polymers | 03063747 |  | Journal change policy | 2024 | A
+Advances in Nonlinear Variational Inequalities | 1092910X |  | Discontinuation | 2025 | A
+African Journal of Biological Sciences (South Africa) | 26632187 |  | Journal change policy | 2024 | F
+African Journal of Biomedical Research | 11195096 |  | Journal change policy | 2024 | A
+AgBioForum | 1522936X |  | Journal change policy | 2025 | A
+Alexandria Engineering Journal | 11100168 | 20902670 | Discontinuation | 2025 | A
+Alternative Therapies in Health and Medicine | 10786791 |  | Discontinuation | 2024 | A
+American Journal of Health Behavior | 10873244 | 19457359 | Journal change policy | 2025 | A
+American Surgeon | 00031348 | 15559823 | Discontinuation | 2024 | A
+Animal Science and Food Technology | 27068331 | 2706834X | Journal change policy | 2025 | A
+Annals of Applied Sport Science | 24764981 | 23224479 | Discontinuation | 2025 | A
+Applied mathematics of Nonlinear Sciences | 24448656 |  | Discontinuation | 2024 | A
+Arabian Journal of Chemistry | 18785352 | 18785379 | Journal change policy | 2024 | A
+Architectural Studies | 2411801X | 27867374 | Journal change policy | 2025 | A
+Architecture Image Studies | 21848645 |  | Journal change policy | 2025 | A
+Arqueologia Iberoamericana | 19894104 |  | Discontinuation | 2026 | A
+Ars Combinatoria | 03817032 | 28175204 | Journal change policy | 2025 | A
+Artseduca | 22540709 |  | Journal change policy | 2025 | A
+Asian Journal of Agriculture and Biology | 23078553 |  | Discontinuation | 2025 | A
+Bali Medical Journal | 20891180 | 23022914 | Discontinuation | 2024 | A
+Behavioral Psychology/ Psicologia Conductual | 11329483 |  | Journal change policy | 2024 | A
+Biometric Technology Today | 09694765 |  | Journal change policy | 2024 | A
+Bulletin of Stomatology and Maxillofacial Surgery | 1829006X |  | Discontinuation | 2025 | A
+Case Studies in Thermal Engineering | 2214157X |  | Discontinuation | 2025 | A
+Cellular and Molecular Biology | 1165158X |  | Discontinuation | 2025 | A
+CFD Letters | 21801363 |  | Discontinuation | 2025 | A
+Chalcogenide Letters | 15848663 |  | Journal change policy | 2025 | A
+Coke and Chemistry | 1068364X | 19348398 | Discontinuation | 2024 | A
+Communications on Applied Nonlinear Analysis | 1074133X |  | Discontinuation | 2025 | A
+Computer Fraud and Security | 13613723 |  | Journal change policy | 2024 | A
+Computer Systems Science and Engineering | 02676192 |  | Discontinuation | 2024 | A
+Computer-Aided Design and Applications | 16864360 |  | Discontinuation | 2025 | A
+Conatus - Journal of Philosophy | 26539373 | 24593842 | Discontinuation | 2025 | A
+Contemporary Mathematics | 27051064 | 27051056 | Discontinuation | 2025 | A
+Corporate Governance and Organizational Behavior Review | 25211870 | 25211889 | Discontinuation | 2024 | A
+Cuadernos de Economia | 02100266 |  | Journal change policy | 2024 | A
+Cuestiones de Fisioterapia | 11358599 |  | Journal change policy | 2024 | A
+Cultura | 15841057 | 20655002 | Journal change policy | 2026 | A
+Current Problems in Cardiology | 01462806 | 15356280 | Discontinuation | 2024 | A
+Current Research in Environmental and Applied Mycology | 22292225 |  | Journal change policy | 2025 | A
+Cutter Business Technology Journal | 24753718 | 24753742 | Journal change policy | 2024 | A
+Data y Metadata | 29534917 |  | Discontinuation | 2025 | A
+Dirasat: Human and Social Sciences | 10263721 | 26636190 | Discontinuation | 2026 | A
+Diyala Journal of Medicine | 22199764 | 26178982 | Discontinuation | 2025 | A
+Dragoman | 22951210 |  | Discontinuation | 2025 | A
+EAI Endorsed Transactions on Scalable Information Systems | 20329407 |  | Discontinuation | 2024 | A
+Ecological Safety and Balanced Use of Resources | 24153184 | 25229508 | Discontinuation | 2025 | A
+Economic Affairs (New Delhi) | 04242513 | 09764666 | Discontinuation | 2024 | A
+Economics of Development | 16831942 | 23046155 | Journal change policy | 2025 | A
+Edelweiss Applied Science and Technology | 25768484 |  | Discontinuation | 2025 | A
+Educational Administration: Theory and Practice | 13004832 | 21482403 | Discontinuation | 2024 | A
+Educational Process: International Journal | 21470901 | 25648020 | Discontinuation | 2025 | A
+Ekonomika APK | 22211055 | 24132322 | Journal change policy | 2025 | A
+Empirical Studies of the Arts | 02762374 | 15414493 | Discontinuation | 2026 | A
+Engineering, Technology and Applied Science Research | 22414487 | 17928036 | Discontinuation | 2026 | A
+Enterprise Development and Microfinance | 17551978 | 17551986 | Journal change policy | 2026 | A
+Environment and Social Psychology | 24247979 | 24248975 | Discontinuation | 2026 | A
+Eurasian Journal of Applied Linguistics | 21491135 |  | Journal change policy | 2025 | A
+Eurasian Journal of Educational Research | 1302597X | 25288911 | Journal change policy | 2025 | A
+European Journal for Philosophy of Religion | 16898311 |  | Journal change policy | 2025 | A
+European Journal of Medical Research | 2047783X |  | Discontinuation | 2024 | A
+European Journal of Musculoskeletal Diseases | 20384106 | 2975044X | Journal change policy | 2026 | A
+European Journal of Pure and Applied Mathematics | 13075543 |  | Discontinuation | 2025 | A
+European Public and Social Innovation Review | 25299824 |  | Discontinuation | 2026 | A
+European Review for Medical and Pharmacological Sciences | 11283602 | 22840729 | Discontinuation | 2024 | A
+Evropsky Politicky a Pravni Diskurz | 23365447 |  | Discontinuation | 2025 | A
+Financial and Credit Activity: Problems of Theory and Practice | 23064994 | 23108770 | Discontinuation | 2025 | A
+Fizjoterapia Polska | 16420136 | 20844328 | Discontinuation | 2025 | A
+Fonseca Journal of Communication | 21729077 |  | Journal change policy | 2025 | A
+Forum for Linguistic Studies | 27050610 | 27050602 | Discontinuation | 2025 | A
+Frontiers in Health Informatics | 26767104 |  | Journal change policy | 2024 | A
+Fuel Cells Bulletin | 14642859 |  | Journal change policy | 2024 | A
+Fungal Diversity | 15602745 | 18789129 | Journal change policy | 2025 | A
+Fusion: Practice and Applications | 27700070 | 26924048 | Discontinuation | 2025 | A
+Future of Food: Journal on Food, Agriculture and Society | 2197411X |  | Journal change policy | 2025 | A
+Gazzetta Medica Italiana Archivio per le Scienze Mediche | 03933660 | 18271812 | Discontinuation | 2026 | A
+Grassroots Journal of Natural Resources | 25816853 |  | Discontinuation | 2025 | A
+Health Leadership and Quality of Life | 30088488 |  | Discontinuation | 2025 | A
+Health Psychology Research | 24208124 |  | Journal change policy | 2024 | A
+Heart Surgery Forum | 10983511 | 15226662 | Journal change policy | 2025 | A
+Heroin Addiction and Related Clinical Problems | 15921638 |  | Discontinuation | 2025 | A
+Indonesian Journal of Electrical Engineering and Computer Science | 25024752 | 25024760 | Discontinuation | 2025 | A
+Informatica (Slovenia) | 03505596 | 18543871 | Discontinuation | 2025 | A
+Ingegneria Sismica | 03931420 | 31033997 | Journal change policy | 2025 | A
+Insight (Ukraine) | 2663970X | 26646005 | Discontinuation | 2025 | A
+Internaional Neurological Journal (Ukraine) | 22240713 | 23071419 | Discontinuation | 2025 | A
+International Journal of Accounting and Economics Studies | 23094508 |  | Discontinuation | 2025 | A
+International Journal of Advanced Intelligence Paradigms | 17550386 | 17550394 | Discontinuation | 2025 | A
+International Journal of Advances in Signal and Image Sciences | 24570370 |  | Discontinuation | 2025 | A
+International Journal of Applied Economics, Finance and Accounting | 2577767X |  | Discontinuation | 2024 | A
+International Journal of Applied Mathematics | 13111728 | 13148060 | Discontinuation | 2025 | A
+International Journal of Aquatic Research and Environmental Studies | 29807840 |  | Discontinuation | 2026 | A
+International Journal of Basic and Applied Sciences | 22275053 |  | Discontinuation | 2025 | A
+International Journal of Biomedicine | 21580510 | 21580529 | Discontinuation | 2025 | A
+International Journal of Bioinformatics Research and Applications | 17445485 | 17445493 | Discontinuation | 2025 | A
+International Journal of Computational Methods and Experimental Measurements | 20460546 | 20460554 | Journal change policy | 2026 | A
+International Journal of Criminal Justice Sciences | 09735089 |  | Journal change policy | 2025 | A
+International Journal of Cyber Criminology | 09742891 |  | Journal change policy | 2025 | A
+International Journal of Disabilities Sports and Health Sciences | 26459094 |  | Discontinuation | 2024 | A
+International Journal of Ecosystems and Ecology Science | 22244980 |  | Discontinuation | 2025 | A
+International Journal of Economics and Financial Issues | 21464138 |  | Discontinuation | 2025 | A
+International Journal of Electrical and Computer Engineering | 20888708 |  | Discontinuation | 2025 | A
+International Journal of Energy Economics and Policy | 21464553 |  | Discontinuation | 2025 | A
+International Journal of Energy Production and Management | 20563272 | 20563280 | Journal change policy | 2025 | A
+International Journal of Engineering, Science and Information Technology | 27752674 |  | Discontinuation | 2025 | A
+International Journal of Environmental Impacts | 23982640 | 23982659 | Journal change policy | 2026 | A
+International Journal of Environmental Sciences | 22297359 |  | Journal change policy | 2024 | A
+International Journal of Experimental Research and Review | 24554855 |  | Discontinuation | 2024 | A
+International Journal of High Speed Electronics and Systems | 01291564 | 17936438 | Discontinuation | 2025 | A
+International Journal of Human Movement and Sports Sciences | 23814381 | 23814403 | Discontinuation | 2025 | A
+International Journal of Information Technologies and Systems Approach | 1935570X | 19355718 | Discontinuation | 2024 | A
+International Journal of Innovative Research and Scientific Studies | 26176548 |  | Discontinuation | 2024 | A
+International Journal of Instructional Cases | 2399830X |  | Journal change policy | 2025 | A
+International Journal of Intelligent Engineering Informatics | 17588715 | 17588723 | Discontinuation | 2025 | A
+International Journal of Intelligent Systems and Applications in Engineering | 21476799 |  | Discontinuation | 2024 | A
+International Journal of Medical Toxicology and Legal Medicine | 09720448 | 09744614 | Journal change policy | 2024 | A
+International Journal of Neutrosophic Science | 26926148 | 26906805 | Discontinuation | 2025 | A
+International Journal of Pharmaceutical Quality Assurance | 09759506 |  | Discontinuation | 2024 | A
+International Journal of Public Health Science | 22528806 | 26204126 | Discontinuation | 2024 | A
+International Journal of Transport Development and Integration | 20588305 | 20588313 | Journal change policy | 2026 | A
+International Journal on Culture, History, and Religion | 30281318 |  | Discontinuation | 2025 | A
+International Journal on Technical and Physical Problems of Engineering | 20773528 |  | Discontinuation | 2025 | A
+Internet Technology Letters | 24761508 |  | Discontinuation | 2026 | A
+Iraqi Journal for Computer Science and Mathematics | 29580544 | 27887421 | Discontinuation | 2025 | A
+Iraqi Journal of Agricultural Sciences | 00750530 | 24100862 | Discontinuation | 2025 | A
+Iraqi Journal of Veterinary Sciences | 16073894 | 20711255 | Discontinuation | 2025 | A
+Jornal Brasileiro de Patologia e Medicina Laboratorial | 16762444 | 16784774 | Journal change policy | 2025 | A
+Journal of Advanced Research Design | 22897984 |  | Discontinuation | 2025 | A
+Journal of Advanced Research in Applied Mechanics | 22897895 |  | Discontinuation | 2025 | A
+Journal of Advanced Research in Applied Sciences and Engineering Technology | 24621943 |  | Discontinuation | 2025 | A
+Journal of Advanced Research in Experimental Fluid Mechanics and Heat Transfer | 27568202 |  | Discontinuation | 2025 | A
+Journal of Advanced Research in Fluid Mechanics and Thermal Sciences | 22897879 |  | Discontinuation | 2025 | A
+Journal of Advanced Research in Micro and Nano Engineering | 27568210 |  | Discontinuation | 2025 | A
+Journal of Advanced Research in Numerical Heat Transfer | 27350142 |  | Discontinuation | 2025 | A
+Journal of Algebra Combinatorics Discrete Structures and Applications | 2148838X |  | Journal change policy | 2026 | A
+Journal of Angiotherapy | 22078843 | 2207872X | Discontinuation | 2024 | A
+Journal of Applied Bioanalysis | 2405710X |  | Discontinuation | 2025 | A
+Journal of Autonomous Intelligence | 26305046 |  | Discontinuation | 2024 | A
+Journal of Biological Regulators and Homeostatic Agents | 17246083 |  | Discontinuation | 2025 | A
+Journal of Biotech Research | 19443285 |  | Discontinuation | 2024 | A
+Journal of Carcinogenesis | 09746773 | 14773163 | Journal change policy | 2025 | A
+Journal of Combinatorial Mathematics and Combinatorial Computing | 08353026 | 2817576X | Journal change policy | 2025 | A
+Journal of Commercial Biotechnology | 14628732 | 1478565X | Discontinuation | 2024 | A
+Journal of Computational Biophysics and Chemistry | 27374165 | 27374173 | Discontinuation | 2026 | A
+Journal of Computational Methods in Sciences and Engineering | 14727978 | 18758983 | Journal change policy | 2025 | A
+Journal of Cyber Security and Risk Auditing | 30795354 |  | Discontinuation | 2025 | A
+Journal of Cybersecurity and Information Management | 27697851 | 26906775 | Discontinuation | 2025 | A
+Journal of Daoist Studies | 19415516 | 19415524 | Journal change policy | 2025 | A
+Journal of Eastern European and Central Asian Research | 23288272 | 23288280 | Discontinuation | 2024 | A
+Journal of Ecohumanism | 27526798 | 27526801 | Discontinuation | 2025 | A
+Journal of Electrical Systems | 11125209 |  | Journal change policy | 2024 | A
+Journal of Engineering Science and Technology | 18234690 |  | Discontinuation | 2026 | A
+Journal of Environmental and Earth Sciences | 26613190 |  | Discontinuation | 2025 | A
+Journal of Environmental Law and Policy (JELP Journal) | 2564016X |  | Journal change policy | 2024 | A
+Journal of Environmental Protection and Ecology | 13115065 |  | Discontinuation | 2025 | A
+Journal of Fish Taxonomy | 2458942X |  | Journal change policy | 2025 | A
+Journal of Health and Social Sciences | 24992240 | 24995886 | Discontinuation | 2024 | A
+Journal of Health and Translational Medicine | 18237339 | 2289392X | Discontinuation | 2024 | A
+Journal of Higher Education Theory and Practice | 21583595 |  | Discontinuation | 2024 | A
+Journal of Industrial and Management Optimization | 15475816 | 1553166X | Journal change policy | 2026 | A
+Journal of Information Systems Engineering and Management | 24684376 |  | Journal change policy | 2024 | A
+Journal of Infrastructure, Policy and Development | 25727923 | 25727931 | Discontinuation | 2024 | A
+Journal of Intelligent Systems and Internet of Things | 2769786X | 26906791 | Discontinuation | 2025 | A
+Journal of International Dental and Medical Research | 1309100X |  | Discontinuation | 2025 | A
+Journal of Machine and Computing | 27891801 | 27887669 | Discontinuation | 2025 | A
+Journal of Management World | 29943191 |  | Discontinuation | 2024 | A
+Journal of Mathematics and Computer Science | 2008949X |  | Discontinuation | 2026 | A
+Journal of Medicinal and Pharmaceutical Chemistry Research | 29810221 |  | Discontinuation | 2026 | A
+Journal of Medicine and Life | 1844122X |  | Discontinuation | 2024 | A
+Journal of Mines, Metals and Fuels | 00222755 |  | Discontinuation | 2025 | A
+Journal of Modern Project Management | 23173963 |  | Journal change policy | 2025 | A
+Journal of Natural Science, Biology and Medicine | 09769668 | 22297707 | Journal change policy | 2025 | A
+Journal of Neonatal Surgery | 22260439 |  | Discontinuation | 2025 | F
+Journal of Pharmacy and Bioallied Sciences | 09764879 | 09757406 | Discontinuation | 2024 | A
+Journal of Physical Education and Sport | 22478051 | 2247806X | Discontinuation | 2025 | A
+Journal of Posthumanism | 26343576 | 26343584 | Journal change policy | 2024 | A
+Journal of Research, Innovation and Technologies | 29718317 |  | Journal change policy | 2025 | A
+Journal of System and Management Sciences | 18166075 | 18180523 | Discontinuation | 2024 | A
+Journal of the Balkan Tribological Association | 13104772 |  | Discontinuation | 2025 | A
+Journal of Wildlife and Biodiversity | 25883526 |  | Discontinuation | 2024 | A
+Jurnal Ilmiah Ilmu Terapan Universitas Jambi | 25802240 | 25802259 | Discontinuation | 2025 | A
+Kidneys | 23071257 | 23071265 | Journal change policy | 2025 | A
+Knowledge Organization | 09437444 | 29423309 | Journal change policy | 2024 | A
+LatIA | 3046403X |  | Discontinuation | 2025 | A
+Latin American Journal of Pharmacy | 03262383 | 23623853 | Discontinuation | 2024 | A
+Lex Localis | 15815374 | 1855363X | Journal change policy | 2024 | A
+Machinery and Energetics | 26631334 | 26631342 | Journal change policy | 2025 | A
+Management (Montevideo) | 30464048 |  | Discontinuation | 2025 | A
+Management Revue | 09359915 | 18619908 | Journal change policy | 2024 | A
+Mathematics for Applications | 18053610 | 18053629 | Journal change policy | 2026 | A
+MCB Molecular and Cellular Biomechanics | 15565297 | 15565300 | Discontinuation | 2025 | A
+Medical Journal of Babylon | 1812156X | 23126760 | Discontinuation | 2025 | A
+Membrane Technology | 09582118 |  | Journal change policy | 2024 | A
+Mesopotamian Journal of CyberSecurity | 29586542 |  | Discontinuation | 2025 | A
+Metal Powder Report | 18734065 |  | Journal change policy | 2024 | A
+Metaverse Basic and Applied Research | 29534577 |  | Discontinuation | 2025 | A
+Minerva Gastroenterology | 27245985 | 27245365 | Discontinuation | 2025 | A
+Minerva Medica | 00264806 | 18271669 | Discontinuation | 2025 | A
+Minerva Pediatrics | 27245276 | 27245780 | Discontinuation | 2024 | A
+Minerva Surgery | 27245691 | 27245438 | Discontinuation | 2025 | A
+MSW Management | 10537899 |  | Journal change policy | 2024 | A
+Mycosphere | 20777000 | 20777019 | Journal change policy | 2025 | A
+Nanotechnology Perceptions | 16606795 | 22352074 | Discontinuation | 2024 | A
+Narra J | 28072618 |  | Discontinuation | 2024 | A
+National Journal of Antennas and Propagation | 25822659 |  | Discontinuation | 2025 | A
+Natural Product Research | 14786427 | 14786419 | Discontinuation | 2026 | A
+Network Security | 18729371 |  | Journal change policy | 2024 | A
+Network: Computation in Neural Systems | 0954898X | 13616536 | Discontinuation | 2025 | A
+Neutrosophic Sets and Systems | 23316055 | 2331608X | Discontinuation | 2025 | A
+New Emirates Medical Journal | 02506882 |  | Discontinuation | 2025 | A
+NIPES - Journal of Science and Technology Research | 27342352 | 26825821 | Discontinuation | 2025 | A
+Nuova Rivista Storica | 00296236 |  | Journal change policy | 2024 | A
+Nurture | 19941625 | 19941633 | Discontinuation | 2024 | A
+Open Bioinformatics Journal | 18750362 |  | Discontinuation | 2025 | A
+Operational Research in Engineering Sciences: Theory and Applications | 26201607 | 26201747 | Journal change policy | 2025 | A
+Optical and Quantum Electronics | 03068919 | 1572817X | Discontinuation | 2024 | A
+Pain, Joints, Spine | 22241507 | 23071133 | Journal change policy | 2025 | A
+Pakistan Journal of Criminology | 20742738 | 22226648 | Discontinuation | 2024 | A
+Pakistan Journal of Life and Social Sciences | 17274915 | 22217630 | Discontinuation | 2025 | A
+Panamerican Mathematical Journal | 10649735 |  | Discontinuation | 2025 | A
+Panminerva Medica | 00310808 | 18271898 | Discontinuation | 2025 | A
+Pathology Research and Practice | 03440338 | 16180631 | Discontinuation | 2024 | A
+Perinatal Journal | 13053124 |  | Journal change policy | 2024 | A
+Pharmacy Education | 15602214 | 14772701 | Discontinuation | 2024 | A
+Pharmazie | 00317144 |  | Journal change policy | 2025 | A
+Polish Journal of Environmental Studies | 12301485 | 20835906 | Discontinuation | 2026 | A
+Premier Journal of Science | 30499011 |  | Discontinuation | 2025 | A
+Profesional de la Informacion | 13866710 | 16992407 | Journal change policy | 2025 | A
+Psycho-Oncologie | 17783798 | 1778381X | Journal change policy | 2024 | A
+Radiology Case Reports | 19300433 |  | Discontinuation | 2024 | A
+Reinforced Plastics | 00343617 |  | Journal change policy | 2024 | A
+Reliability: Theory and Applications | 19322321 |  | Discontinuation | 2025 | A
+Renewable Energy and Power Quality | 2172038X |  | Journal change policy | 2024 | A
+Retos (Spain) | 15791726 | 19882041 | Discontinuation | 2025 | A
+Review of Clinical Pharmacology and Pharmacokinetics, International Edition | 10116583 |  | Discontinuation | 2024 | A
+Review of Diabetic Studies | 16136071 | 16140575 | Journal change policy | 2025 | A
+Revista De Gestao Social e Ambiental | 1981982X |  | Discontinuation | 2024 | A
+Revista de Neurologia | 02100010 | 15766578 | Journal change policy | 2024 | A
+Revista de Psicologia del Deporte | 1132239X | 19885636 | Journal change policy | 2025 | A
+Revista Electronica de Ciencia Penal y Criminologia | 16950194 |  | Journal change policy | 2024 | A
+Revista Electronica de LEEME | 15759563 |  | Journal change policy | 2025 | A
+Revista Electronica de Veterinaria | 16957504 |  | Discontinuation | 2024 | A
+Revista Iberoamericana de Psicologia del Ejercicio y el Deporte | 18868576 |  | Discontinuation | 2024 | A
+Revista Internacional de Medicina y Ciencias de la Actividad Fisica y del Deporte | 15770354 |  | Journal change policy | 2025 | A
+Revista Latinoamericana de Hipertension | 18564550 |  | Discontinuation | 2026 | A
+Revue d'Intelligence Artificielle | 0992499X |  | Discontinuation | 2024 | A
+RISTI - Revista Iberica de Sistemas e Tecnologias de Informacao | 16469895 |  | Discontinuation | 2024 | A
+Rita Revista Indexada de Textos Academicos | 23409711 | 23867027 | Journal change policy | 2025 | A
+Rivista di Studi sulla Sostenibilita | 22391959 | 22397221 | Discontinuation | 2025 | A
+Salud, Ciencia y Tecnologia | 27969711 |  | Discontinuation | 2025 | A
+Salud, Ciencia y Tecnologia - Serie de Conferencias | 29534860 |  | Discontinuation | 2025 | A
+Sapienza: International Journal of Interdisciplinary Studies | 02675978 |  | Discontinuation | 2025 | A
+Scientific Bulletin of Mukachevo State University. Series Economics | 23138114 | 25181254 | Journal change policy | 2025 | A
+Scientific Culture | 24080071 | 24079529 | Discontinuation | 2026 | A
+Scientific Herald of Uzhhorod University. Series Physics | 24158038 |  | Discontinuation | 2024 | A
+Scientific Horizons | 26632144 | 27098877 | Journal change policy | 2025 | A
+Sealing Technology | 13504789 |  | Journal change policy | 2024 | A
+Seminars in Medical Writing and Education | 30088127 |  | Discontinuation | 2025 | A
+ShodhKosh: Journal of Visual and Performing Arts | 25827472 |  | Discontinuation | 2026 | A
+Social and Legal Studios | 26174162 | 26174170 | Journal change policy | 2025 | A
+Street Art and Urban Creativity | 21833869 | 21839956 | Discontinuation | 2026 | A
+Surgical Technology International | 10903941 |  | Journal change policy | 2024 | A
+Telkomnika (Telecommunication Computing Electronics and Control) | 16936930 | 2087278X | Discontinuation | 2025 | A
+Texila International Journal of Public Health | 25203134 |  | Discontinuation | 2025 | A
+Textile and Leather Review | 26236257 | 26236281 | Journal change policy | 2026 | A
+Theranostics | 18387640 |  | Discontinuation | 2025 | A
+Tikrit Journal of Engineering Sciences | 1813162X | 23127589 | Discontinuation | 2025 | A
+TPM - Testing, Psychometrics, Methodology in Applied Psychology | 19726325 |  | Discontinuation | 2025 | A
+Ukrainian Journal of Forest and Wood Science | 26644452 | 26644460 | Journal change policy | 2025 | A
+Ukrainian Journal of Veterinary Sciences | 2663967X | 26639688 | Journal change policy | 2025 | A
+Uncertain Supply Chain Management | 22916822 | 22916830 | Discontinuation | 2024 | A
+Universal Journal of Agricultural Research | 23322268 | 23322284 | Discontinuation | 2024 | A
+Universal Journal of Public Health | 23318880 | 23318945 | Discontinuation | 2025 | A
+Utilitas Mathematica | 03153681 |  | Journal change policy | 2024 | A
+Vascular and Endovascular Review | 25163299 | 25163302 | Journal change policy | 2024 | A
+Veredas do Direito | 18063845 | 21798699 | Journal change policy | 2025 | A
+Vide. Tehnologija. Resursi. | 16915402 | 2256070X | Discontinuation | 2024 | A
+Waterlines | 02628104 | 17563488 | Journal change policy | 2026 | A
+Yegah Musicology Journal | 27920178 |  | Discontinuation | 2026 | A
+ZooNotes | 13139916 |  | Discontinuation | 2025 | A
+# Liputan akhir 2023 (dikesan dalam laluan kata kunci edisi Februari 2026)
+Advances in Research on Russian Business and Management | 2578725X | 25787268 | Journal change policy | 2023 | F
+Contemporary Readings in Law and Social Justice | 19489137 | 21622752 | Journal change policy | 2023 | F
+European Journal of Contemporary Education | 23049650 | 23056746 | Discontinuation | 2023 | F
+Information Sciences Letters | 20909551 | 2090956X | Discontinuation | 2023 | F
+International Journal of Educational Methodology | 24699632 |  | Discontinuation | 2023 | F
+International Journal of Instruction | 1694609X | 13081470 | Discontinuation | 2023 | F
+International Journal of Professional Business Review | 25253654 |  | Discontinuation | 2023 | F
+Journal of Applied Business Research | 08927626 |  | Journal change policy | 2023 | F
+Journal of Global Business and Trade | 19465130 | 24704733 | Discontinuation | 2023 | F
+Journal of Law and Sustainable Development | 27644170 |  | Discontinuation | 2023 | F
+Journal of Namibian Studies | 18635954 | 21975523 | Discontinuation | 2023 | F
+Library Progress International | 09701052 | 2320317X | Journal change policy | 2023 | F
+Linguistic and Philosophical Investigations | 18412394 | 24710881 | Journal change policy | 2023 | F
+Review of Economics and Finance | 19237529 | 19238401 | Discontinuation | 2023 | F
+Pegem Egitim ve Ogretim Dergisi | 2148239X |  | Discontinuation | 2023 | F
