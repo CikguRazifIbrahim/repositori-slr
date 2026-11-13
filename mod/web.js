@@ -6,8 +6,10 @@ export function initWeb(R) {
   const { $, esc, toast, TEMA } = R;
   const W = { nodes: [], byKey: new Map(), centre: null, scale: 1, tx: 0, ty: 0, drag: null, shown: [], hidden: 0 };
   const el = $('#web'), svg = $('#webSvg'), side = $('#webSide'), ttl = $('#webTitle');
-  const temaClass = t => t === TEMA[0] ? 'kd' : t === TEMA[1] ? 'ppo' : t === TEMA[2] ? 'kdg' : 'lain';
-  const temaShort = t => t === TEMA[0] ? 'KD' : t === TEMA[1] ? 'PPO' : t === TEMA[2] ? 'KDG' : t ? 'Lain' : '';
+  /* Cadangan harian bagi slot Pengurusan Pengetahuan Digital Organisasi (DKM) membawa label tema sendiri; ia diwarnakan sebagai keluarga mediator. */
+  const temaDkm = t => !!(t && R.Harian && R.Harian.TEMA_DKM === t);
+  const temaClass = t => t === TEMA[0] ? 'kd' : t === TEMA[1] ? 'ppo' : t === TEMA[2] ? 'kdg' : temaDkm(t) ? 'ppd' : 'lain';
+  const temaShort = t => t === TEMA[0] ? 'KD' : t === TEMA[1] ? 'PPO' : t === TEMA[2] ? 'KDG' : temaDkm(t) ? 'PPDO' : t ? 'Lain' : '';
   const minYear = () => new Date().getFullYear() - 4;
   const surname = s => { const t = String(s || '').replace(/\s+et\s+al\.?.*$/i, '').replace(/\s+(dan|and|&)\s+.*$/i, '').replace(/[,;(].*$/, '').trim().split(/\s+/); return t[t.length - 1] || ''; };
   const penulisRingkas = list => { const s = (list || []).map(x => String(x).split(' ').pop()); if (!s.length) return 'Tanpa penulis'; if (s.length === 1) return s[0]; if (s.length === 2) return s[0] + ' dan ' + s[1]; return s[0] + ' et al.'; };

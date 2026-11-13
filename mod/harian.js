@@ -1,19 +1,29 @@
-/* Cadangan Harian: tiga artikel sehari, satu bagi setiap pemboleh ubah, daripada OpenAlex.
+/* Cadangan Harian: satu artikel sehari bagi setiap pemboleh ubah (IV, mediator, DV) dan satu lagi bagi Pengurusan Pengetahuan Digital
+   Organisasi (digital knowledge management), daripada OpenAlex.
    Menggantikan tugas berjadual "Sorotan literatur harian" yang dahulunya berjalan di luar aplikasi. */
 export function initHarian(R) {
   const { $, esc, toast, TEMA } = R;
   const OA = 'https://api.openalex.org/works';
-  const TEMA3 = [TEMA[0], TEMA[1], TEMA[2]];
+  /* Slot keempat (v1.29.0): artikel yang menamakan konstruk "digital knowledge management" (DKM). Label ini hanya digunakan dalam Cadangan
+     Harian; apabila artikelnya ditambah ke repositori, temanya ialah Pengurusan Pengetahuan Organisasi (senarai tema repositori kekal). */
+  const TEMA_DKM = 'Pengurusan Pengetahuan Digital Organisasi (DKM)';
+  const SLOT = [TEMA[0], TEMA[1], TEMA_DKM, TEMA[2]];        // susunan paparan: IV, mediator (umum, kemudian digital), DV
+  const SLOT_CARI = [TEMA[0], TEMA[2], TEMA[1], TEMA_DKM];   // susunan carian: IV dan DV dahulu supaya pemilihan dan bajet permintaan mereka tidak bergantung pada mediator
+  const ENJIN = 2;                                            // versi peraturan pemilihan; cadangan hari ini daripada enjin lama dikemas kini sekali
+  const temaRekod = t => (t === TEMA_DKM ? TEMA[1] : t);
   const VARIAN = {
     [TEMA[0]]: ['"digital leadership" school principal', '"digital leadership" teachers school', '"digital leadership" education school', '"technology leadership" principal school', '"digital leadership" teachers "professional development"', '"school leadership" digital transformation teachers', 'principal "technology leadership" teachers'],
-    [TEMA[1]]: ['"knowledge management" school teachers', '"knowledge sharing" teachers school', '"knowledge management" schools leadership', '"knowledge creation" school teachers', '"knowledge sharing behavior" teachers', '"knowledge sharing" principal school', '"organizational learning" teachers school knowledge'],
+    /* Mediator (v1.29.0): setiap varian menamakan "knowledge management" supaya kolam calon bertumpu pada konstruk itu, bukan pada tingkah laku
+       berkongsi pengetahuan atau pembelajaran organisasi secara umum. Saiz kolam setiap varian disemak dalam OpenAlex pada 13 November 2026. */
+    [TEMA[1]]: ['"knowledge management" school teachers', '"knowledge management" schools principals', '"knowledge management practices" education', '"knowledge management" teachers leadership', '"knowledge management processes" education', '"knowledge management" "knowledge sharing" teachers', '"knowledge management" education Malaysia', '"knowledge management" school leadership digital', '"knowledge management" "higher education" teachers', '"knowledge creation" SECI teachers'],
+    [TEMA_DKM]: ['"digital knowledge management"'],
     [TEMA[2]]: ['"digital competence" teachers primary school', '"digital competence" teachers DigCompEdu', '"teacher digital competence" professional development', '"digital literacy" teachers primary school', '"digital competence" teachers school leadership', '"digital competence" teachers "self-efficacy" school', '"ICT competence" primary school teachers']
   };
   const TOLAK = /\b(TAM|UTAUT2?|technology acceptance model|unified theory of acceptance)\b/i;
-  // Istilah konstruk bagi setiap tema: menentukan relevansi (dalam tajuk = 2, dalam abstrak = 1, tiada = ditolak).
+  // Istilah konstruk bagi IV dan DV: menentukan relevansi (dalam tajuk = 2, dalam abstrak = 1, tiada = ditolak). Mediator dan DKM menggunakan
+  // pintu fokus konstruk di bawah (fokusPP dan fokusDKM), bukan senarai ini.
   const ISTILAH = {
     [TEMA[0]]: ['digital leadership', 'technology leadership', 'school leadership', 'e-leadership', 'ICT leadership', 'principal leadership', 'leadership for digital', 'digital transformation leadership', 'technology-enhanced leadership'],
-    [TEMA[1]]: ['knowledge management', 'knowledge sharing', 'knowledge creation', 'knowledge transfer', 'organizational learning', 'organizational knowledge', 'learning organization', 'SECI', 'knowledge-based view', 'knowledge exchange'],
     [TEMA[2]]: ['digital competence', 'digital competency', 'digital competencies', 'digital literacy', 'ICT competence', 'ICT competency', 'DigCompEdu', 'TPACK', 'technological pedagogical', 'digital skills', 'teacher digital']
   };
   const RX_CACHE = {};
@@ -23,6 +33,45 @@ export function initHarian(R) {
     RX_CACHE[tema] = new RegExp('\\b(?:' + alts.join('|') + ')\\b', 'i'); return RX_CACHE[tema];
   }
   function relevansiOf(it, tema) { const rx = temaRx(tema); if (rx.test(it.tajuk || '')) return 2; if (rx.test(it.abstrak || '')) return 1; return 0; }
+
+  /* ---- Fokus konstruk bagi mediator (v1.29.0) ----
+     Punca cadangan mediator hanyut: pintu lama menerima artikel yang abstraknya menyebut satu istilah keluarga pengetahuan sekali sahaja
+     (contohnya "knowledge sharing" pada ayat akhir abstrak sebuah kajian kurikulum), susunan pula mendahulukan reka bentuk kuantitatif dan
+     indeks jurnal sebelum relevansi, dan rantaian rujukan menggandakan kelonggaran itu dari hari ke hari. Pintu baharu menuntut kajian
+     itu menumpukan konstruknya:
+     PPO  aras 3: "knowledge management" (atau pengurusan pengetahuan) dalam tajuk;
+          aras 2: istilah keluarga pengurusan pengetahuan dalam tajuk (proses, pengetahuan tasit atau organisasi, SECI) DAN kajian itu
+                  menamakan knowledge management dalam abstrak, atau merujuk model SECI;
+          selain itu ditolak. Kajian "knowledge sharing" yang tidak pernah menamakan knowledge management tidak diterima.
+     DKM  aras 3: frasa "digital knowledge management" dalam tajuk; aras 2: frasa itu sekurang-kurangnya dua kali dalam abstrak; sebutan
+          sekali lalu ditolak. Hanya sumber yang menamakan konstruk itu dikira, mengikut takrif Prof Dr. */
+  const RX_PP = /\b(?:knowledge[\s-]+management|pengurusan\s+pengetahuan|manajemen\s+pengetahuan)\b/gi;
+  const RX_PP_KELUARGA = /\bknowledge[\s-]+(?:sharing|creation|conversion|creating|acquisition|application|utili[sz]ation|storage|retention|transfer|capture)\b|\b(?:tacit|organi[sz]ational)\s+knowledge\b|\bSECI\b/i;
+  const RX_SECI = /\bSECI\b/;
+  const RX_DKM = /\b(?:digital[\s-]+knowledge[\s-]+management|pengurusan\s+pengetahuan\s+digital|manajemen\s+pengetahuan\s+digital)\b/gi;
+  const semuaPadan = (rx, t) => String(t || '').match(rx) || [];
+  const kecil = x => String(x || '').toLowerCase().replace(/[\s-]+/g, ' ');
+  function fokusDKM(it) {
+    const t = semuaPadan(RX_DKM, it && it.tajuk), a = semuaPadan(RX_DKM, it && it.abstrak).length;
+    if (t.length) return { aras: 3, slot: 'dkm', di: 'tajuk', istilah: kecil(t[0]), sebut: a };
+    if (a >= 2) return { aras: 2, slot: 'dkm', di: 'abstrak', istilah: 'digital knowledge management', sebut: a };
+    return { aras: 0, slot: 'dkm', sebut: a };
+  }
+  function fokusPP(it) {
+    const tajuk = (it && it.tajuk) || '', abs = (it && it.abstrak) || ''; const t = semuaPadan(RX_PP, tajuk), a = semuaPadan(RX_PP, abs).length;
+    if (t.length) return { aras: 3, slot: 'ppo', di: 'tajuk', istilah: kecil(t[0]), sebut: a };
+    const m = RX_PP_KELUARGA.exec(tajuk); const seci = RX_SECI.test(tajuk) || RX_SECI.test(abs);
+    if (m && (a > 0 || seci)) return { aras: 2, slot: 'ppo', di: 'tajuk', istilah: /^seci$/i.test(m[0]) ? 'SECI' : kecil(m[0]), sebut: a, seci: !a };
+    return { aras: 0, slot: 'ppo', sebut: a };
+  }
+  const PINTU = { [TEMA[1]]: fokusPP, [TEMA_DKM]: fokusDKM };
+  /* Ayat ringkas pada kad: mengapa artikel ini dianggap menumpukan konstruk. */
+  function teksFokus(it) {
+    const f = (it && it.fokus) || {}; const n = f.sebut || 0; if (!f.aras) return '';
+    if (f.slot === 'dkm') return f.di === 'tajuk' ? `Tajuk menamakan "${f.istilah}"${n ? '; frasa itu disebut ' + n + ' kali dalam abstrak' : ''}.` : `Abstrak menamakan "digital knowledge management" ${n} kali; frasa itu tiada dalam tajuk.`;
+    if (f.aras === 3) return `Tajuk menamakan "${f.istilah}"${n ? '; disebut ' + n + ' kali dalam abstrak' : ''}.`;
+    return `Tajuk memuatkan "${f.istilah}"${n ? ', dan abstrak menamakan "knowledge management" ' + n + ' kali' : ', dan kajian merujuk model SECI'}.`;
+  }
 
   /* ---- Jenis artikel (dikesan daripada tajuk dan abstrak) ----
      Tingkat keutamaan: 0 empirikal kuantitatif (termasuk campuran, pengesahan instrumen, eksperimen), 1 tidak pasti,
@@ -109,9 +158,10 @@ export function initHarian(R) {
 
   const LKEY = d => 'rslr_cadangan_' + d;
   function rulesWarn(e) { const c = e && e.code ? String(e.code) : ''; if (c.includes('permission-denied') && !H.warned) { H.warned = true; toast('Peraturan Firestore belum membenarkan koleksi "cadangan". Cadangan disimpan pada peranti ini sahaja sehingga peraturan dikemas kini (lihat README).', true); } }
-  async function saveDoc(doc, merge) {
-    try { await R.db().set('cadangan/' + H.date, merge ? { items: doc.items } : doc, !!merge); R.lsSet(LKEY(H.date), null); }
-    catch (e) { rulesWarn(e); R.lsSet(LKEY(H.date), doc); if (!(e && String(e.code || '').includes('permission-denied'))) throw e; }
+  async function saveDoc(doc, merge, tarikh) {
+    const d = tarikh || H.date;   // carian latar menyatakan tarikh dokumennya sendiri supaya pertukaran tarikh paparan tidak menyebabkan salah tulis
+    try { await R.db().set('cadangan/' + d, merge ? { items: doc.items } : doc, !!merge); R.lsSet(LKEY(d), null); }
+    catch (e) { rulesWarn(e); R.lsSet(LKEY(d), doc); if (!(e && String(e.code || '').includes('permission-denied'))) throw e; }
   }
   async function loadDoc(date) {
     let doc = null; try { doc = await R.db().get('cadangan/' + date); } catch (e) { rulesWarn(e); }
@@ -180,9 +230,9 @@ export function initHarian(R) {
     const words = m[1].trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/[sz]ation/g, '[sz]ation').replace(/i[sz]e/g, 'i[sz]e'));
     return new RegExp('\\b' + words.join('[\\s-]+') + '(?:s|es)?\\b', 'i');
   }
-  function skor(it, idx, variant) {
+  function skor(it, idx, variant, tanpaEdu) {
     const tajuk = it.tajuk || ''; const teks = tajuk + ' ' + it.abstrak;
-    if (!EDU.test(teks)) return -1;
+    if (!tanpaEdu && !EDU.test(teks)) return -1;
     if (TOLAK.test(teks)) return -1;
     let s = 100 - idx * 2; if (it.isCore) s += 15; if (it.inDoaj) s += 8; if (it.pdfUrl) s += 10; if (it.hasContent) s += 8; if (it.nRefs > 0) s += 6; s += Math.min(10, Math.log2(it.dipetik + 1) * 2);
     const rx = phraseRx(variant);
@@ -240,8 +290,17 @@ export function initHarian(R) {
   }
   const BASE = () => [`from_publication_date:${minYear()}-01-01`, 'is_oa:true', 'type:article', 'primary_location.source.type:journal', 'has_doi:true', 'is_retracted:false'];
   const kumpulan = k => k <= 5 ? 0 : k === 6 ? 1 : 2;
-  function susun(found) {
-    // Keutamaan: (1) jenis artikel: empirikal kuantitatif dahulu, kemudian tidak pasti, kualitatif, ulasan, konseptual;
+  function susun(found, tema) {
+    const pdf = (a, b) => (b.pdfUrl ? 1 : 0) - (a.pdfUrl ? 1 : 0);
+    // Mediator: semua calon sudah melepasi pintu fokus konstruk. Susunan: jenis artikel (kuantitatif dahulu), aras fokus ("knowledge
+    // management" dalam tajuk mendahului istilah proses), konteks bukan kesihatan dahulu, kemudian kumpulan pengindeksan, padanan
+    // metodologi, kuartil, PDF dan skor.
+    const sihat = (a, b) => (a.sihat || 0) - (b.sihat || 0);
+    if (tema === TEMA[1]) { found.sort((a, b) => a.tier - b.tier || b.relevansi - a.relevansi || sihat(a, b) || kumpulan(a.kelas) - kumpulan(b.kelas) || b.padanan - a.padanan || a.kelas - b.kelas || pdf(a, b) || b.skor - a.skor); return found; }
+    // DKM: kolamnya kecil, maka artikel yang menamakan konstruk itu dalam tajuk didahulukan, kemudian jenis artikel, konteks bukan kesihatan
+    // dan pengindeksan.
+    if (tema === TEMA_DKM) { found.sort((a, b) => b.relevansi - a.relevansi || a.tier - b.tier || sihat(a, b) || kumpulan(a.kelas) - kumpulan(b.kelas) || b.padanan - a.padanan || a.kelas - b.kelas || pdf(a, b) || b.skor - a.skor); return found; }
+    // IV dan DV (tidak diubah). Keutamaan: (1) jenis artikel: empirikal kuantitatif dahulu, kemudian tidak pasti, kualitatif, ulasan, konseptual;
     // (2) kumpulan pengindeksan: Scopus, kemudian jurnal teras, kemudian DOAJ; (3) padanan metodologi dengan kajian Prof Dr;
     // (4) istilah konstruk dalam tajuk; (5) kuartil Q1 ke Q4; (6) ada PDF; (7) skor relevansi.
     found.sort((a, b) => a.tier - b.tier || kumpulan(a.kelas) - kumpulan(b.kelas) || b.padanan - a.padanan || b.relevansi - a.relevansi || a.kelas - b.kelas || (b.pdfUrl ? 1 : 0) - (a.pdfUrl ? 1 : 0) || b.skor - a.skor);
@@ -252,22 +311,29 @@ export function initHarian(R) {
     if (excludedHas(excl, it.doi) || taken.has(it.doi) || excludedLain(it)) return null; if (!it.pdfUrl && !it.oaUrl) return null;
     if (Number(it.tahun) < minYear()) return null;
     it.kelas = kelasOf(it); if (it.kelas >= 99) return null;
-    it.skor = skor(it, i, variant); if (it.skor < 0) return null;
-    it.relevansi = tema ? relevansiOf(it, tema) : 1; if (!it.relevansi) return null;
+    it.skor = skor(it, i, variant, tema === TEMA_DKM); if (it.skor < 0) return null;
+    const pintu = PINTU[tema];
+    if (pintu) {
+      // Mediator dan DKM: kajian mesti menumpukan konstruknya. Artikel yang menamakan DKM diserahkan kepada slot DKM, bukan slot mediator umum.
+      const f = pintu(it); if (!f.aras || (tema === TEMA[1] && fokusDKM(it).aras)) return null; it.relevansi = f.aras; it.fokus = f; it.sihat = HEALTH.test((it.tajuk || '') + ' ' + it.abstrak) ? 1 : 0;
+    } else { it.relevansi = tema ? relevansiOf(it, tema) : 1; if (!it.relevansi) return null; }
     Object.assign(it, klas(it));
     return it;
   }
   const kuantScopus = found => found.filter(x => x.tier === 0 && kumpulan(x.kelas) === 0).length;
-  async function cariTema(tema, variant, excl, taken, key) {
+  async function cariTema(tema, variant, excl, taken, key, ringkas) {
     const base = [`title_and_abstract.search:${variant}`].concat(BASE());
-    const found = []; const ids = new Set();
-    const ambil = async (filter) => { let res; try { res = await oaFetch(filter, key, 100); } catch (e) { if (e.code === 'kuota') throw e; res = []; } res.forEach((w, i) => { const it = terima(w, i, variant, excl, taken, ids, tema); if (it) found.push(it); }); };
+    const found = []; const ids = new Set(); const dkm = tema === TEMA_DKM;
+    // DKM: kolamnya kecil (puluhan artikel), maka satu permintaan 200 hasil meliputi kesemuanya dan kedudukan dalam hasil tidak dijadikan penalti.
+    const ambil = async (filter) => { let res; try { res = await oaFetch(filter, key, dkm ? 200 : 100); } catch (e) { if (e.code === 'kuota') throw e; res = []; } res.forEach((w, i) => { const it = terima(w, dkm ? 0 : i, variant, excl, taken, ids, tema); if (it) found.push(it); }); };
     await ambil(base.join(','));
+    // ringkas: varian gantian mediator hanya membuat satu permintaan supaya bajet harian OpenAlex tidak habis apabila kolam semakin nipis
+    if (dkm || ringkas) return susun(found, tema);
     if (found.filter(x => x.kelas <= 5).length < 2) await ambil(base.concat(['primary_location.source.is_core:true']).join(','));
     // Kolam empirikal kuantitatif nipis: cuba kueri yang ditambah istilah metodologi (SEM, kemudian tinjauan).
     if (kuantScopus(found) < 2) await ambil([`title_and_abstract.search:${variant} "structural equation"`].concat(BASE()).join(','));
     if (kuantScopus(found) < 2) await ambil([`title_and_abstract.search:${variant} survey`].concat(BASE()).join(','));
-    return susun(found);
+    return susun(found, tema);
   }
   // Rantaian rujukan ("connected papers"): calon esok diambil daripada senarai Rujukan artikel semalam bagi konstruk yang sama.
   async function cariRujukan(tema, seed, excl, taken, key) {
@@ -278,7 +344,7 @@ export function initHarian(R) {
       let res; try { res = await oaFetch(['ids.openalex:' + chunk.join('|')].concat(BASE()).join(','), key, 100); } catch (e) { if (e.code === 'kuota') throw e; res = []; }
       res.forEach((w, j) => { const it = terima(w, 0, variant, excl, taken, ids, tema); if (it) found.push(it); });
     }
-    return susun(found);
+    return susun(found, tema);
   }
   function ringkasSeed(seed, tarikh) { return { oaId: seed.oaId || '', doi: seed.doi || '', tajuk: seed.tajuk || '', penulis: penulisRingkas(seed.penulis || []), tahun: seed.tahun || '', tarikh: tarikh || '', artikelId: seed.artikelId || null, nRefs: seed.nRefs || (seed.refs || []).length }; }
   async function loadSejarah() {
@@ -296,36 +362,79 @@ export function initHarian(R) {
     }
     return null;
   }
+  /* Cari satu slot: rantaian rujukan dahulu (calon diambil daripada senarai Rujukan artikel terdahulu bagi konstruk yang sama), kemudian
+     carian baharu. Bagi IV dan DV aliran ini sama seperti sebelum v1.29.0. Bagi mediator dan DKM: rantaian hanya disambung jika artikel
+     terdahulu sendiri menumpukan konstruk itu, dan semua varian kueri dicuba sebelum slot diisytiharkan kosong. */
+  async function cariSlot(tema, ctx, opt) {
+    const { excl, taken, key, di, kueri } = ctx; opt = opt || {};
+    let found = []; let rantai = null; const seed = opt.tanpaBenih ? null : seedFor(tema); const pintu = PINTU[tema];
+    const benihSah = !seed || !pintu || pintu(seed.it).aras > 0;
+    if (seed && benihSah && (seed.it.refs || []).length) {
+      found = await cariRujukan(tema, seed.it, excl, taken, key);
+      if (found.length) { rantai = { panjang: ((seed.it.rantai && seed.it.rantai.panjang) || 1) + 1, dari: ringkasSeed(seed.it, seed.tarikh) }; kueri[tema] = 'Rujukan artikel ' + seed.tarikh; }
+    }
+    if (!found.length) {
+      const vs = VARIAN[tema]; let variant = vs[di % vs.length]; kueri[tema] = variant;
+      found = await cariTema(tema, variant, excl, taken, key);
+      const lagi = pintu ? vs.length - 1 : 2;
+      for (let k = 1; k <= lagi && !found.length; k++) { variant = vs[(di + k) % vs.length]; kueri[tema] = variant; found = await cariTema(tema, variant, excl, taken, key, !!pintu); }
+      const sebab = opt.sebab ? opt.sebab : !seed ? 'Tiada artikel terdahulu bagi konstruk ini, maka carian baharu.' : !benihSah ? `Artikel ${seed.tarikh} tidak menumpukan ${tema === TEMA_DKM ? 'digital knowledge management' : 'pengurusan pengetahuan'}, maka rantaian tidak disambung dan carian baharu dimulakan.` : !(seed.it.refs || []).length ? `Artikel ${seed.tarikh} tiada senarai rujukan dalam OpenAlex, maka carian baharu.` : `Senarai rujukan artikel ${seed.tarikh} (${(seed.it.refs || []).length} rujukan) tiada lagi penerbitan ${minYear()} hingga ${new Date().getFullYear()} yang memenuhi kriteria, maka rantaian baharu dimulakan.`;
+      rantai = { panjang: 1, baharu: true, sebab, dari: seed ? ringkasSeed(seed.it, seed.tarikh) : null };
+    }
+    if (found.length) { const pick = found[0]; taken.add(pick.doi); pick.tema = tema; pick.dibaca = false; pick.artikelId = null; pick.rujukan = apaRef(pick); pick.rantai = rantai; if (pintu) pick.kolam = found.length; pick.alt = found.slice(1, 9).map(a => Object.assign({}, a, { abstrak: a.abstrak.slice(0, 700), tema, rantai })); return pick; }
+    return { tema, kosong: true, kueri: kueri[tema], rantai };
+  }
   async function cari(force) {
     if (H.busy) return; H.busy = true; const btn = $('#btnHarianCari'); btn.disabled = true;
     $('#harianSub').textContent = 'Mencari dalam OpenAlex: artikel empirikal kuantitatif dahulu (padanan metodologi), keutamaan Scopus, kemudian jurnal teras dan DOAJ; akses terbuka; ' + minYear() + ' hingga ' + new Date().getFullYear() + '; semakan pendua terhadap semua cadangan terdahulu.';
     try {
       const meta = await R.db().getMeta(); const key = meta && meta.openalexKey ? String(meta.openalexKey).trim() : '';
       await loadScopus(); await loadSejarah();
-      const excl = await excluded(); const taken = new Set(); const items = []; const kueri = {}; const di = dayIndex() + (force ? Math.floor(Math.random() * 6) : 0);
-      for (const tema of TEMA3) {
-        let found = []; let rantai = null; const seed = seedFor(tema);
-        if (seed && (seed.it.refs || []).length) {
-          found = await cariRujukan(tema, seed.it, excl, taken, key);
-          if (found.length) { rantai = { panjang: ((seed.it.rantai && seed.it.rantai.panjang) || 1) + 1, dari: ringkasSeed(seed.it, seed.tarikh) }; kueri[tema] = 'Rujukan artikel ' + seed.tarikh; }
-        }
-        if (!found.length) {
-          const vs = VARIAN[tema]; let variant = vs[di % vs.length]; kueri[tema] = variant;
-          found = await cariTema(tema, variant, excl, taken, key);
-          for (let k = 1; k <= 2 && !found.length; k++) { variant = vs[(di + k) % vs.length]; kueri[tema] = variant; found = await cariTema(tema, variant, excl, taken, key); }
-          const sebab = !seed ? 'Tiada artikel terdahulu bagi konstruk ini, maka carian baharu.' : !(seed.it.refs || []).length ? `Artikel ${seed.tarikh} tiada senarai rujukan dalam OpenAlex, maka carian baharu.` : `Senarai rujukan artikel ${seed.tarikh} (${(seed.it.refs || []).length} rujukan) tiada lagi penerbitan ${minYear()} hingga ${new Date().getFullYear()} yang memenuhi kriteria, maka rantaian baharu dimulakan.`;
-          rantai = { panjang: 1, baharu: true, sebab, dari: seed ? ringkasSeed(seed.it, seed.tarikh) : null };
-        }
-        if (found.length) { const pick = found[0]; taken.add(pick.doi); pick.tema = tema; pick.dibaca = false; pick.artikelId = null; pick.rujukan = apaRef(pick); pick.rantai = rantai; pick.alt = found.slice(1, 9).map(a => Object.assign({}, a, { abstrak: a.abstrak.slice(0, 700), tema, rantai })); items.push(pick); }
-        else items.push({ tema, kosong: true, kueri: kueri[tema], rantai });
+      const excl = await excluded(); const taken = new Set(); const kueri = {}; const di = dayIndex() + (force ? Math.floor(Math.random() * 6) : 0);
+      const ctx = { excl, taken, key, di, kueri }; const hasil = {};
+      for (const tema of SLOT_CARI) {
+        try { hasil[tema] = await cariSlot(tema, ctx); }
+        catch (e) { if (!(PINTU[tema] && e && e.code === 'kuota')) throw e; hasil[tema] = { tema, kosong: true, kuota: true, kueri: kueri[tema] || '', rantai: null }; }
       }
+      const items = SLOT.map(t => hasil[t]);
       await logPicks(items);
       const semak = Object.assign({}, (H.excl && H.excl.stat) || {}, { logTulis: H.logAwan || '' });
-      const doc = { tarikh: H.date, dibuat: Date.now(), kueri, items, semak };
+      const doc = { tarikh: H.date, dibuat: Date.now(), enjin: ENJIN, kueri, items, semak };
       await saveDoc(doc, false);
       H.doc = doc; if (H.sejarah) H.sejarah.set(H.date, doc); render(); await loadDates(); R.lsSet('rslr_harian_last', H.date);
     } catch (e) { toast('Carian harian gagal: ' + (e && e.message ? e.message : e && e.code ? e.code : 'ralat talian'), true); $('#harianSub').textContent = 'Carian gagal. Semak talian internet, kemudian klik Cari semula.'; }
     finally { H.busy = false; btn.disabled = false; }
+  }
+  /* Kemas kini sekali bagi cadangan HARI INI yang dijana oleh enjin lama: (1) artikel mediator yang belum dibaca, belum ditambah ke repositori
+     dan tidak menumpukan pengurusan pengetahuan diganti melalui carian baharu; (2) slot DKM ditambah. Kad IV dan DV tidak disentuh.
+     Artikel yang diganti kekal dalam log cadangan, maka ia tidak dicadangkan lagi. */
+  async function kemasMediator() {
+    const doc = H.doc; if (H.busy || !doc || doc.tarikh !== todayStr() || (doc.enjin || 1) >= ENJIN) return false;
+    // Tunggu rekod repositori tiba dari pelayan supaya semakan pendua lengkap; muatan automatik selepas itu akan mencuba semula.
+    if (R.S && !R.S.fromServer) return false;
+    H.busy = true; const btn = $('#btnHarianCari'); if (btn) btn.disabled = true; const baharu = []; let diganti = null; let lengkap = true;
+    try {
+      const meta = await R.db().getMeta(); const key = meta && meta.openalexKey ? String(meta.openalexKey).trim() : '';
+      await loadScopus(); await loadSejarah(); const excl = await excluded(); const items = doc.items.slice();
+      const taken = new Set(items.filter(x => !x.kosong && x.doi).map(x => x.doi)); const kueri = Object.assign({}, doc.kueri || {}); const ctx = { excl, taken, key, di: dayIndex(), kueri };
+      // had permintaan OpenAlex: langkah itu ditangguhkan ke muatan berikutnya, tanpa menggagalkan langkah yang sudah berjaya
+      const cuba = async fn => { try { return await fn(); } catch (e) { if (e && e.code === 'kuota') { lengkap = false; return null; } throw e; } };
+      const i = items.findIndex(x => x.tema === TEMA[1]); const lama = i >= 0 ? items[i] : null;
+      if (lama && !lama.kosong && !lama.dibaca && !lama.artikelId && !fokusPP(lama).aras) {
+        const ganti = await cuba(() => cariSlot(TEMA[1], ctx, { tanpaBenih: true, sebab: `Cadangan awal hari ini (${penulisRingkas(lama.penulis || [])}, ${lama.tahun || 't.t.'}) tidak menumpukan pengurusan pengetahuan, maka ia diganti melalui carian baharu dengan tapisan fokus konstruk.` }));
+        if (ganti && !ganti.kosong) { items[i] = ganti; baharu.push(ganti); diganti = lama; }
+      }
+      if (!items.some(x => x.tema === TEMA_DKM)) {
+        const dk = await cuba(() => cariSlot(TEMA_DKM, ctx));
+        if (dk) { const j = items.findIndex(x => x.tema === TEMA[1]); items.splice(j >= 0 ? j + 1 : items.length, 0, dk); if (!dk.kosong) baharu.push(dk); }
+      }
+      if (!lengkap && !baharu.length) return false;
+      doc.items = items; doc.kueri = kueri; if (lengkap) doc.enjin = ENJIN; await logPicks(baharu); await saveDoc(doc, false, doc.tarikh);
+      if (H.doc === doc) { if (H.sejarah) H.sejarah.set(doc.tarikh, doc); render(); await loadDates(); }
+      if (diganti) toast('Artikel Pengurusan Pengetahuan Organisasi hari ini diganti kerana cadangan awal tidak menumpukan pengurusan pengetahuan');
+      return true;
+    } catch (e) { console.warn('harian: kemas kini mediator gagal', e); return false; }
+    finally { H.busy = false; if (btn) btn.disabled = false; }
   }
   async function loadDates() {
     await loadSejarah();
@@ -336,7 +445,7 @@ export function initHarian(R) {
   function renderRantaian() {
     const box = $('#rantaian'); if (!box || !H.sejarah) return;
     const dates = Array.from(H.sejarah.keys()).sort();
-    const cols = TEMA3.map(tema => {
+    const cols = SLOT.map(tema => {
       const steps = []; dates.forEach(d => { const it = (H.sejarah.get(d).items || []).find(x => x.tema === tema && !x.kosong); if (it) steps.push({ d, it }); });
       if (!steps.length) return `<div class="rantai-col"><h3><span class="tag tema ${temaClass(tema)}"><span>${esc(tema)}</span></span></h3><div class="help">Belum ada cadangan.</div></div>`;
       return `<div class="rantai-col"><h3><span class="tag tema ${temaClass(tema)}"><span>${esc(tema)}</span></span></h3><ol>${steps.map(({ d, it }, k) => {
@@ -353,20 +462,21 @@ export function initHarian(R) {
     const doc = await loadDoc(H.date);
     H.doc = doc; render(); badge();
     if (!doc && auto && navigator.onLine && H.date === todayStr()) cari(false);
+    else if (doc && navigator.onLine && H.date === todayStr() && (doc.enjin || 1) < ENJIN) kemasMediator();
   }
   function badge() {
     const b = $('#navBadge'); const doc = H.doc && H.doc.tarikh === todayStr() ? H.doc : null;
     const n = doc ? doc.items.filter(it => !it.kosong && !it.dibaca).length : 0;
     b.hidden = !n; b.textContent = String(n);
   }
-  function temaClass(t) { return t === TEMA[0] ? 'kd' : t === TEMA[1] ? 'ppo' : t === TEMA[2] ? 'kdg' : 'lain'; }
+  function temaClass(t) { return t === TEMA[0] ? 'kd' : t === TEMA[1] ? 'ppo' : t === TEMA[2] ? 'kdg' : t === TEMA_DKM ? 'ppd' : 'lain'; }
   function render() {
     const box = $('#picks'); const doc = H.doc;
-    if (!doc) { $('#harianSub').textContent = H.date === todayStr() ? 'Belum ada cadangan untuk hari ini.' : 'Tiada cadangan direkodkan pada tarikh ini.'; box.innerHTML = TEMA3.map(t => `<div class="pick ${temaClass(t)}"><span class="tag tema ${temaClass(t)}"><span>${esc(t)}</span></span><div class="empty-pick">${H.busy ? 'Mencari' : 'Klik Cari semula untuk mendapatkan cadangan.'}</div></div>`).join(''); return; }
+    if (!doc) { $('#harianSub').textContent = H.date === todayStr() ? 'Belum ada cadangan untuk hari ini.' : 'Tiada cadangan direkodkan pada tarikh ini.'; box.innerHTML = SLOT.map(t => `<div class="pick ${temaClass(t)}"><span class="tag tema ${temaClass(t)}"><span>${esc(t)}</span></span><div class="empty-pick">${H.busy ? 'Mencari' : 'Klik Cari semula untuk mendapatkan cadangan.'}</div></div>`).join(''); return; }
     const n = doc.items.filter(it => !it.kosong).length; const read = doc.items.filter(it => it.dibaca).length;
-    $('#harianSub').textContent = `${n} artikel dicadangkan pada ${doc.tarikh}, ${read} sudah dibaca. Kueri: ${TEMA3.map(t => (doc.kueri && doc.kueri[t]) || '').filter(Boolean).join(' | ')}`;
+    $('#harianSub').textContent = `${n} artikel dicadangkan pada ${doc.tarikh}, ${read} sudah dibaca. Kueri: ${SLOT.map(t => (doc.kueri && doc.kueri[t]) || '').filter(Boolean).join(' | ')}`;
     box.innerHTML = doc.items.map((it, i) => {
-      if (it.kosong) return `<div class="pick ${temaClass(it.tema)}"><span class="tag tema ${temaClass(it.tema)}"><span>${esc(it.tema)}</span></span><div class="empty-pick">Tiada artikel baharu yang memenuhi semua tapisan untuk kueri "${esc(it.kueri || '')}". Klik Cari semula untuk mencuba kueri lain.</div></div>`;
+      if (it.kosong) return `<div class="pick ${temaClass(it.tema)}"><span class="tag tema ${temaClass(it.tema)}"><span>${esc(it.tema)}</span></span><div class="empty-pick">${it.kuota ? 'Had permintaan OpenAlex hari ini dicapai sebelum kad ini sempat dicari. Klik Cari semula kemudian, atau tetapkan kunci API OpenAlex percuma dalam Tetapan.' : it.tema === TEMA_DKM ? 'Tiada artikel baharu yang menamakan digital knowledge management dan memenuhi semua tapisan (akses terbuka, jurnal berindeks, lima tahun terkini, belum pernah dicadangkan). Kolam artikel yang menamakan konstruk ini masih kecil; kad ini akan terisi semula apabila ada penerbitan baharu.' : `Tiada artikel baharu yang memenuhi semua tapisan untuk kueri "${esc(it.kueri || '')}". Klik Cari semula untuk mencuba kueri lain.`}</div></div>`;
       const sjr = it.issn ? `https://www.scimagojr.com/journalsearch.php?q=${encodeURIComponent(it.issn.replace('-', ''))}&tip=iss&clean=0` : `https://www.scimagojr.com/journalsearch.php?q=${encodeURIComponent(it.jurnal)}`;
       return `<article class="pick ${temaClass(it.tema)}${it.dibaca ? ' done' : ''}" data-i="${i}">
         <div class="top"><span class="tag tema ${temaClass(it.tema)}"><span>${esc(it.tema)}</span></span><label><input type="checkbox" data-baca="${i}"${it.dibaca ? ' checked' : ''}> Sudah dibaca</label></div>
@@ -375,6 +485,7 @@ export function initHarian(R) {
         ${it.rantai ? `<div class="rantai-line">${it.rantai.baharu ? `<b>Rantaian baharu.</b> ${esc(it.rantai.sebab || '')}` : `<b>Rantaian ke-${esc(it.rantai.panjang)}.</b> Disenaraikan dalam Rujukan artikel ${esc(it.rantai.dari.tarikh)}: ${esc(it.rantai.dari.penulis)} (${esc(it.rantai.dari.tahun)}), «${esc(it.rantai.dari.tajuk)}»${it.rantai.dari.doi ? ` <a href="https://doi.org/${esc(it.rantai.dari.doi)}" target="_blank" rel="noopener">DOI</a>` : ''}${it.rantai.dari.artikelId && R.S.docs.has(it.rantai.dari.artikelId) ? ` <button class="btn btn-sm" data-rek="${esc(it.rantai.dari.artikelId)}">Rekod</button>` : ''}`}</div>` : ''}
         <div class="badges">${(it.kelas || kelasOf(it)) <= 5 ? `<span class="tag ok"><span>${esc(kelasLabel(it.kelas || kelasOf(it)))}${(it.kelas || kelasOf(it)) <= 4 ? ' (anggaran SJR)' : ''}</span></span>` : it.isCore ? '<span class="tag ok"><span>Jurnal teras (berwasit)</span></span>' : it.inDoaj ? '<span class="tag ok"><span>DOAJ (berwasit)</span></span>' : ''}${it.inDoaj && (it.kelas || kelasOf(it)) !== 7 ? '<span class="tag"><span>DOAJ</span></span>' : ''}${it.nRefs ? `<span class="tag" title="Bilangan rujukan dalam OpenAlex; asas rantaian esok"><span>${esc(it.nRefs)} rujukan</span></span>` : ''}<span class="tag pdf"><span>${it.pdfUrl ? 'PDF terbuka' : 'Akses terbuka'}</span></span><span class="tag"><span>Dipetik ${it.dipetik}</span></span>${pdfDalamDrive(it) ? '<span class="tag s-selesai"><span>PDF dalam Drive</span></span>' : it.artikelId && R.S.docs.has(it.artikelId) ? '<span class="tag s-selesai"><span>Dalam repositori</span></span>' : ''}${it.hasContent ? '<span class="tag"><span>Salinan OpenAlex</span></span>' : ''}</div>
         ${(() => { const K = klas(it); return `<div class="kaedah"><span class="tag j${K.tier}"><span>${esc(K.jenis)}</span></span><span class="padan" title="Padanan dengan metodologi kajian Prof Dr: tinjauan soal selidik, responden guru sekolah rendah, SEM, analisis perantara"><i><b style="width:${K.padanan}%"></b></i>Padanan metodologi ${K.padanan}%</span><div class="pet">${K.petunjuk && K.petunjuk.length ? 'Petunjuk jenis (keyakinan ' + esc(K.yakin) + '): ' + esc(K.petunjuk.join(', ')) + '. ' : 'Tiada petunjuk jenis dalam abstrak. '}${K.padananPetunjuk && K.padananPetunjuk.length ? 'Padanan: ' + esc(K.padananPetunjuk.join(', ')) + '. ' : 'Tiada padanan metodologi dikesan. '}<span class="auto">Dikesan automatik daripada tajuk dan abstrak; sahkan selepas membaca.</span></div></div>`; })()}
+        ${it.fokus && it.fokus.aras ? `<div class="fokus-line"><b>Fokus konstruk.</b> ${esc(teksFokus(it))}${it.tema === TEMA_DKM && it.kolam && !(it.rantai && !it.rantai.baharu) ? ` <span class="auto">Kolam semasa: ${esc(it.kolam - 1)} artikel lagi menamakan konstruk ini dan memenuhi semua tapisan.</span>` : ''}</div>` : ''}
         <div class="abs" data-abs="${i}">${esc(it.abstrak || 'Abstrak tidak tersedia dalam OpenAlex.')}</div>
         <div class="why">Rujukan: ${esc(it.rujukan || apaRef(it))}</div>
         ${it.manual ? `<div class="manual"><b>Langkah manual.</b> ${esc(it.manual)}. Klik <b>Buka PDF</b>, simpan fail itu, kemudian pilih fail yang dimuat turun di sini (atau seret ke kad ini; di Android, buka fail dan Kongsi ke aplikasi Repositori SLR). Fail terus disimpan dalam Google Drive dan dipautkan ke rekod.<div class="acts" style="margin-top:6px">${it.pdfUrl ? `<a class="btn btn-sm btn-primary" href="${esc(it.pdfUrl)}" target="_blank" rel="noopener">Buka PDF</a>` : `<a class="btn btn-sm btn-primary" href="${esc(it.oaUrl)}" target="_blank" rel="noopener">Buka versi terbuka</a>`}<label class="btn btn-sm">Pilih fail PDF<input type="file" accept=".pdf,application/pdf" hidden data-pickfile="${i}"></label></div></div>` : ''}
@@ -471,7 +582,7 @@ export function initHarian(R) {
     const it = H.doc.items.find(x => !x.kosong && x.doi === n); if (!it) return false;
     it.artikelId = articleId; it.manual = null;
     const d = R.S.docs.get(articleId) || {}; const patch = {};
-    const want = Object.assign({ tajuk: it.tajuk, penulis: penulisRingkas(it.penulis), tahun: it.tahun, rujukan: it.rujukan || apaRef(it), tema: it.tema, pautan: it.pdfUrl || it.oaUrl }, medanDaripada(it));
+    const want = Object.assign({ tajuk: it.tajuk, penulis: penulisRingkas(it.penulis), tahun: it.tahun, rujukan: it.rujukan || apaRef(it), tema: temaRekod(it.tema), pautan: it.pdfUrl || it.oaUrl }, medanDaripada(it));
     // Rekod yang baru dicipta daripada PDF: metadata OpenAlex (tajuk, penulis, tahun) lebih dipercayai daripada tekaan daripada teks PDF.
     const utama = baru ? ['tajuk', 'penulis', 'tahun', 'rujukan'] : [];
     Object.keys(want).forEach(k => { if (want[k] && (utama.includes(k) || !(d[k] && String(d[k]).trim()))) patch[k] = want[k]; });
@@ -485,7 +596,7 @@ export function initHarian(R) {
     const jenis = /^Meta/.test(K.jenis) ? 'Meta-analisis' : /^Ulasan skop/.test(K.jenis) ? 'Ulasan skop' : /^(Ulasan|Analisis bibliometrik)/.test(K.jenis) ? 'Ulasan sistematik' : /^Konseptual/.test(K.jenis) ? 'Konseptual' : /instrumen/i.test(K.jenis) ? 'Instrumen dan pengesahan' : K.tier === 0 || K.tier === 2 ? 'Empirikal' : '';
     const rekaBentuk = K.tier === 0 ? (/campuran/i.test(K.jenis) ? 'Kaedah campuran' : 'Kuantitatif') : K.tier === 2 ? 'Kualitatif' : K.tier === 3 ? 'Ulasan atau sintesis' : K.tier === 4 ? 'Konseptual' : '';
     const indeks = kelas <= 5 ? 'Scopus' : 'Tidak pasti'; const kuartil = kelas <= 4 ? 'Q' + kelas : 'Tidak pasti';
-    const catatan = `Dicadangkan oleh Cadangan Harian pada ${H.date}.${it.jurnal ? ' Jurnal: ' + it.jurnal + '.' : ''} Jenis dan reka bentuk dikesan automatik daripada tajuk dan abstrak: ${K.jenis}${K.petunjuk && K.petunjuk.length ? ' (petunjuk: ' + K.petunjuk.slice(0, 6).join(', ') + ')' : ''}; padanan metodologi ${K.padanan}%${K.padananPetunjuk && K.padananPetunjuk.length ? ' (' + K.padananPetunjuk.join(', ') + ')' : ''}. Pengindeksan mengikut senarai Scopus Nov 2024; kuartil anggaran SJR. Sila sahkan selepas membaca.`;
+    const catatan = `Dicadangkan oleh Cadangan Harian pada ${H.date}.${it.tema === TEMA_DKM ? ' Slot carian: Pengurusan Pengetahuan Digital Organisasi (digital knowledge management, DKM).' : ''}${it.fokus && it.fokus.aras ? ' Fokus konstruk: ' + teksFokus(it) : ''}${it.jurnal ? ' Jurnal: ' + it.jurnal + '.' : ''} Jenis dan reka bentuk dikesan automatik daripada tajuk dan abstrak: ${K.jenis}${K.petunjuk && K.petunjuk.length ? ' (petunjuk: ' + K.petunjuk.slice(0, 6).join(', ') + ')' : ''}; padanan metodologi ${K.padanan}%${K.padananPetunjuk && K.padananPetunjuk.length ? ' (' + K.padananPetunjuk.join(', ') + ')' : ''}. Pengindeksan mengikut senarai Scopus Nov 2024; kuartil anggaran SJR. Sila sahkan selepas membaca.`;
     return { jenis, rekaBentuk, indeks, kuartil, catatan };
   }
   function tambah(it) {
@@ -493,7 +604,7 @@ export function initHarian(R) {
     const n = R.normDoi(it.doi); let ada = null;
     if (n) R.S.docs.forEach((d, id) => { if (!ada && R.normDoi(d.doi) === n) ada = id; });
     H.reused = !!ada; if (ada) return ada;
-    const extra = Object.assign({ tajuk: it.tajuk, penulis: penulisRingkas(it.penulis), tahun: it.tahun, doi: it.doi, rujukan: it.rujukan || apaRef(it), tema: it.tema, pautan: it.pdfUrl || it.oaUrl, status: 'Belum dibaca' }, medanDaripada(it));
+    const extra = Object.assign({ tajuk: it.tajuk, penulis: penulisRingkas(it.penulis), tahun: it.tahun, doi: it.doi, rujukan: it.rujukan || apaRef(it), tema: temaRekod(it.tema), pautan: it.pdfUrl || it.oaUrl, status: 'Belum dibaca' }, medanDaripada(it));
     const id = R.createArticle(extra); R.renderList(); return id;
   }
   $('#picks').addEventListener('click', async e => {
@@ -526,5 +637,5 @@ export function initHarian(R) {
   $('#btnHarianCari').addEventListener('click', () => { H.date = todayStr(); cari(true); });
   $('#harianTarikh').addEventListener('change', e => load(e.target.value, false));
 
-  return { load, cari, loadDates, badge, todayStr, intake, linkByDoi, render, renderRantaian, klas, jenisOf, padananOf, state: H };
+  return { load, cari, loadDates, badge, todayStr, intake, linkByDoi, render, renderRantaian, klas, jenisOf, padananOf, fokusPP, fokusDKM, teksFokus, kemasMediator, TEMA_DKM, SLOT, ENJIN, VARIAN, state: H };
 }

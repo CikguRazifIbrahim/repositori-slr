@@ -27,7 +27,7 @@
   --accent:#0F6D70; --accent-ink:#FFFFFF; --accent-soft:#D9EEEE; --accent-line:#8FC7C8;
   --ok:#2C7A4B; --ok-soft:#DDF1E4; --warn:#9A6A12; --warn-soft:#FBEBC8; --bad:#B23B35; --bad-soft:#F8DCDA;
   --info:#3A5CA8; --info-soft:#DFE6F7;
-  --kd:#3A5CA8; --ppo:#0F6D70; --kdg:#7B3E92; --lain:#5F6B7A;
+  --kd:#3A5CA8; --ppo:#0F6D70; --ppd:#B4541A; --kdg:#7B3E92; --lain:#5F6B7A;
   --w-merah:#C0392B; --w-biru:#2F6DB5; --w-hijau:#2E8B57; --w-oren:#D98324; --w-ungu:#7B5EA7; --w-kelabu:#7A8694;
   --viewer-bg:#2A2F38; --viewer-bar:#1C2129; --viewer-fg:#E8ECF2;
   --shadow:0 1px 2px rgba(20,30,45,.06),0 6px 20px rgba(20,30,45,.06);
@@ -44,7 +44,7 @@
     --accent:#5EC4C6; --accent-ink:#07191A; --accent-soft:#163538; --accent-line:#2E6B6D;
     --ok:#6CC58F; --ok-soft:#173424; --warn:#E3B45B; --warn-soft:#3A2E12; --bad:#F08A84; --bad-soft:#3F1F1D;
     --info:#8FA9E8; --info-soft:#1E2A45;
-    --kd:#8FA9E8; --ppo:#5EC4C6; --kdg:#C48AD6; --lain:#9DA9B9;
+    --kd:#8FA9E8; --ppo:#5EC4C6; --ppd:#E0854A; --kdg:#C48AD6; --lain:#9DA9B9;
     --w-merah:#FF8A80; --w-biru:#8FB8F0; --w-hijau:#7FD6A3; --w-oren:#F5B36B; --w-ungu:#C5A8EE; --w-kelabu:#A8B2BF;
     --viewer-bg:#0C1117; --viewer-bar:#141A22; --viewer-fg:#E7ECF2;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
@@ -57,7 +57,7 @@
   --accent:#5EC4C6; --accent-ink:#07191A; --accent-soft:#163538; --accent-line:#2E6B6D;
   --ok:#6CC58F; --ok-soft:#173424; --warn:#E3B45B; --warn-soft:#3A2E12; --bad:#F08A84; --bad-soft:#3F1F1D;
   --info:#8FA9E8; --info-soft:#1E2A45;
-  --kd:#8FA9E8; --ppo:#5EC4C6; --kdg:#C48AD6; --lain:#9DA9B9;
+  --kd:#8FA9E8; --ppo:#5EC4C6; --ppd:#E0854A; --kdg:#C48AD6; --lain:#9DA9B9;
   --w-merah:#FF8A80; --w-biru:#8FB8F0; --w-hijau:#7FD6A3; --w-oren:#F5B36B; --w-ungu:#C5A8EE; --w-kelabu:#A8B2BF;
   --viewer-bg:#0C1117; --viewer-bar:#141A22; --viewer-fg:#E7ECF2;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
@@ -185,7 +185,7 @@ button.chip{cursor:pointer}
 .tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-weight:600;line-height:1.3;max-width:100%}
 .tag span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tag.tema{color:#fff}
-.tag.kd{background:var(--kd)} .tag.ppo{background:var(--ppo)} .tag.kdg{background:var(--kdg)} .tag.lain{background:var(--lain)}
+.tag.kd{background:var(--kd)} .tag.ppo{background:var(--ppo)} .tag.ppd{background:var(--ppd)} .tag.kdg{background:var(--kdg)} .tag.lain{background:var(--lain)}
 .tag.r-tinggi{background:var(--ok-soft);color:var(--ok)} .tag.r-sed-tinggi{background:var(--accent-soft);color:var(--accent)} .tag.r-sed{background:var(--warn-soft);color:var(--warn)} .tag.r-rendah{background:var(--surface-2);color:var(--muted)}
 .tag.s-selesai{background:var(--ok-soft);color:var(--ok)} .tag.s-sedang{background:var(--warn-soft);color:var(--warn)} .tag.s-belum{background:var(--surface-2);color:var(--muted)}
 .tag.pdf{background:var(--info-soft);color:var(--info)}
@@ -306,7 +306,10 @@ button.chip{cursor:pointer}
 .harian-head .spacer{flex:1}
 .picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
 .pick{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0;border-top:4px solid var(--lain)}
-.pick.kd{border-top-color:var(--kd)} .pick.ppo{border-top-color:var(--ppo)} .pick.kdg{border-top-color:var(--kdg)}
+.pick.kd{border-top-color:var(--kd)} .pick.ppo{border-top-color:var(--ppo)} .pick.ppd{border-top-color:var(--ppd)} .pick.kdg{border-top-color:var(--kdg)}
+.fokus-line{font-size:12.5px;line-height:1.4;border-left:3px solid var(--ppo);padding:1px 0 1px 8px;color:var(--fg)}
+.pick.ppd .fokus-line{border-left-color:var(--ppd)}
+.fokus-line .auto{color:var(--muted);font-style:italic}
 .pick h3{font-size:16px;line-height:1.3;font-family:var(--font-body);font-weight:700}
 .pick .meta{font-size:13px;color:var(--muted)}
 .pick .badges{display:flex;flex-wrap:wrap;gap:5px}
@@ -315,8 +318,9 @@ button.chip{cursor:pointer}
 .pick .why{font-size:12.5px;color:var(--muted);border-left:3px solid var(--accent-line);padding-left:8px}
 .pick .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
 .pick.done{opacity:.72}
-.pick .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.pick .top label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.pick .top{display:flex;align-items:center;justify-content:space-between;gap:6px 8px;flex-wrap:wrap}
+.pick .top label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap;margin-left:auto}
+.pick .top .tag.tema{border-radius:12px} .pick .top .tag.tema span{white-space:normal;overflow:visible}
 .pick .top input{accent-color:var(--ok);width:16px;height:16px}
 .pick .empty-pick{color:var(--muted);font-size:14px;padding:10px 0}
 .harian-note{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.5}
@@ -1488,14 +1492,14 @@ ol.bs-soal-l li{margin-bottom:7px}
 
 <main id="harian" class="view" hidden>
   <div class="harian-head">
-    <div><h1>Bacaan hari ini</h1><div class="sub" id="harianSub">Tiga artikel terbuka, satu bagi setiap pemboleh ubah.</div></div>
+    <div><h1>Bacaan hari ini</h1><div class="sub" id="harianSub">Artikel terbuka: satu bagi setiap pemboleh ubah, dan satu bagi Pengurusan Pengetahuan Digital Organisasi (DKM).</div></div>
     <span class="spacer"></span>
     <label class="field" style="flex-direction:row;align-items:center;gap:6px"><span class="lbl">Tarikh</span><select id="harianTarikh"></select></label>
     <button id="btnHarianCari" class="btn btn-primary">Cari semula</button>
   </div>
   <div id="picks" class="picks"></div>
   <div id="harianSemak" class="harian-semak" hidden></div>
-  <div class="harian-note">Sumber carian: pangkalan data terbuka OpenAlex. Keutamaan: (1) artikel empirikal kuantitatif (termasuk kaedah campuran, pengesahan instrumen dan eksperimen) dahulu, kemudian artikel yang jenisnya tidak dapat dipastikan, kualitatif, ulasan dan konseptual; (2) jurnal Scopus (Q1 hingga Q4 mengikut anggaran SJR, kemudian Scopus tanpa kuartil), diikuti jurnal teras CWTS dan DOAJ, manakala artikel yang tidak dapat disahkan diindeks dan berwasit ditolak; (3) padanan metodologi dengan kajian Prof Dr (tinjauan soal selidik, responden guru sekolah rendah, SEM, analisis perantara). Jenis dan padanan dikesan automatik daripada tajuk dan abstrak. Tapisan lain: tahun penerbitan lima tahun terkini, artikel jurnal, akses terbuka, berkonteks pendidikan, bukan TAM atau UTAUT, belum ada dalam repositori dan belum pernah dicadangkan. Rantaian: calon hari ini diambil daripada senarai Rujukan artikel sebelumnya bagi konstruk yang sama selagi ada penerbitan dalam julat tahun itu; jika tiada, carian baharu dimulakan. Senarai Scopus: Scopus Source Title List November 2024; pengesahan terkini dan kuartil rasmi melalui pautan Semak SJR.</div>
+  <div class="harian-note">Sumber carian: pangkalan data terbuka OpenAlex. Keutamaan: (1) artikel empirikal kuantitatif (termasuk kaedah campuran, pengesahan instrumen dan eksperimen) dahulu, kemudian artikel yang jenisnya tidak dapat dipastikan, kualitatif, ulasan dan konseptual; (2) jurnal Scopus (Q1 hingga Q4 mengikut anggaran SJR, kemudian Scopus tanpa kuartil), diikuti jurnal teras CWTS dan DOAJ, manakala artikel yang tidak dapat disahkan diindeks dan berwasit ditolak; (3) padanan metodologi dengan kajian Prof Dr (tinjauan soal selidik, responden guru sekolah rendah, SEM, analisis perantara). Jenis dan padanan dikesan automatik daripada tajuk dan abstrak. Tapisan lain: tahun penerbitan lima tahun terkini, artikel jurnal, akses terbuka, berkonteks pendidikan, bukan TAM atau UTAUT, belum ada dalam repositori dan belum pernah dicadangkan. Rantaian: calon hari ini diambil daripada senarai Rujukan artikel sebelumnya bagi konstruk yang sama selagi ada penerbitan dalam julat tahun itu; jika tiada, carian baharu dimulakan. Pengurusan Pengetahuan Organisasi (mediator): artikel mesti menumpukan konstruk itu, iaitu &quot;knowledge management&quot; dalam tajuk, atau istilah prosesnya (contohnya knowledge sharing, knowledge creation, SECI) dalam tajuk berserta &quot;knowledge management&quot; dalam abstrak; sebutan sekali lalu dalam abstrak tidak diterima, dan rantaian hanya disambung daripada artikel yang sendiri menumpukan konstruk itu. Pengurusan Pengetahuan Digital Organisasi (DKM): hanya artikel yang menamakan &quot;digital knowledge management&quot; dalam tajuk, atau sekurang-kurangnya dua kali dalam abstrak; kad ini tidak dihadkan kepada konteks pendidikan kerana kebanyakan kajian yang menamakan konstruk itu dijalankan di luar pendidikan, dan apabila ditambah ke repositori artikelnya bertema Pengurusan Pengetahuan Organisasi. Senarai Scopus: Scopus Source Title List November 2024; pengesahan terkini dan kuartil rasmi melalui pautan Semak SJR.</div>
   <section id="rantaian" class="rantaian"></section>
 </main>
 
