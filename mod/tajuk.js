@@ -245,20 +245,24 @@ ${t.profil}`;
     if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
     const system = sistem(t, n), user = tugas(n); const anggaran = anggarToken(system) + anggarToken(user); const tk = T.d.token || { masuk: 0, keluar: 0, panggil: 0 }; const nS = sumberRingkas().length;
     const amaran = l.belum.length && l.bebas < 12 ? `<div class="pd-notis"><b>Pembayang belum lengkap.</b> Unsur teras yang belum diisi: ${esc(l.belum.map(m => m.label.replace(/\s*\(.*\)$/, '')).join('; '))}. Cadangan akan dibuat tanpa unsur ini dan agen akan bertanya tentangnya.</div>` : '';
-    const ok = await R.richModal(`Jana ${n} cadangan tajuk?`, `${amaran}<p>Panggilan ini menghantar pembayang, jawapan soalan pandu, tajuk kerja semasa${nS ? ' dan senarai ringkas ' + nS + ' artikel sumber (penulis, tahun dan tajuk sahaja)' : ''} ke API Anthropic menggunakan kunci API Prof Dr.</p><p class="help">Anggaran ${angka(anggaran)} token masuk dan sehingga ${angka(hadToken(n))} token keluar, model ${esc(t.model.replace('claude-', ''))}. Kosnya dicaj kepada akaun Anthropic Prof Dr.${tk.panggil ? ` Setakat ini bagi tajuk artikel ini: ${angka(tk.panggil)} panggilan, token masuk ${angka(tk.masuk)}, keluar ${angka(tk.keluar)}.` : ''}</p>`, amaran ? 'Jana juga' : 'Jana cadangan', amaran ? 'Lengkapkan dahulu' : 'Batal');
+    const ok = await R.richModal(`Jana ${n} cadangan tajuk?`, `${amaran}<p>Panggilan ini menghantar pembayang, jawapan soalan pandu, tajuk kerja semasa${nS ? ' dan senarai ringkas ' + nS + ' artikel sumber (penulis, tahun dan tajuk sahaja)' : ''} ke API Anthropic menggunakan kunci API Prof Dr.</p><p class="help">Anggaran ${angka(anggaran)} token masuk dan sehingga ${angka(R.Isi.hadKeluar(hadToken(n)))} token keluar termasuk pemikiran model, model ${esc(t.model.replace('claude-', ''))}. Kosnya dicaj kepada akaun Anthropic Prof Dr.${tk.panggil ? ` Setakat ini bagi tajuk artikel ini: ${angka(tk.panggil)} panggilan, token masuk ${angka(tk.masuk)}, keluar ${angka(tk.keluar)}.` : ''}</p>`, amaran ? 'Jana juga' : 'Jana cadangan', amaran ? 'Lengkapkan dahulu' : 'Batal');
     if (!ok) { if (amaran) { const f = l.belum[0]; const inp = f && $(`#artTajukBantu [data-tjm="${f.k}"]`); if (inp) inp.focus(); } return; }
     T.busy = true; render();
     try {
       const res = await R.Isi.hantar(t, { kunciMod: 'tajuk:' + t.model, system, content: [{ type: 'text', text: user }], skema: SKEMA, alat: ALAT, hadToken: hadToken(n) });
-      const data = res.input || R.Isi.parseJson(res.text, res.stop); if (!data || typeof data !== 'object') throw { code: 'json' };
+      let data; try { data = res.input || R.Isi.parseJson(res.text, res.stop); } catch (e) { if (e && typeof e === 'object') e.usage = res.usage; throw e; } if (!data || typeof data !== 'object') throw { code: 'json', stop: res.stop, usage: res.usage };
       const lihat = new Set(); const cadangan = (Array.isArray(data.cadangan) ? data.cadangan : []).map(c => ({ tajuk: bersihTajuk(c && c.tajuk), padanan: mahuPadanan() ? bersihTajuk(c && c.padanan) : '', pola: String((c && c.pola) || '').trim(), unsur: (Array.isArray(c && c.unsur) ? c.unsur : []).map(bersihTeks).filter(Boolean).slice(0, 8), sebab: bersihTeks(c && c.sebab) })).filter(c => { const k = c.tajuk.toLowerCase(); if (!c.tajuk || lihat.has(k)) return false; lihat.add(k); return true; }).slice(0, n);
-      if (!cadangan.length) throw { code: 'kosong' };
+      if (!cadangan.length) throw { code: 'tiada_cadangan', usage: res.usage };
       const masuk = res.usage ? res.usage.masuk + (res.usage.cacheBaca || 0) + (res.usage.cacheTulis || 0) : 0, keluar = res.usage ? res.usage.keluar : 0;
       const sesi = { id: idBaru(), masa: Date.now(), model: t.model, token: res.usage ? { masuk, keluar } : null, jenis: jenis(), bahasa: bahasa(), bil: n, pembayang: teksPembayang(), cadangan, soalan: (Array.isArray(data.soalan) ? data.soalan : []).map(bersihTeks).filter(Boolean).slice(0, HAD_SOALAN), nota: bersihTeks(data.nota), pilih: null };
-      T.d.sesi = [sesi].concat(T.d.sesi || []).slice(0, HAD_SESI); T.d.token = { masuk: (tk.masuk || 0) + masuk, keluar: (tk.keluar || 0) + keluar, panggil: (tk.panggil || 0) + 1 }; simpan(true);
-      T.busy = false; render(); toast(`${cadangan.length} cadangan tajuk siap${res.usage ? ' (token masuk ' + angka(masuk) + ', keluar ' + angka(keluar) + ')' : ''}`);
+      T.d.sesi = [sesi].concat(T.d.sesi || []).slice(0, HAD_SESI); T.d.token = { masuk: (tk.masuk || 0) + masuk, keluar: (tk.keluar || 0) + keluar, panggil: (tk.panggil || 0) + 1, gagal: tk.gagal || 0 }; simpan(true);
+      T.busy = false; render(); toast(`${cadangan.length} cadangan tajuk siap${res.usage ? ' (token masuk ' + angka(masuk) + ', keluar ' + angka(keluar) + ')' : ''}${res.ulang ? '. Percubaan pertama terhenti pada had token, maka permintaan diulang sekali dengan had lebih tinggi dan kedalaman berfikir rendah; token kedua-dua percubaan dikira' : ''}`);
       bukaCadangan(0);
-    } catch (e) { T.busy = false; render(); toast('Agen gagal mencadangkan tajuk: ' + (e && e.code === 'kosong' ? 'tiada cadangan diterima; cuba sekali lagi.' : R.Isi.msg(e)), true); }
+    } catch (e) {
+      /* token panggilan yang gagal tetap dikira */
+      if (e && e.usage) { T.d.token = { masuk: (tk.masuk || 0) + R.Isi.masukSemua(e.usage), keluar: (tk.keluar || 0) + (e.usage.keluar || 0), panggil: (tk.panggil || 0) + 1, gagal: (tk.gagal || 0) + 1 }; simpan(true); }
+      T.busy = false; render(); toast('Agen gagal mencadangkan tajuk: ' + (e && e.code === 'tiada_cadangan' ? 'jawapan model tidak memuatkan cadangan tajuk yang boleh digunakan; cuba sekali lagi.' : R.Isi.msg(e)), true);
+    }
   }
 
   /* ---- peristiwa ---- */

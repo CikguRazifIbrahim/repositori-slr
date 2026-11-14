@@ -10,8 +10,11 @@ export function initIsi(R) {
   const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (seimbang, disyorkan)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (paling pantas dan murah)'], ['claude-opus-5-5', 'Claude Opus 5.5 (paling teliti, kos tertinggi)']];
   /* Agen Bahasa selepas isian (mod/bahasa.js): nilai pertama ialah lalai. */
   const BAHASA_AUTO = [['sentiasa', 'Sentiasa, selepas setiap isian (lalai)'], ['perlu', 'Hanya apabila pengesan menemui istilah untuk dipiawaikan (jimat token)'], ['tidak', 'Tidak; saya panggil sendiri melalui butang Piawaikan bahasa']];
+  /* Kedalaman berfikir model (output_config.effort); nilai pertama ('') bermaksud lalai model, iaitu effort tidak dihantar. */
+  const EFFORT = [['', 'Lalai model (Sonnet 5.5: tinggi; Opus 5.5 dan Haiku 5.5: sederhana)'], ['low', 'Rendah: paling jimat token, kurang teliti'], ['medium', 'Sederhana: seimbang'], ['high', 'Tinggi: paling teliti, paling banyak token']];
+  const effortSah = v => (EFFORT.some(x => x[0] === v) ? v : '');
   const SKIP = new Set(['catatan']);
-  const I = { cache: new Map(), busy: new Set(), semua: false, mod: {} };
+  const I = { cache: new Map(), busy: new Set(), semua: false, mod: {}, tanpaEffort: {}, effortDimaklum: false };
   const PROFIL_DEFAULT = `Tajuk: Pengaruh Kepimpinan Digital Guru Besar terhadap Kompetensi Digital Guru dengan Pengurusan Pengetahuan Organisasi sebagai Perantara di Sekolah Rendah Negeri Perak (calon PhD, Universiti Pendidikan Sultan Idris).
 Model: pemboleh ubah bebas Kepimpinan Digital Guru Besar (KD; kerangka ISTE Standards for Education Leaders 2024, lima dimensi: Penyokong Kewarganegaraan Digital, Perancang Berwawasan, Pemimpin Pemerkasa, Pereka Bentuk Sistem, Pembelajar Berhubung); pemboleh ubah perantara Pengurusan Pengetahuan Organisasi (PPO; Model SECI Nonaka dan Takeuchi: Sosialisasi, Eksternalisasi, Kombinasi, Internalisasi, serta konsep Ba dan Pandangan Berasaskan Pengetahuan Grant 1996; dilihat sebagai amalan dan tahap amalan); pemboleh ubah bersandar Kompetensi Digital Guru (KDG; DigCompEdu Redecker 2017, enam bidang, 22 kompetensi).
 Hipotesis: H1 KD mempengaruhi KDG secara langsung; H2 KD mempengaruhi PPO; H3 PPO mempengaruhi KDG; H4 PPO mengantara hubungan KD dengan KDG (kesan tidak langsung a x b).
@@ -20,7 +23,7 @@ Metodologi: kuantitatif, bukan eksperimen, keratan rentas, tinjauan soal selidik
 Bab tesis: Bab 1 Pengenalan dan pernyataan masalah; Bab 2 Sorotan literatur (konsep dan teori KD, PPO, KDG; kajian lepas; kerangka konseptual); Bab 3 Metodologi; Bab 4 Dapatan; Bab 5 Perbincangan.`;
 
   /* ---- tetapan ---- */
-  async function tetapan() { let m = {}; try { m = (await R.db().getMeta()) || {}; } catch (e) {} return { key: String(m.anthropicKey || '').trim(), model: String(m.anthropicModel || MODEL_DEFAULT).trim() || MODEL_DEFAULT, profil: String(m.profilKajian || '').trim() || PROFIL_DEFAULT, bahasaAuto: BAHASA_AUTO.some(x => x[0] === m.bahasaAuto) ? m.bahasaAuto : BAHASA_AUTO[0][0] }; }
+  async function tetapan() { let m = {}; try { m = (await R.db().getMeta()) || {}; } catch (e) {} return { key: String(m.anthropicKey || '').trim(), model: String(m.anthropicModel || MODEL_DEFAULT).trim() || MODEL_DEFAULT, profil: String(m.profilKajian || '').trim() || PROFIL_DEFAULT, bahasaAuto: BAHASA_AUTO.some(x => x[0] === m.bahasaAuto) ? m.bahasaAuto : BAHASA_AUTO[0][0], effort: effortSah(m.effort) }; }
 
   /* ---- teks penuh artikel ---- */
   function pageText(items) {
@@ -152,44 +155,103 @@ Pulangkan JSON sekarang.`;
   /* Temperature, Top-K dan Top-P sengaja TIDAK dihantar. Dokumentasi API meminta ketiga-tiganya ditinggalkan bagi model keluarga 5.5:
      Sonnet 5.5 dan Opus 5.5 menolak permintaan yang menetapkannya dengan ralat 400, dan halaman Haiku 5.5 meminta ia ditinggalkan.
      Bahasa dan gaya dikawal melalui arahan (PIAWAIAN BAHASA dalam bahasa-data.js) dan Agen Bahasa (bahasa.js). Disemak 14 November 2026. */
-  const HAD_TOKEN = 8192, HAD_TOKEN_ULANG = 16384;
+  const HAD_TOKEN = 8192;   // bajet JAWAPAN lalai; ruang berfikir ditambah di atasnya (lihat di bawah)
+  /* Pemikiran model dan had token keluaran (v1.31.1). Model keluarga 5.5 berfikir sebelum menjawab (adaptive thinking; sentiasa hidup bagi
+     Opus 5.5). Token pemikiran dibilkan sebagai token keluaran dan DIKIRA dalam max_tokens, maka had yang terlalu rendah boleh habis untuk
+     pemikiran sebelum teks jawapan sempat ditulis: jawapan tiba dengan stop_reason "max_tokens" dan tanpa blok teks (dahulu dipaparkan
+     sebagai "jawapan kosong diterima"). Dokumentasi API: naikkan max_tokens supaya ada ruang bagi pemikiran dan jawapan, atau rendahkan
+     effort. Maka:
+     1. hadToken pemanggil ialah bajet JAWAPAN; penghantar menambah RUANG_FIKIR di atasnya, dengan siling HAD_MAKS (di bawah 21,333,
+        ambang yang memerlukan penstriman menurut dokumentasi). Had ialah siling: yang dicaj ialah token yang benar-benar dijana.
+     2. Jika jawapan masih kosong, atau output berstruktur terpotong, pada max_tokens, permintaan diulang SEKALI dengan siling HAD_MAKS dan
+        effort rendah supaya jawapan sempat ditulis.
+        Teks biasa yang terhenti pada max_tokens sebelum suku bajet jawapan ditulis dikira sama (pemikiran menelan had dan jawapan baru
+        bermula; bajet dianggar murah hati, maka suku bajet kira-kira separuh jawapan yang dijangka); jika ulangan tidak lebih panjang,
+        teks percubaan pertama digunakan. Teks yang lebih panjang daripada itu dipulangkan seperti sedia ada dengan stop "max_tokens"
+        supaya pemanggil boleh memberi amaran, kerana mengulang jawapan yang hampir siap hanya menggandakan kos.
+     3. Token semua percubaan dijumlahkan, dan disertakan pada ralat (e.usage) apabila panggilan gagal, supaya kiraan token jujur.
+     Pemanggil yang mengurus ulangan sendiri (isian PDF, Agen Bahasa, menu Sintesis) menghantar ulang: false bersama had yang sudah
+     memuatkan ruang berfikir (hadKeluar), dan mengulang pada HAD_MAKS.
+     Had ialah siling, bukan belian: dokumentasi had kadar menyatakan max_tokens tidak dikira dalam had kadar token keluaran, dan bil
+     dikira atas token yang benar-benar dijana. Maka ruang berfikir yang tidak digunakan tidak dicaj.
+     Effort (output_config.effort: low, medium, high) ialah tuil yang disokong bagi kedalaman berfikir; ia hanya dihantar jika dipilih
+     dalam Tetapan atau semasa ulangan. Jika API menolaknya (ralat 400, tidak dicaj), permintaan dihantar semula tanpanya dan effort
+     diabaikan sehingga aplikasi dimuat semula. Disemak dengan dokumentasi pada 14 November 2026. */
+  const RUANG_FIKIR = 10000, HAD_MAKS = 21000, HAD_TOKEN_ULANG = HAD_MAKS;
+  const hadKeluar = had => Math.min(HAD_MAKS, (had || HAD_TOKEN) + RUANG_FIKIR);
+  /* Permintaan tanpa penstriman menunggu seluruh jawapan: masa menunggu mengikut had token, antara 4 dengan 10 minit. */
+  const masaTunggu = had => Math.min(600000, Math.max(240000, (had || HAD_TOKEN) * 30));
+  const masukSemua = u => (u ? (u.masuk || 0) + (u.cacheBaca || 0) + (u.cacheTulis || 0) : 0);
+  const angka = n => Number(n || 0).toLocaleString('en-US');
+  const anggarTeks = s => String(s || '').trim().length / 3.6;   // anggaran token bagi teks (sama seperti anggaran token masuk)
+  const tambahGuna = (a, b) => { a = a || {}; b = b || {}; return { masuk: (a.masuk || 0) + (b.masuk || 0), keluar: (a.keluar || 0) + (b.keluar || 0), cacheTulis: (a.cacheTulis || 0) + (b.cacheTulis || 0), cacheBaca: (a.cacheBaca || 0) + (b.cacheBaca || 0) }; };
   /* Penghantar generik (digunakan oleh "isi medan" dan modul lain seperti Banding Artikel): mod skema -> alat -> teks dengan ingatan
      mod bagi setiap kunci (model atau tujuan:model). content ialah senarai blok kandungan pengguna; skema ialah JSON Schema jawapan;
      alat ialah definisi alat bagi mod sandaran. */
   async function hantar(t, p) {
     const kunci = p.kunciMod || t.model; let mod = modSemasa(kunci);
+    const sendiri = p.ulang === false;
+    let had = sendiri ? (p.hadToken || HAD_TOKEN) : hadKeluar(p.hadToken);
+    let effort = effortSah(p.effort !== undefined ? p.effort : t.effort); let ulang = 0; let tanpaEf = false; let efBersih = false;
+    const guna = { masuk: 0, keluar: 0, cacheTulis: 0, cacheBaca: 0 }; let nGuna = 0; const bajet = p.hadToken || HAD_TOKEN; let sebelum = null;
+    const gagal = e => { if (nGuna) e.usage = Object.assign({}, guna); return e; };
     for (;;) {
       const content = p.content.slice();
       if (mod === 'alat' && p.alat) { const last = content[content.length - 1]; if (last && last.type === 'text') content[content.length - 1] = { type: 'text', text: last.text + '\n\nPanggil alat ' + p.alat.name + ' untuk memulangkan jawapan; jangan balas dalam bentuk teks.' }; }
-      const body = { model: t.model, max_tokens: p.hadToken || HAD_TOKEN, system: [{ type: 'text', text: p.system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] };
-      if (mod === 'skema' && p.skema) body.output_config = { format: { type: 'json_schema', schema: p.skema } };
-      else if (mod === 'alat' && p.alat) { body.tools = [p.alat]; body.tool_choice = { type: 'auto' }; }
-      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 240000);
+      const body = { model: t.model, max_tokens: had, system: [{ type: 'text', text: p.system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] };
+      const ef = effort && !I.tanpaEffort[t.model] && !tanpaEf ? effort : '';
+      const oc = {}; if (mod === 'skema' && p.skema) oc.format = { type: 'json_schema', schema: p.skema }; if (ef) oc.effort = ef;
+      if (Object.keys(oc).length) body.output_config = oc;
+      if (mod === 'alat' && p.alat) { body.tools = [p.alat]; body.tool_choice = { type: 'auto' }; }
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), masaTunggu(had));
       let r;
       try { r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': t.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body), signal: ctl.signal }); }
-      catch (e) { throw { code: e && e.name === 'AbortError' ? 'masa' : 'rangkaian', message: String(e && e.message || e) }; }
+      catch (e) { throw gagal({ code: e && e.name === 'AbortError' ? 'masa' : 'rangkaian', message: String(e && e.message || e), minit: Math.round(masaTunggu(had) / 60000) }); }
       finally { clearTimeout(tm); }
       let j = null; try { j = await r.json(); } catch (e) {}
       const mesej = (j && j.error && j.error.message) || '';
+      /* Ralat 400 tidak dicaj. Jika effort dihantar, hantar semula sekali tanpanya dahulu: jika berjaya, effort itulah puncanya dan ia
+         diabaikan bagi model ini sehingga aplikasi dimuat semula; jika masih 400, effort bukan punca dan logik mod di bawah mengambil alih. */
+      if (r.status === 400 && ef && !efBersih) { tanpaEf = true; console.warn('isi: ralat 400 dengan effort "' + ef + '" (' + mesej + '); menghantar semula tanpa effort'); continue; }
+      if (tanpaEf) {
+        if (r.status === 400) { tanpaEf = false; efBersih = true; }
+        else if (r.ok) { I.tanpaEffort[t.model] = true; tanpaEf = false; if (!I.effortDimaklum) { I.effortDimaklum = true; toast('Tetapan kedalaman berfikir ditolak oleh API bagi model ini (ralat 400) dan diabaikan sehingga aplikasi dimuat semula.', true); } }
+      }
       if (r.status === 400 && sebabMod(mod, mesej)) {
         const lagi = modSeterusnya(mod);
         if (lagi) { console.warn('isi: mod "' + mod + '" ditolak API (' + mesej + '); beralih kepada mod "' + lagi + '"'); I.mod[kunci] = lagi; mod = lagi; continue; }
       }
-      if (!r.ok) throw { code: 'http', status: r.status, message: mesej };
+      if (!r.ok) throw gagal({ code: 'http', status: r.status, message: mesej });
       I.mod[kunci] = mod;
       const blocks = (j && j.content) || [];
       const tool = blocks.find(b => b.type === 'tool_use' && b.input && typeof b.input === 'object');
-      const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n');
-      const u = (j && j.usage) || {}; const stop = j && j.stop_reason;
-      I.lastRaw = { mod, text, tool: tool ? tool.input : null, stop };
-      if (stop === 'refusal') throw { code: 'refusal' };
-      return { input: tool ? tool.input : null, text, usage: { masuk: u.input_tokens || 0, keluar: u.output_tokens || 0, cacheTulis: u.cache_creation_input_tokens || 0, cacheBaca: u.cache_read_input_tokens || 0 }, stop, mod };
+      let text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n');
+      const u = (j && j.usage) || {}; let stop = j && j.stop_reason;
+      guna.masuk += u.input_tokens || 0; guna.keluar += u.output_tokens || 0; guna.cacheTulis += u.cache_creation_input_tokens || 0; guna.cacheBaca += u.cache_read_input_tokens || 0; nGuna++;
+      I.lastRaw = { mod, text, tool: tool ? tool.input : null, stop, had, effort: ef || null };
+      if (stop === 'refusal') throw gagal({ code: 'refusal' });
+      let kosong = !tool && !String(text).trim();
+      /* Teks biasa yang terhenti pada had sebelum suku bajet jawapan ditulis: pemikiran menelan had dan jawapan baru bermula. */
+      const pendek = !p.skema && !tool && !kosong && anggarTeks(text) < bajet / 4;
+      /* Had habis untuk pemikiran sebelum jawapan sempat ditulis (kosong atau baru bermula), atau output berstruktur terpotong: ulang sekali. */
+      if (!sendiri && stop === 'max_tokens' && (kosong || p.skema || pendek) && ulang < 1) {
+        ulang++; if (pendek) sebelum = { text, stop };
+        console.warn('isi: jawapan ' + (kosong ? 'kosong' : pendek ? 'baru bermula' : 'berstruktur terpotong') + ' pada had ' + had + ' token (' + kunci + '); mengulang dengan had ' + HAD_MAKS + ' dan effort rendah');
+        had = HAD_MAKS; effort = 'low'; if (typeof p.onUlang === 'function') { try { p.onUlang({ had, kosong }); } catch (e) {} }
+        continue;
+      }
+      /* Ulangan yang tidak lebih panjang daripada percubaan pertama: teks percubaan pertama digunakan. */
+      if (sebelum && !tool && String(text).trim().length < String(sebelum.text).trim().length) { text = sebelum.text; stop = sebelum.stop; kosong = false; }
+      if (!sendiri && kosong) throw gagal({ code: 'kosong', stop, had });
+      return { input: tool ? tool.input : null, text, usage: Object.assign({}, guna), stop, mod, had, ulang, effort: ef || null };
     }
   }
-  async function panggil(t, system, artikel, task, hadToken) {
+  async function panggil(t, system, artikel, task, hadToken, effort) {
     const artBlock = artikel.pdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: artikel.pdf }, cache_control: { type: 'ephemeral' } }
       : { type: 'text', text: 'TEKS PENUH ARTIKEL (fail ' + artikel.nama + ', ' + artikel.pages + ' muka surat):\n\n' + artikel.text, cache_control: { type: 'ephemeral' } };
-    return hantar(t, { kunciMod: t.model, system, content: [artBlock, { type: 'text', text: task }], skema: skemaJson(), alat: alatIsi(), hadToken });
+    /* Isian PDF mengurus ulangannya sendiri: percubaan pertama pada bajet jawapan HAD_TOKEN berserta ruang berfikir, kemudian
+       HAD_TOKEN_ULANG (siling) dengan arahan meringkaskan. */
+    return hantar(t, { kunciMod: t.model, system, content: [artBlock, { type: 'text', text: task }], skema: skemaJson(), alat: alatIsi(), hadToken: hadToken || hadKeluar(HAD_TOKEN), ulang: false, effort });
   }
   /* Sandaran: jika model membalas teks (bukan alat), baiki JSON yang lazim rosak: pagar kod, tanda petik tidak dilepaskan di dalam
      rentetan, baris baharu mentah, koma hujung dan kurungan yang terpotong. */
@@ -232,9 +294,11 @@ Pulangkan JSON sekarang.`;
     if (c === 'no_key') return 'kunci API Anthropic belum ditetapkan (menu Tetapan).';
     if (c === 'no_token') return 'Google Drive belum disambung.';
     if (c === 'scan_besar') return `PDF ini imbasan tanpa teks dan melebihi 100 muka surat (${e.pages}); tidak dapat dihantar.`;
-    if (c === 'json') return e && e.stop === 'max_tokens' ? 'jawapan model terpotong kerana mencapai had token; cuba sekali lagi (medan yang panjang boleh diisi berasingan).' : 'jawapan model tidak dapat dibaca sebagai JSON walaupun selepas pembaikan; cuba sekali lagi.';
+    const guna = e && e.usage ? ' Token masuk ' + angka(masukSemua(e.usage)) + ' dan keluar ' + angka(e.usage.keluar) + ' telah digunakan.' : '';
+    if (c === 'json') return (e && e.stop === 'max_tokens' ? 'jawapan model terpotong kerana mencapai had token; cuba sekali lagi (medan yang panjang boleh diisi berasingan).' : 'jawapan model tidak dapat dibaca sebagai JSON walaupun selepas pembaikan; cuba sekali lagi.') + guna;
     if (c === 'refusal') return 'model enggan menjawab permintaan ini (stop_reason refusal); cuba sekali lagi atau tukar model dalam Tetapan.';
-    if (c === 'masa') return 'tamat masa menunggu jawapan (4 minit).';
+    if (c === 'kosong') { return e.stop === 'max_tokens' ? 'model menggunakan seluruh had token keluaran (' + angka(e.had) + ') untuk berfikir dan tidak sempat menulis jawapan, walaupun selepas diulang sekali.' + guna + ' Kurangkan bahan yang dihantar atau pilih kedalaman berfikir yang lebih rendah dalam Tetapan, kemudian cuba lagi.' : 'model memulangkan jawapan tanpa teks' + (e.stop ? ' (stop_reason ' + e.stop + ')' : '') + '.' + guna + ' Cuba sekali lagi.'; }
+    if (c === 'masa') return 'tamat masa menunggu jawapan (' + (e.minit || 4) + ' minit).' + guna;
     if (c === 'rangkaian') return 'permintaan ke api.anthropic.com gagal (talian terputus atau disekat pelayar).';
     if (st === 401) return 'kunci API Anthropic tidak sah (semak Tetapan).';
     if (st === 403) return 'akses ditolak oleh API Anthropic.';
@@ -246,6 +310,7 @@ Pulangkan JSON sekarang.`;
   }
 
   /* ---- isi satu bahagian ---- */
+  const PERHATIAN_RINGKAS = '\n\nPERHATIAN: jawapan sebelum ini terpotong kerana terlalu panjang. Ringkaskan setiap medan (tidak melebihi kira-kira 1,200 aksara setiap satu) sambil mengekalkan angka, petikan dan jejak muka surat yang paling penting.';
   function setBtn(letter, text, busy) { $$('[data-isi="' + letter + '"]').forEach(b => { b.disabled = !!busy; b.textContent = text || 'Mohon Prof Dr Claude isikan'; }); }
   async function isi(id, letter, opts) {
     opts = opts || {};
@@ -267,19 +332,26 @@ Pulangkan JSON sekarang.`;
       const lain = letter === 'F' ? digestLain(id, d0.tema) : '';
       const tugas = taskPrompt(letter, sp, d0, lain);
       let res = await panggil(t, systemPrompt(t.profil), artikel, tugas);
+      let diulang = false;
       if (res.stop === 'max_tokens') {
-        /* Jawapan terpotong: ulang sekali dengan had token dua kali ganda dan arahan meringkaskan. Awalan (alat, sistem, artikel)
-           sudah berada dalam cache, maka ulangan ini murah; token keluaran sahaja dijana semula. */
-        console.warn('isi: jawapan mencapai had token bagi bahagian', letter, '; mengulang dengan had', HAD_TOKEN_ULANG);
-        setBtn(letter, 'Jawapan terpotong; Claude mengulang dengan lebih ringkas', true);
-        const u0 = res.usage;
-        const res2 = await panggil(t, systemPrompt(t.profil), artikel, tugas + '\n\nPERHATIAN: jawapan sebelum ini terpotong kerana terlalu panjang. Ringkaskan setiap medan (tidak melebihi kira-kira 1,200 aksara setiap satu) sambil mengekalkan angka, petikan dan jejak muka surat yang paling penting.', HAD_TOKEN_ULANG);
-        res2.usage = { masuk: u0.masuk + res2.usage.masuk, keluar: u0.keluar + res2.usage.keluar, cacheTulis: u0.cacheTulis + res2.usage.cacheTulis, cacheBaca: u0.cacheBaca + res2.usage.cacheBaca };
+        /* Jawapan terpotong: ulang sekali pada siling HAD_TOKEN_ULANG. Jika jawapan pertama sudah ada isi, ia terlalu panjang: arahan
+           meringkaskan ditambah dan effort tidak diubah, supaya awalan (sistem, artikel) yang sudah berada dalam cache dibaca semula
+           dengan murah. Jika jawapan pertama kosong, had habis untuk pemikiran model: ulangan dihantar dengan effort rendah supaya
+           jawapan sempat ditulis (pertukaran effort boleh membatalkan cache; kebolehpercayaan diutamakan). */
+        const tiadaIsi = !res.input && !String(res.text || '').trim(); diulang = true;
+        console.warn('isi: jawapan ' + (tiadaIsi ? 'kosong' : 'terpotong') + ' pada had token bagi bahagian', letter, '; mengulang dengan had', HAD_TOKEN_ULANG);
+        setBtn(letter, tiadaIsi ? 'Had token habis semasa model berfikir; Claude mengulang' : 'Jawapan terpotong; Claude mengulang dengan lebih ringkas', true);
+        const u0 = res.usage; let res2;
+        try { res2 = await panggil(t, systemPrompt(t.profil), artikel, tugas + (tiadaIsi ? '' : PERHATIAN_RINGKAS), HAD_TOKEN_ULANG, tiadaIsi ? 'low' : undefined); }
+        catch (e) { if (e && typeof e === 'object') e.usage = tambahGuna(u0, e.usage); throw e; }
+        res2.usage = tambahGuna(u0, res2.usage);
         /* Jika ulangan masih terpotong tetapi ada medan separa, gunakan mana yang lebih lengkap. */
         const n1 = res.input ? Object.keys(res.input).length : 0, n2 = res2.input ? Object.keys(res2.input).length : 0;
         res = (res2.input || res2.text) && (n2 >= n1 || !res.input) ? res2 : Object.assign({}, res, { usage: res2.usage });
       }
-      const j = res.input || parseJson(res.text, res.stop);
+      /* Tiada isi langsung: jika pada had token, pemikiran model menelan seluruh had walaupun selepas ulangan. Token tetap dilaporkan. */
+      if (!res.input && !String(res.text || '').trim()) throw { code: 'kosong', stop: res.stop, had: diulang ? HAD_TOKEN_ULANG : res.had, usage: res.usage };
+      let j; try { j = res.input || parseJson(res.text, res.stop); } catch (e) { if (e && typeof e === 'object' && !e.usage) e.usage = res.usage; throw e; }
       const d1 = rekodSemasa(id); const patch = {}; const diisi = []; const ditolak = [];
       sp.fields.forEach(f => {
         if (!nilaiKosong(d1[f.k])) return; let v = j[f.k]; if (v === undefined || v === null || v === TIADA) return;
@@ -332,5 +404,5 @@ Pulangkan JSON sekarang.`;
   }
   $('#form').addEventListener('click', e => { const b = e.target.closest('[data-isi]'); if (!b) return; e.preventDefault(); isi(R.S.currentId, b.dataset.isi).catch(() => {}); });
   const bs = $('#btnIsiSemua'); if (bs) bs.addEventListener('click', () => isiSemua(R.S.currentId));
-  return { isi, isiSemua, renderStat, tetapan, MODELS, MODEL_DEFAULT, PROFIL_DEFAULT, BAHASA_AUTO, systemPrompt, PANDUAN, bacaArtikel, hantar, parseJson, msg, nilaiKosong, SKIP, state: I };
+  return { isi, isiSemua, renderStat, tetapan, MODELS, MODEL_DEFAULT, PROFIL_DEFAULT, BAHASA_AUTO, EFFORT, HAD_TOKEN, RUANG_FIKIR, HAD_MAKS, hadKeluar, masaTunggu, masukSemua, systemPrompt, PANDUAN, bacaArtikel, hantar, parseJson, msg, nilaiKosong, SKIP, state: I };
 }

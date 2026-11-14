@@ -553,10 +553,12 @@ export function initBengkel(R) {
     semakan: S_OBJ({ gaya: { type: 'string', enum: ['laporan', 'separa', 'sintesis', 'tiada'] }, bukti: S_ARR(S_STR), setia: S_ARR(S_OBJ({ id: S_STR, status: { type: 'string', enum: ['tepat', 'longgar', 'salah', 'tiada'] }, nota: S_STR })), baik: S_ARR(S_STR), baiki: S_ARR(S_STR), contohAyat: S_STR, arah: S_ARR(S_OBJ({ k: { type: 'string', enum: K_ARAH }, status: { type: 'string', enum: ['ada', 'separa', 'tiada'] }, nota: S_STR })) }),
     soalan: S_ARR(S_STR), sandar: S_ARR(S_STR), nota: S_STR });
   const ALAT = { name: 'hasil_sintesis', description: 'Pulangkan hasil semakan dan sintesis mengikut struktur ini.', input_schema: SKEMA };
-  /* Had token keluar. Huraian Bahasa Melayu memakan lebih banyak token daripada jangkaan, maka had lama (3,200) memotong jawapan sebelum
-     contoh sempat ditulis. Had ini hanya siling: bil dikira atas token yang benar-benar dijana. Jika jawapan masih terpotong, permintaan
-     diulang sekali dengan had yang lebih besar dan arahan supaya lebih ringkas. */
-  const HAD_TOKEN = { contoh: 8000, rangka: 6500, semak: 6000 }, HAD_ULANG = 16000;
+  /* Bajet JAWAPAN bagi setiap mod. Ruang berfikir model ditambah di atasnya (R.Isi.hadKeluar) kerana token pemikiran dikira dalam
+     max_tokens: itulah sebabnya had lama (3,200, kemudian 8,000) masih memotong jawapan sebelum contoh sempat ditulis. Had ini hanya
+     siling: bil dikira atas token yang benar-benar dijana. Jika jawapan masih terpotong, permintaan diulang sekali pada siling
+     R.Isi.HAD_MAKS dengan effort rendah dan arahan supaya lebih ringkas. */
+  const HAD_TOKEN = { contoh: 8000, rangka: 6500, semak: 6000 };
+  const hadMod = mod => R.Isi.hadKeluar(HAD_TOKEN[mod]);
   const NOTA_RINGKAS = '\n\nPERHATIAN: jawapan sebelum ini terpotong kerana terlalu panjang. Tulis semula semua medan dengan lebih ringkas: setiap huraian satu ayat pendek, "idea" tidak melebihi tiga, "hubungan" tidak melebihi empat, "langkah" tidak melebihi empat, "soalan" tidak melebihi dua. Jangan ringkaskan ayat dalam "sintesis" dan jangan gugurkan sitasinya.';
   function sistem(t) {
     const g = gaya(); const jenis = BD.JENIS.filter(j => j.k !== 'auto').map(j => `- ${j.k} (${j.ms}): ${j.ket}`).join('\n'); const hub = BD.HUBUNGAN.map(h => `- ${h[0]}: ${h[2]}`).join('\n'); const fungsi = BD.FUNGSI_AYAT.map(f => `- ${f[0]} (${f[1]}): ${f[2]}`).join('\n'); const arah = BD.ARAH.map(a => `- ${a.k} (${a.ms}): ${a.arahan}`).join('\n');
@@ -708,7 +710,7 @@ ${arahan}`;
     const nSit = d.bahan.filter(b => { const i = isuKad(b); return i && (i.jenis === 'sekunder' || i.jenis === 'salah'); }).length;
     if (R.lsGet('rslr_bengkel_taktanya', '') !== hari) {
       const apa = { contoh: 'contoh sintesis', rangka: 'rangka sintesis', semak: 'semakan Tulisan saya' }[mod];
-      const ok = await R.richModal('Minta ' + apa + '?', `${nSit ? `<div class="pd-notis"><b>${nSit} ayat bersitasi sekunder atau tidak sepadan.</b> Betulkan sumber pada kad dahulu (butang Tulis ganti pada kad) supaya cadangan menggunakan sitasi yang betul.</div>` : ''}${lembut.length ? `<div class="pd-notis"><b>${lembut.length} amaran bahan.</b> ${esc(lembut.slice(0, 3).map(a => a.teks).join(' '))}</div>` : ''}${!String(d.konteks || '').trim() && !arahSnap.length ? '<div class="pd-notis"><b>Konteks perbincangan kosong.</b> Sintesis akan lebih tepat jika Prof Dr menyatakan apa yang perenggan ini mahu hujahkan.</div>' : ''}<p>Panggilan ini menghantar ${sb.bil} ayat bahan berserta sumbernya, konteks perbincangan${arahSnap.length ? ', ' + arahSnap.length + ' medan arah hujah' : ''}${nJawab ? ', ' + nJawab + ' jawapan Prof Dr kepada soalan pembantu' : ''}, senarai tajuk seksyen tulisan${mod === 'semak' ? ' dan Tulisan saya' : ''} ke API Anthropic menggunakan kunci API Prof Dr.</p><p class="help">Anggaran ${angka(anggaran)} token masuk dan sehingga ${angka(HAD_TOKEN[mod])} token keluar (lazimnya jauh kurang), model ${esc(t.model.replace('claude-', ''))}. Jika jawapan terpotong, aplikasi mengulang sekali dengan arahan supaya lebih ringkas. ${d.token.panggil ? `Setakat ini bagi kerja ini: ${angka(d.token.panggil)} panggilan, token masuk ${angka(d.token.masuk)}, keluar ${angka(d.token.keluar)}.` : ''}</p><label class="bs-semakkotak"><input type="checkbox" id="bsTakTanya"> Jangan tanya lagi hari ini</label>`, 'Teruskan', 'Batal');
+      const ok = await R.richModal('Minta ' + apa + '?', `${nSit ? `<div class="pd-notis"><b>${nSit} ayat bersitasi sekunder atau tidak sepadan.</b> Betulkan sumber pada kad dahulu (butang Tulis ganti pada kad) supaya cadangan menggunakan sitasi yang betul.</div>` : ''}${lembut.length ? `<div class="pd-notis"><b>${lembut.length} amaran bahan.</b> ${esc(lembut.slice(0, 3).map(a => a.teks).join(' '))}</div>` : ''}${!String(d.konteks || '').trim() && !arahSnap.length ? '<div class="pd-notis"><b>Konteks perbincangan kosong.</b> Sintesis akan lebih tepat jika Prof Dr menyatakan apa yang perenggan ini mahu hujahkan.</div>' : ''}<p>Panggilan ini menghantar ${sb.bil} ayat bahan berserta sumbernya, konteks perbincangan${arahSnap.length ? ', ' + arahSnap.length + ' medan arah hujah' : ''}${nJawab ? ', ' + nJawab + ' jawapan Prof Dr kepada soalan pembantu' : ''}, senarai tajuk seksyen tulisan${mod === 'semak' ? ' dan Tulisan saya' : ''} ke API Anthropic menggunakan kunci API Prof Dr.</p><p class="help">Anggaran ${angka(anggaran)} token masuk dan sehingga ${angka(hadMod(mod))} token keluar termasuk pemikiran model (lazimnya jauh kurang; yang dicaj hanyalah token yang benar-benar dijana), model ${esc(t.model.replace('claude-', ''))}. Jika jawapan terpotong, aplikasi mengulang sekali dengan arahan supaya lebih ringkas. ${d.token.panggil ? `Setakat ini bagi kerja ini: ${angka(d.token.panggil)} panggilan, token masuk ${angka(d.token.masuk)}, keluar ${angka(d.token.keluar)}.` : ''}</p><label class="bs-semakkotak"><input type="checkbox" id="bsTakTanya"> Jangan tanya lagi hari ini</label>`, 'Teruskan', 'Batal');
       if (!ok) return; if ((R.richModal.values || {}).bsTakTanya) R.lsSet('rslr_bengkel_taktanya', hari);
       if (B.id !== idKerja || B.busy) return;
     }
@@ -716,14 +718,14 @@ ${arahan}`;
     /* token setiap panggilan direkod walaupun jawapan gagal dibaca, supaya kiraan pada kerja ini jujur */
     const guna = { masuk: 0, keluar: 0, panggil: 0 }; const kira = r => { guna.panggil += 1; if (r && r.usage) { guna.masuk += (r.usage.masuk || 0) + (r.usage.cacheBaca || 0) + (r.usage.cacheTulis || 0); guna.keluar += r.usage.keluar || 0; } };
     const rekod = () => { if (B.id === idKerja && B.d && guna.panggil) { B.d.token = { masuk: (B.d.token.masuk || 0) + guna.masuk, keluar: (B.d.token.keluar || 0) + guna.keluar, panggil: (B.d.token.panggil || 0) + guna.panggil }; guna.masuk = guna.keluar = guna.panggil = 0; simpan(true); } };
-    const hantar = (teks, had) => R.Isi.hantar(t, { kunciMod: 'bengkel:' + t.model, system, content: [{ type: 'text', text: seksyen, cache_control: { type: 'ephemeral' } }, { type: 'text', text: teks }], skema: SKEMA, alat: ALAT, hadToken: had });
+    const hantar = (teks, had, effort) => R.Isi.hantar(t, { kunciMod: 'bengkel:' + t.model, system, content: [{ type: 'text', text: seksyen, cache_control: { type: 'ephemeral' } }, { type: 'text', text: teks }], skema: SKEMA, alat: ALAT, hadToken: had, ulang: false, effort });
     const baca = r => { try { const x = r.input || R.Isi.parseJson(r.text, r.stop); return x && typeof x === 'object' ? x : null; } catch (e) { return null; } };
     try {
-      let res = await hantar(user, HAD_TOKEN[mod]); kira(res); let data = baca(res); let terpotong = false; let ulang = false;
+      let res = await hantar(user, hadMod(mod)); kira(res); let data = baca(res); let terpotong = false; let ulang = false;
       if (res.stop === 'max_tokens') {
         /* jawapan mencapai had token: ulang sekali dengan had yang lebih besar dan arahan supaya lebih ringkas */
         ulang = true; B.ulang = true; if (B.id === idKerja) renderHasil();
-        try { const res2 = await hantar(user + NOTA_RINGKAS, HAD_ULANG); kira(res2); const data2 = baca(res2); if (data2) { res = res2; data = data2; terpotong = res2.stop === 'max_tokens'; } else terpotong = true; }
+        try { const res2 = await hantar(user + NOTA_RINGKAS, R.Isi.HAD_MAKS, 'low'); kira(res2); const data2 = baca(res2); if (data2) { res = res2; data = data2; terpotong = res2.stop === 'max_tokens'; } else terpotong = true; }
         catch (e2) { console.warn('bengkel: ulangan selepas jawapan terpotong gagal', e2); terpotong = true; }
       }
       if (!data) { rekod(); throw { code: 'json', stop: res.stop }; }

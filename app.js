@@ -14,7 +14,7 @@ import { initSintesis } from './mod/sintesis.js';
 import { initBengkel } from './mod/bengkel.js';
 import { initKumpulan } from './mod/kumpulan.js';
 import { initKalendar } from './mod/kalendar.js';
-const VERSION = '1.31.0';
+const VERSION = '1.31.1';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -817,17 +817,19 @@ async function showDiag() {
 }
 async function showTetapan() {
   const meta = await DB.getMeta(); const cur = meta && meta.openalexKey ? String(meta.openalexKey) : '';
-  const ak = meta && meta.anthropicKey ? String(meta.anthropicKey) : ''; const am = (meta && meta.anthropicModel) || Isi.MODEL_DEFAULT; const prof = (meta && meta.profilKajian) || ''; const ba = Isi.BAHASA_AUTO.some(x => x[0] === (meta && meta.bahasaAuto)) ? meta.bahasaAuto : Isi.BAHASA_AUTO[0][0];
+  const ak = meta && meta.anthropicKey ? String(meta.anthropicKey) : ''; const am = (meta && meta.anthropicModel) || Isi.MODEL_DEFAULT; const prof = (meta && meta.profilKajian) || ''; const ba = Isi.BAHASA_AUTO.some(x => x[0] === (meta && meta.bahasaAuto)) ? meta.bahasaAuto : Isi.BAHASA_AUTO[0][0]; const ef = Isi.EFFORT.some(x => x[0] === (meta && meta.effort)) ? meta.effort : '';
   const okk = await richModal('Tetapan', `<div class="help">Kunci API OpenAlex (disyorkan, percuma). Tanpa kunci, carian harian berkongsi bajet awam kecil (kira-kira 100 carian sehari untuk semua pengguna pada alamat IP yang sama) dan boleh ditolak dengan ralat 429. Dengan kunci, bajet ialah 1,000 carian sehari untuk Prof Dr sahaja. Cara: buka <a href="https://openalex.org/settings/api" target="_blank" rel="noopener">openalex.org/settings/api</a>, daftar akaun percuma, salin kunci dan tampal di bawah.</div><label for="tetKey">Kunci API OpenAlex</label><input id="tetKey" class="modal-in" type="text" autocomplete="off" value="${esc(cur)}" placeholder="kosongkan untuk tidak menggunakan kunci">
     <div class="help"><b>Mohon Prof Dr Claude isikan.</b> Kunci API Anthropic (akaun Console Anthropic, berbayar mengikut penggunaan, kira-kira beberapa sen setiap bahagian). Cara: buka <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>, daftar, tambah kredit, cipta API key dan tampal di bawah. Kunci dihantar hanya ke api.anthropic.com daripada aplikasi ini.</div><label for="tetAk">Kunci API Anthropic</label><input id="tetAk" class="modal-in" type="password" autocomplete="off" value="${esc(ak)}" placeholder="sk-ant-...">
     <label for="tetModel">Model</label><select id="tetModel" class="modal-in">${Isi.MODELS.map(([v, l]) => `<option value="${esc(v)}"${v === am ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
     <div class="help">Temperature, Top-K dan Top-P tidak dihantar oleh aplikasi ini: dokumentasi API Anthropic meminta ketiga-tiganya ditinggalkan bagi model keluarga 5.5, dan Sonnet 5.5 serta Opus 5.5 menolak permintaan yang menetapkannya (ralat 400). Bahasa keluaran dikawal melalui piawaian bahasa (senarai istilah Prof Dr) dalam arahan setiap agen dan melalui Agen Bahasa.</div>
+    <label for="tetEffort">Kedalaman berfikir model (effort)</label><select id="tetEffort" class="modal-in">${Isi.EFFORT.map(([v, l]) => `<option value="${esc(v)}"${v === ef ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+    <div class="help">Model keluarga 5.5 berfikir dahulu sebelum menjawab. Token pemikiran itu dicaj sebagai token keluar dan dikira dalam had token keluaran, walaupun teksnya tidak dipaparkan. Tahap yang lebih rendah menjimatkan token tetapi boleh mengurangkan ketelitian; tahap ini dipakai oleh semua agen. Had token keluar setiap panggilan ialah bajet jawapan (mengikut panjang yang diminta) ditambah ${Number(Isi.RUANG_FIKIR).toLocaleString('en-US')} token ruang berfikir; had itu siling, dan baki yang tidak digunakan tidak dicaj. Jika jawapan kehabisan had semasa model berfikir, aplikasi mengulang sekali dengan had lebih tinggi dan tahap rendah.</div>
     <label for="tetBahasa">Agen Bahasa selepas "Mohon Prof Dr Claude isikan"</label><select id="tetBahasa" class="modal-in">${Isi.BAHASA_AUTO.map(([v, l]) => `<option value="${esc(v)}"${v === ba ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
     <div class="help">Agen Bahasa memiawaikan teks medan kepada Bahasa Melayu Malaysia akademik dalam satu panggilan kecil tambahan selepas setiap isian, dan satu panggilan sahaja bagi Isi semua bahagian (teks medan sahaja, bukan PDF; lazimnya beberapa ribu token). Butang Piawaikan bahasa pada setiap bahagian rekod sentiasa tersedia bagi teks yang sudah ada, dan menu tiga titik menyediakan Semakan bahasa semua rekod tanpa token.</div>
     <label for="tetProfil">Profil kajian Prof Dr (digunakan untuk bahagian E dan F; kosongkan untuk profil lalai)</label><textarea id="tetProfil" class="modal-in" rows="7" placeholder="${esc(Isi.PROFIL_DEFAULT.slice(0, 160))}...">${esc(prof)}</textarea>`, 'Simpan', 'Batal');
   if (!okk) return;
   const v = richModal.values || {};
-  const patch = { openalexKey: String(v.tetKey ?? cur).trim(), anthropicKey: String(v.tetAk ?? ak).trim(), anthropicModel: String(v.tetModel || am).trim() || Isi.MODEL_DEFAULT, profilKajian: String(v.tetProfil ?? prof).trim(), bahasaAuto: Isi.BAHASA_AUTO.some(x => x[0] === v.tetBahasa) ? v.tetBahasa : ba };
+  const patch = { openalexKey: String(v.tetKey ?? cur).trim(), anthropicKey: String(v.tetAk ?? ak).trim(), anthropicModel: String(v.tetModel || am).trim() || Isi.MODEL_DEFAULT, profilKajian: String(v.tetProfil ?? prof).trim(), bahasaAuto: Isi.BAHASA_AUTO.some(x => x[0] === v.tetBahasa) ? v.tetBahasa : ba, effort: Isi.EFFORT.some(x => x[0] === v.tetEffort) ? v.tetEffort : ef };
   const st = await DB.setMeta(patch);
   if (st && st.awan === false) toast('Tetapan disimpan pada peranti ini sahaja; Firestore menolak penulisan ke koleksi meta (' + ((st.err && st.err.code) || 'ralat') + '). Terbitkan peraturan Firestore supaya tetapan dikongsi semua peranti.', true);
   else toast('Tetapan disimpan');

@@ -48,16 +48,17 @@ ${PIAWAI_PENUH}`;
   /* ---- panggilan agen: senarai = [{ k, label, teks }] ---- */
   async function agen(t, senarai) {
     const jumlah = senarai.reduce((n, x) => n + x.teks.length, 0);
-    /* Had token merangkumi pemikiran model dan jawapan; jawapan paling panjang ialah semua medan ditulis semula berserta senarai pindaan.
-       Had ini siling sahaja: yang dicaj ialah token yang benar-benar dijana. */
-    const had = Math.min(16384, Math.max(8192, Math.round(jumlah / 2) + 6000));
-    const p = { kunciMod: 'bahasa:' + t.model, system: systemPrompt(), content: [{ type: 'text', text: tugas(senarai) }], skema: SKEMA, alat: ALAT, hadToken: had };
+    /* Had token keluar = bajet jawapan mengikut panjang teks yang dihantar (jawapan paling panjang ialah semua medan ditulis semula berserta
+       senarai pindaan) + ruang berfikir model, dengan siling HAD_MAKS. Had ini siling sahaja: yang dicaj ialah token yang benar-benar
+       dijana. Agen ini mengurus ulangannya sendiri (ulang: false). */
+    const had = Math.min(R.Isi.HAD_MAKS, Math.max(2200, Math.round(jumlah / 2)) + R.Isi.RUANG_FIKIR);
+    const p = { kunciMod: 'bahasa:' + t.model, system: systemPrompt(), content: [{ type: 'text', text: tugas(senarai) }], skema: SKEMA, alat: ALAT, hadToken: had, ulang: false };
     let res = await R.Isi.hantar(t, p);
     if (res.stop === 'max_tokens') {
-      /* Jawapan yang terpotong TIDAK dibaiki: teks medan yang terpotong tidak boleh menggantikan teks asal. Ulang sekali dengan had dua kali
-         ganda (arahan sudah berada dalam cache); jika masih terpotong, agen berhenti dan teks asal kekal. */
-      console.warn('bahasa: jawapan mencapai had token', had, '; mengulang dengan had', had * 2);
-      const u0 = res.usage; res = await R.Isi.hantar(t, Object.assign({}, p, { hadToken: had * 2 }));
+      /* Jawapan yang terpotong TIDAK dibaiki: teks medan yang terpotong tidak boleh menggantikan teks asal. Ulang sekali pada siling
+         HAD_MAKS dengan effort rendah (kurang pemikiran, lebih ruang untuk jawapan); jika masih terpotong, agen berhenti dan teks asal kekal. */
+      const had2 = R.Isi.HAD_MAKS; console.warn('bahasa: jawapan mencapai had token', had, '; mengulang dengan had', had2);
+      const u0 = res.usage; res = await R.Isi.hantar(t, Object.assign({}, p, { hadToken: had2, effort: 'low' }));
       res.usage = { masuk: u0.masuk + res.usage.masuk, keluar: u0.keluar + res.usage.keluar, cacheTulis: u0.cacheTulis + res.usage.cacheTulis, cacheBaca: u0.cacheBaca + res.usage.cacheBaca };
       if (res.stop === 'max_tokens') throw { code: 'bahasa_potong' };
     }

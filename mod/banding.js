@@ -244,7 +244,7 @@ ${profil}`;
     try {
       const user = `${teksRekod(1, da)}\n\n${teksRekod(2, db)}\n\nTugasan: bandingkan Artikel 1 dengan Artikel 2 kepala ke kepala mengikut Bahagian A hingga F, petakan konstruk, peranan, kerangka sumber serta dimensi dan subdimensi setiap artikel dan bandingkan dimensi itu (persamaan, perbezaan, implikasi kepada instrumen Prof Dr), beri skor lapan dimensi penilaian untuk kedua-duanya, kekuatan dan kelemahan masing-masing, laporan keseluruhan ringkas, refleksi perkaitan kedua-duanya dengan kajian Prof Dr, cadangan sitasi bersama, dan artikel yang lebih berguna untuk kajian Prof Dr berserta sebab. Pulangkan JSON mengikut skema.`;
       const res = await R.Isi.hantar(t, { kunciMod: 'banding:' + t.model, system: systemPrompt(t.profil), content: [{ type: 'text', text: user }], skema: skemaLaporan(), alat: alatLaporan(), hadToken: 8192 });
-      const j = res.input || R.Isi.parseJson(res.text, res.stop); const lap = sahkan(j);
+      let j; try { j = res.input || R.Isi.parseJson(res.text, res.stop); } catch (e) { if (e && typeof e === 'object') e.usage = res.usage; throw e; } const lap = sahkan(j);
       const data = { idA: B.a, idB: B.b, masa: Date.now(), tarikh: new Date().toISOString().slice(0, 10), model: t.model, token: res.usage, mod: res.mod || null, laporan: lap };
       const awan = await simpan(B.a, B.b, data);
       await simpanPeta(B.a, lap.dimensi.a, t.model, 'banding'); await simpanPeta(B.b, lap.dimensi.b, t.model, 'banding');

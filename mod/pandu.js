@@ -295,7 +295,7 @@ export function initPandu(R, C) {
     const isi = tl.filter(f => f.p !== 'rujukan'); const uk = isi.map(f => ({ f, uk: ukur(f) })); const jumlah = uk.filter(x => x.f.p !== 'abstrak').reduce((s, x) => s + x.uk.n, 0); const siap = isi.filter(f => ((P.t.status || {})[f.k] || {}).siap).length;
     const sedia = uk.length ? Math.round(uk.reduce((s, x) => s + x.uk.sedia, 0) / uk.length) : 0; const d = C.doc(); const sumber = C.sumberAda(d); const disitasi = new Set(); uk.forEach(x => { const ms = x.uk.meter.find(m => m.k === 'sitasi'); (ms && ms.sit || []).forEach(s => { if (s.id) disitasi.add(s.id); }); });
     const tk = P.t.token || {}; const my = P.t.menyeluruh; P.cache.uk = {}; uk.forEach(x => { P.cache.uk[x.f.k] = x.uk; });
-    return `<div class="pd-kemajuan"><div class="pd-kj-bar" title="Purata kesediaan semua folder mengikut meter"><i style="width:${Math.max(2, sedia)}%"></i></div><div class="pd-kj-teks"><b>Kesediaan manuskrip ${sedia}%</b> · ${siap} daripada ${isi.length} folder siap · ${angka(jumlah)} daripada ${angka(jumlahSasaran())} patah perkataan · ${sumber.filter(id => disitasi.has(id)).length} daripada ${sumber.length} artikel sumber disitasi${tk.panggil ? ` · agen: ${tk.panggil} panggilan, token masuk ${angka(tk.masuk)}, keluar ${angka(tk.keluar)}` : ''}</div>
+    return `<div class="pd-kemajuan"><div class="pd-kj-bar" title="Purata kesediaan semua folder mengikut meter"><i style="width:${Math.max(2, sedia)}%"></i></div><div class="pd-kj-teks"><b>Kesediaan manuskrip ${sedia}%</b> · ${siap} daripada ${isi.length} folder siap · ${angka(jumlah)} daripada ${angka(jumlahSasaran())} patah perkataan · ${sumber.filter(id => disitasi.has(id)).length} daripada ${sumber.length} artikel sumber disitasi${tk.panggil ? ` · agen: ${tk.panggil} panggilan${tk.gagal ? ' (' + tk.gagal + ' gagal)' : ''}, token masuk ${angka(tk.masuk)}, keluar ${angka(tk.keluar)}` : ''}</div>
       <div class="pd-kj-acts"><button class="btn btn-sm btn-ai" data-pd="menyeluruh" title="Agen membaca ASAL semua folder dan menyemak keselarasan tujuan, kaedah, dapatan, perbincangan dan kesimpulan"${P.busy ? ' disabled' : ''}>${P.busy && P.busy.mod === 'menyeluruh' ? 'Agen sedang menyemak' : 'Semakan menyeluruh manuskrip (agen)'}</button></div>
       ${my && my.data ? det('menyeluruh', 'pd-hasil', `Semakan menyeluruh terakhir: kesediaan ${esc(my.data.kesediaan)}% · ${esc(R.fmtTime(my.masa))}`, htmlMenyeluruh(my.data)) : ''}</div>`;
   }
@@ -347,7 +347,7 @@ export function initPandu(R, C) {
       <div class="pd-tanya"><label class="pd-q"><span>Soalan bebas Prof Dr tentang folder ini</span><textarea data-pdin="tanya" rows="2" placeholder="Contoh: jurang yang mana paling kuat disokong oleh artikel panduan, dan artikel mana yang menyokongnya?">${esc(F.tanya || '')}</textarea></label><div class="pd-acts"><button class="btn btn-ai" data-pd="agen" data-mod="tanya"${mati}>${sibuk === 'tanya' ? 'Agen sedang menjawab' : 'Tanya agen'}</button></div></div>
       ${htmlLog(F)}`);
     /* langkah 3 */
-    const L3 = det('L3', 'pd-l', `<span class="no">3</span> Cadangan penulisan daripada agen <span class="ring">${cad ? 'dijana ' + esc(R.fmtTime(cad.masa)) : 'belum dijana'}</span>`, `<p class="help">Agen menulis cadangan ${esc(sp.nama)} dalam ${esc(namaBahasa())}${ss ? ', ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) + ' patah perkataan' : ''}, mengikut rangka perbincangan dan jawapan Prof Dr. Ia cadangan untuk diparafrasa dan masuk ke RAM; ASAL tetap ditulis oleh Prof Dr.</p>
+    const L3 = det('L3', 'pd-l', `<span class="no">3</span> Cadangan penulisan daripada agen <span class="ring">${cad ? 'dijana ' + esc(R.fmtTime(cad.masa)) : 'belum dijana'}</span>`, `<p class="help">Agen menulis cadangan ${esc(sp.nama)} dalam ${esc(namaBahasa())}${ss ? ', ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) + ' patah perkataan' : ''}, mengikut rangka perbincangan dan jawapan Prof Dr. Ia cadangan untuk diparafrasa dan masuk ke RAM; ASAL tetap ditulis oleh Prof Dr.${ss ? ' Had token keluar panggilan ini dikira daripada sasaran panjang itu, ditambah ruang berfikir model.' : ''}</p>
       <label class="pd-q"><span>Arahan khusus kepada agen (pilihan)</span><textarea data-pdin="arahan" rows="2" placeholder="Contoh: tumpukan jurang konteks Malaysia; empat perenggan sahaja.">${esc(F.arahan || '')}</textarea></label>
       <div class="pd-acts"><button class="btn btn-ai" data-pd="agen" data-mod="cadangan"${mati}>${sibuk === 'cadangan' ? 'Agen sedang menulis cadangan' : cad ? 'Jana cadangan baharu' : 'Jana cadangan penulisan'}</button></div>
       ${cad ? `<div class="pd-hasil"><div class="pd-hasil-h"><b>Cadangan terakhir</b><span>${esc(R.fmtTime(cad.masa))} · ${angka(patah(cad.jawapan))} patah · sudah dalam RAM</span></div><div class="pd-teks">${htmlCadangan(cad.jawapan)}</div></div>` : ''}`);
@@ -406,7 +406,25 @@ export function initPandu(R, C) {
     menyeluruh: { type: 'object', additionalProperties: false, required: ['ringkasan', 'kesediaan', 'konsistensi', 'isu'], properties: { ringkasan: { type: 'string' }, kesediaan: { type: 'integer' }, konsistensi: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['perkara', 'status', 'ulasan'], properties: { perkara: { type: 'string' }, status: { type: 'string', enum: ['Selaras', 'Tidak selaras', 'Tidak pasti'] }, ulasan: { type: 'string' } } } }, isu: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['tahap', 'perkara', 'cadangan'], properties: { tahap: { type: 'string', enum: ['Kritikal', 'Sederhana', 'Kecil'] }, perkara: { type: 'string' }, cadangan: { type: 'string' } } } } } }
   };
   const alat = mod => ({ name: 'pandu_' + mod, description: 'Pulangkan hasil mengikut struktur ini.', input_schema: SKEMA[mod] });
+  /* Bajet JAWAPAN bagi setiap panggilan, dalam token (v1.31.1). Mod yang panjang jawapannya bergantung pada panjang artikel dikira
+     daripada panjang itu: cadangan mengikut sasaran patah perkataan folder, semakan mengikut panjang teks yang disemak, semakan
+     menyeluruh mengikut panjang ASAL semua folder, bedah mengikut panjang artikel contoh. Bincang dan soalan bebas mempunyai bentuk
+     jawapan yang tetap. Ruang berfikir model ditambah di atas bajet ini oleh penghantar (R.Isi.hadKeluar). Had itu siling: yang dicaj
+     hanyalah token yang benar-benar dijana, maka baki had tidak membazirkan apa-apa. */
   const HAD_TOKEN = { bincang: 3600, tanya: 3000, cadangan: 6000, semak: 3800, menyeluruh: 4200, bedah: 10000 };
+  const TOKEN_SEPATAH = 3;   // anggaran selamat token bagi sepatah perkataan Bahasa Melayu; Bahasa Inggeris memerlukan kurang
+  const kepit = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(v / 100) * 100));
+  function bajet(mod, n) {   // n: bilangan patah perkataan yang menentukan panjang jawapan
+    n = Math.max(0, +n || 0);
+    if (mod === 'cadangan') return n ? kepit(n * TOKEN_SEPATAH + 1200, 3000, 11000) : HAD_TOKEN.cadangan;
+    if (mod === 'semak') return kepit(3000 + n * 0.6, HAD_TOKEN.semak, 7000);
+    if (mod === 'menyeluruh') return kepit(3400 + n * 0.2, HAD_TOKEN.menyeluruh, 8000);
+    if (mod === 'bedah') return kepit(4000 + n * 0.9, 8000, 11000);
+    return HAD_TOKEN[mod];
+  }
+  /* Ayat had token keluar bagi dialog kos: jumlah had, bajet jawapan berserta asas kiraannya, dan ruang berfikir model. */
+  const teksHad = (bj, asas) => { const penuh = R.Isi.hadKeluar(bj); return `had keluar ${angka(penuh)} token, iaitu ${angka(bj)} bagi jawapan${asas ? ' (' + asas + ')' : ''} dan ${angka(penuh - bj)} ruang berfikir model`; };
+  const SILING = ' Had itu siling: yang dicaj hanyalah token yang benar-benar dijana.';
   const str = d => ({ type: 'string', description: d }), bil = d => ({ type: 'integer', description: d }), sen = (items, d) => ({ type: 'array', description: d, items });
   const obj = (props, d) => ({ type: 'object', additionalProperties: false, required: Object.keys(props), properties: props, description: d });
   SKEMA.bedah = obj({
@@ -497,6 +515,12 @@ ARAHAN ACUAN: rangka, cadangan dan semakan bagi folder ini mesti mengikut urutan
   }
   function asalSemua(kecuali, had) { return tulis().filter(x => x.p !== 'rujukan' && x.k !== kecuali).map(x => ({ x, t: teksFolder(x) })).filter(o => patah(o.t) >= 20).map(o => `=== ${tajukF(o.x)} (${patah(o.t)} patah) ===\n${potong(o.t, had || 9000)}`).join('\n\n'); }
   function ringkasMeter(uk) { return uk.meter.map(m => `- ${m.nama}: ${m.teks} (${m.status === 'ok' ? 'baik' : m.status === 'info' ? 'makluman' : m.status})${m.butir && m.butir.length ? '. ' + m.butir.join(' ') : ''}`).join('\n'); }
+  /* Panggilan yang gagal selepas API menjana token (contohnya jawapan kosong pada had token) tetap dicaj: tokennya dimasukkan ke dalam
+     jumlah artikel ini dan dikira sebagai panggilan gagal, supaya kiraan pada bar kesediaan jujur. */
+  function catatGagal(e) {
+    if (!e || !e.usage) return; const tk = P.t.token || { masuk: 0, keluar: 0, panggil: 0 };
+    P.t.token = { masuk: (tk.masuk || 0) + R.Isi.masukSemua(e.usage), keluar: (tk.keluar || 0) + (e.usage.keluar || 0), panggil: (tk.panggil || 0) + 1, gagal: (tk.gagal || 0) + 1 }; simpanT(true);
+  }
   async function agen(k, mod) {
     if (P.busy) return; const d = C.doc(); if (!d) return; const seluruh = mod === 'menyeluruh'; const f = seluruh ? null : folderDari(k); if (!seluruh && (!f || !sidFolder(f))) { toast('Seksyen folder ini tiada; kemas kini folder dahulu', true); return; }
     const t = await R.Isi.tetapan(); if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
@@ -533,16 +557,21 @@ ARAHAN ACUAN: rangka, cadangan dan semakan bagi folder ini mesti mengikut urutan
     }
     content.push({ type: 'text', text: tugas });
     const anggaran = anggarToken(system) + anggarToken(tugas) + nImej * 1600; const tk = P.t.token || { masuk: 0, keluar: 0, panggil: 0 };
-    const ok = await R.confirmBox(`${seluruh ? 'Semakan menyeluruh manuskrip' : NAMA_MOD[mod] + ': ' + sp.nama}: hantar kepada agen?`, `Panggilan ini menghantar ${ringkasBahan}${seluruh ? '' : ', jawapan Prof Dr dan konteks folder'} ke API Anthropic menggunakan kunci API Prof Dr (anggaran ${angka(anggaran)} token masuk, sehingga ${angka(HAD_TOKEN[mod])} token keluar, model ${t.model.replace('claude-', '')}). Kosnya dicaj kepada akaun Anthropic Prof Dr.${seluruh ? '' : ` Panggilan ke-${(F.panggil || 0) + 1} daripada ${F.had || HAD_PANGGIL} bagi folder ini.`} Setakat ini artikel ini: ${tk.panggil || 0} panggilan, token masuk ${angka(tk.masuk)}, keluar ${angka(tk.keluar)}.`, 'Hantar kepada agen', false);
+    /* bajet jawapan mengikut panjang yang diminta */
+    const ssF = seluruh ? null : sasaran(f); const nSemua = seluruh ? tulis().filter(x => x.p !== 'rujukan').reduce((n, x) => n + patah(teksFolder(x)), 0) : 0;
+    const bj = bajet(mod, mod === 'cadangan' ? (ssF ? ssF[1] : 0) : mod === 'semak' ? uk.n : seluruh ? nSemua : 0);
+    const asasBj = mod === 'cadangan' && ssF ? `mengikut sasaran ${angka(ssF[0])} hingga ${angka(ssF[1])} patah perkataan folder ini` : mod === 'semak' ? `mengikut ${angka(uk.n)} patah perkataan teks ASAL yang disemak` : seluruh ? `mengikut ${angka(nSemua)} patah perkataan ASAL semua folder` : '';
+    const ok = await R.confirmBox(`${seluruh ? 'Semakan menyeluruh manuskrip' : NAMA_MOD[mod] + ': ' + sp.nama}: hantar kepada agen?`, `Panggilan ini menghantar ${ringkasBahan}${seluruh ? '' : ', jawapan Prof Dr dan konteks folder'} ke API Anthropic menggunakan kunci API Prof Dr (anggaran ${angka(anggaran)} token masuk; ${teksHad(bj, asasBj)}; model ${t.model.replace('claude-', '')}). Kosnya dicaj kepada akaun Anthropic Prof Dr.${SILING}${seluruh ? '' : ` Panggilan ke-${(F.panggil || 0) + 1} daripada ${F.had || HAD_PANGGIL} bagi folder ini.`} Setakat ini artikel ini: ${tk.panggil || 0} panggilan, token masuk ${angka(tk.masuk)}, keluar ${angka(tk.keluar)}.`, 'Hantar kepada agen', false);
     if (!ok) return;
     P.busy = { k: seluruh ? null : k, mod }; if (seluruh) render(); else renderFolder();
     try {
       const berstruktur = !!SKEMA[mod];
-      const res = await R.Isi.hantar(t, { kunciMod: 'pandu-' + mod + ':' + t.model, system, content, skema: berstruktur ? SKEMA[mod] : undefined, alat: berstruktur ? alat(mod) : undefined, hadToken: HAD_TOKEN[mod] });
+      const res = await R.Isi.hantar(t, { kunciMod: 'pandu-' + mod + ':' + t.model, system, content, skema: berstruktur ? SKEMA[mod] : undefined, alat: berstruktur ? alat(mod) : undefined, hadToken: bj });
       let data = null, jawapan = '';
-      if (berstruktur) { data = dalamBersih(res.input || R.Isi.parseJson(res.text, res.stop)); if (!data || typeof data !== 'object') throw { code: 'json' }; }
-      else { jawapan = tanpaSempang(String(res.text || '').trim()).slice(0, HAD_TEKS); if (!jawapan) throw { code: 'kosong' }; }
-      P.t.token = { masuk: (tk.masuk || 0) + (res.usage ? res.usage.masuk + (res.usage.cacheBaca || 0) + (res.usage.cacheTulis || 0) : 0), keluar: (tk.keluar || 0) + (res.usage ? res.usage.keluar : 0), panggil: (tk.panggil || 0) + 1 };
+      /* jawapan yang tiba tetapi tidak dapat dibaca tetap dicaj: tokennya dibawa bersama ralat supaya dikira (catatGagal) */
+      if (berstruktur) { try { data = dalamBersih(res.input || R.Isi.parseJson(res.text, res.stop)); } catch (e) { if (e && typeof e === 'object') e.usage = res.usage; throw e; } if (!data || typeof data !== 'object') throw { code: 'json', stop: res.stop, usage: res.usage }; }
+      else { jawapan = tanpaSempang(String(res.text || '').trim()).slice(0, HAD_TEKS); if (!jawapan) throw { code: 'kosong', stop: res.stop, had: res.had, usage: res.usage }; }
+      P.t.token = { masuk: (tk.masuk || 0) + (res.usage ? res.usage.masuk + (res.usage.cacheBaca || 0) + (res.usage.cacheTulis || 0) : 0), keluar: (tk.keluar || 0) + (res.usage ? res.usage.keluar : 0), panggil: (tk.panggil || 0) + 1, gagal: tk.gagal || 0 };
       const masa = sekarang(); const token = res.usage ? { masuk: res.usage.masuk + (res.usage.cacheBaca || 0) + (res.usage.cacheTulis || 0), keluar: res.usage.keluar } : null;
       if (seluruh) { P.t.menyeluruh = { masa, data, model: t.model, token }; P.terbuka.add('menyeluruh'); simpanT(true); toast('Semakan menyeluruh siap: kesediaan ' + (data.kesediaan || 0) + '%'); }
       else {
@@ -552,9 +581,9 @@ ARAHAN ACUAN: rangka, cadangan dan semakan bagi folder ini mesti mengikut urutan
         if (mod === 'cadangan') P.terbuka.add('L3');
         if (mod === 'semak') { F.semak = { masa, data, patah: uk.n, model: t.model }; P.terbuka.add('L5'); }
         simpanF(k, true); simpanT(true);
-        const masuk = sisip(sasaranRam(f), 'ram', htmlRam(rec, sp)); toast(`${NAMA_MOD[mod]} siap${masuk ? ' dan dimasukkan ke RAM seksyen' : ''}${token ? ' (token masuk ' + angka(token.masuk) + ', keluar ' + angka(token.keluar) + ')' : ''}${res.stop === 'max_tokens' ? '. Jawapan mencapai had token dan mungkin terpotong.' : ''}`);
+        const masuk = sisip(sasaranRam(f), 'ram', htmlRam(rec, sp)); toast(`${NAMA_MOD[mod]} siap${masuk ? ' dan dimasukkan ke RAM seksyen' : ''}${token ? ' (token masuk ' + angka(token.masuk) + ', keluar ' + angka(token.keluar) + ')' : ''}${res.ulang ? '. Percubaan pertama kehabisan had token semasa model berfikir, maka permintaan diulang sekali dengan had lebih tinggi dan kedalaman berfikir rendah; token kedua-dua percubaan dikira' : ''}${res.stop === 'max_tokens' ? '. Jawapan mencapai had token dan mungkin terpotong.' : ''}`);
       }
-    } catch (e) { toast('Agen gagal: ' + (e && e.code === 'kosong' ? 'jawapan kosong diterima; cuba sekali lagi.' : R.Isi.msg(e)), true); }
+    } catch (e) { catatGagal(e); toast('Agen gagal: ' + R.Isi.msg(e), true); }
     finally { P.busy = null; render(); }
   }
   /* HTML bagi RAM: tag yang dibenarkan editor sahaja (perenggan, tebal, condong, senarai, jadual). */
@@ -610,18 +639,18 @@ ARAHAN ACUAN: rangka, cadangan dan semakan bagi folder ini mesti mengikut urutan
 
 ${PIAWAI_RINGKAS}`;
       const tugas = `[MOD:bedah]\nKELUARGA JENIS ARTIKEL YANG SEDANG DITULIS OLEH PEMILIK: ${D.NAMA_KELUARGA[k] || k}\nREKOD REPOSITORI: ${Bd().nama(r)}. ${r.tajuk || ''}\n\nPERANAN BAHAGIAN YANG DIBENARKAN (medan p): pendahuluan (termasuk tujuan dan soalan), literatur (sorotan, teori, hipotesis), kaedah, dapatan, perbincangan (termasuk implikasi dan batasan jika tiada bahagian sendiri), kesimpulan, kerangka (cadangan kerangka atau model dalam kertas konsep), badan (bahagian bertema dalam ulasan naratif).\nKOD GERAKAN (medan g): ${Object.keys(POLA).map(g => g + ' = ' + POLA[g].nama).join('; ')}.\n\nTUGAS: Bedah artikel di bawah dan pulangkan JSON mengikut skema. Ikut urutan bahagian artikel. Bagi Pendahuluan, Metodologi dan Perbincangan, petakan perenggan demi perenggan; bagi bahagian lain, perenggan yang memikul fungsi sama boleh dikumpulkan dengan n lebih daripada 1. Dalam medan cara, terangkan BAGAIMANA perenggan itu dibina supaya boleh ditiru (bilangan ayat, peranan ayat pertama, susunan bukti, penanda wacana, cara dan bilangan sitasi), bukan apa kandungannya.\n\nTEKS PENUH ARTIKEL (${art.pages || '?'} muka surat):\n\"\"\"\n${teks}\n\"\"\"`;
-      const anggaran = anggarToken(system) + anggarToken(tugas); const tk = P.t.token || { masuk: 0, keluar: 0, panggil: 0 };
-      const ok2 = await R.confirmBox('Bedah artikel contoh: hantar kepada agen?', `Teks penuh "${Bd().nama(r)}" (${angka(patah(teks))} patah perkataan) dihantar ke API Anthropic menggunakan kunci API Prof Dr (anggaran ${angka(anggaran)} token masuk, sehingga ${angka(HAD_TOKEN.bedah)} token keluar, model ${t.model.replace('claude-', '')}). Kosnya dicaj kepada akaun Anthropic Prof Dr. Setakat ini artikel ini: ${tk.panggil || 0} panggilan, token masuk ${angka(tk.masuk)}, keluar ${angka(tk.keluar)}.`, 'Hantar kepada agen', false);
+      const anggaran = anggarToken(system) + anggarToken(tugas); const tk = P.t.token || { masuk: 0, keluar: 0, panggil: 0 }; const nBedah = patah(teks); const bj = bajet('bedah', nBedah);
+      const ok2 = await R.confirmBox('Bedah artikel contoh: hantar kepada agen?', `Teks penuh "${Bd().nama(r)}" (${angka(nBedah)} patah perkataan) dihantar ke API Anthropic menggunakan kunci API Prof Dr (anggaran ${angka(anggaran)} token masuk; ${teksHad(bj, 'mengikut panjang artikel contoh')}; model ${t.model.replace('claude-', '')}). Kosnya dicaj kepada akaun Anthropic Prof Dr.${SILING} Setakat ini artikel ini: ${tk.panggil || 0} panggilan, token masuk ${angka(tk.masuk)}, keluar ${angka(tk.keluar)}.`, 'Hantar kepada agen', false);
       if (!ok2) return;
-      const res = await R.Isi.hantar(t, { kunciMod: 'pandu-bedah:' + t.model, system, content: [{ type: 'text', text: tugas }], skema: SKEMA.bedah, alat: alat('bedah'), hadToken: HAD_TOKEN.bedah });
-      const data = dalamBersih(res.input || R.Isi.parseJson(res.text, res.stop)); const masa = sekarang(); const ac = kemasAcuan(data);
-      if (!ac) throw { code: 'json' };
+      const res = await R.Isi.hantar(t, { kunciMod: 'pandu-bedah:' + t.model, system, content: [{ type: 'text', text: tugas }], skema: SKEMA.bedah, alat: alat('bedah'), hadToken: bj });
+      let data; try { data = dalamBersih(res.input || R.Isi.parseJson(res.text, res.stop)); } catch (e) { if (e && typeof e === 'object') e.usage = res.usage; throw e; } const masa = sekarang(); const ac = kemasAcuan(data);
+      if (!ac) throw { code: 'json', stop: res.stop, usage: res.usage };
       ac.id = 'sendiri-' + id + '-' + masa.toString(36); ac.kel = k; ac.pendek = ac.pendek || Bd().nama(r); ac.tajuk = ac.tajuk || r.tajuk || ''; ac.rujukan = `${Bd().nama(r)}. ${r.tajuk || ac.tajuk}${ac.jurnal ? '. ' + ac.jurnal : ''}.`; ac.doi = String(r.doi || '').replace(/^https?:\/\/(dx\.)?doi\.org\//i, ''); ac.lesen = ''; ac.sebab = 'Dipilih oleh Prof Dr daripada repositori sebagai artikel contoh bagi jenis ini.'; ac.ukuran.abstrak = (ac.abstrak && ac.abstrak.kata) || 0; ac.ukuran.rujukan = nRuj ? Math.round(nRuj / 1.15) : 0; ac.ukuran.jadual = ac.bahagian.reduce((x, b) => x + b.jadual, 0); ac.ukuran.rajah = ac.bahagian.reduce((x, b) => x + b.rajah, 0);
       const rekodAc = { v: 1, kel: k, masa, rekod: id, model: t.model, acuan: ac }; P.ac[k] = rekodAc; R.lsSet(lsAc(k), rekodAc); try { await R.db().set(kunciAc(k), rekodAc); } catch (e) { console.warn('pandu: acuan awan gagal', e); }
-      P.t.token = { masuk: (tk.masuk || 0) + (res.usage ? res.usage.masuk + (res.usage.cacheBaca || 0) + (res.usage.cacheTulis || 0) : 0), keluar: (tk.keluar || 0) + (res.usage ? res.usage.keluar : 0), panggil: (tk.panggil || 0) + 1 };
+      P.t.token = { masuk: (tk.masuk || 0) + (res.usage ? res.usage.masuk + (res.usage.cacheBaca || 0) + (res.usage.cacheTulis || 0) : 0), keluar: (tk.keluar || 0) + (res.usage ? res.usage.keluar : 0), panggil: (tk.panggil || 0) + 1, gagal: tk.gagal || 0 };
       P.t.acuan = 'sendiri'; P.terbuka.add('acuanInduk'); P.cache = {}; simpanT(true);
       toast(`Acuan siap dibedah daripada ${ac.pendek}: ${ac.bahagian.length} bahagian, ${ac.bahagian.reduce((x, b) => x + b.peta.length, 0)} entri peta perenggan${res.stop === 'max_tokens' ? '. Jawapan mencapai had token dan mungkin tidak lengkap.' : ''}${P.t.sedia ? '. Klik Kemas kini folder jika notis muncul.' : ''}`);
-    } catch (e) { toast('Bedah artikel gagal: ' + R.Isi.msg(e), true); }
+    } catch (e) { catatGagal(e); toast('Bedah artikel gagal: ' + R.Isi.msg(e), true); }
     finally { P.busy = null; render(); }
   }
   async function sediakan() {
@@ -734,5 +763,5 @@ ${PIAWAI_RINGKAS}`;
 
   function onEditor() { kemasBar(); }
   function onTulis() { kemasHidup(); }
-  return { render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, D, ACUAN, POLA };
+  return { render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, D, ACUAN, POLA };
 }
