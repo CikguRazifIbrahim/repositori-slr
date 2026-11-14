@@ -69,11 +69,25 @@ const FOLDER = {
   konsep: [ABS, PEN, F('literatur', 'literatur', ['Latar Konsep dan Asas Teori', 'Conceptual Background and Theoretical Foundation']), F('kerangka', 'kerangka', ['Cadangan Kerangka dan Proposisi', 'Proposed Framework and Propositions']), F('perbincangan', 'perbincangan', ['Implikasi', 'Implications']), KES, RUJ]
 };
 
+/* Folder Kajian Literatur pilihan (v1.32.0). Keluarga empirikal dan konseptual sudah mempunyainya dalam senarai di atas. Keluarga ulasan
+   berprotokol (skop, sistematik, meta-analisis, bibliometrik) dan struktur yang diterbitkan daripada artikel contoh tidak mempunyainya,
+   kerana garis panduan pelaporan (PRISMA-ScR: Tricco et al., 2018, butir 3 Rationale dan butir 4 Objectives; PRISMA 2020) meletakkan latar
+   literatur di dalam Pendahuluan. Banyak jurnal pendidikan dan pengurusan tetap menjangkakan seksyen berasingan, maka folder ini boleh
+   ditambah selepas Pendahuluan bagi mana-mana artikel yang belum mempunyainya. Ulasan naratif tidak ditawarkan: badannya sendiri ialah
+   kajian literatur. */
+export const BOLEH_LITERATUR = kel => kel !== 'naratif';
+export const folderLiteratur = () => F('literatur', 'literatur', ['Kajian Literatur', 'Literature Review']);
+/* Sisip folder Kajian Literatur selepas Pendahuluan (atau selepas Abstrak jika tiada Pendahuluan) apabila senarai belum mempunyainya. */
+export function denganLiteratur(folders) {
+  if (folders.some(f => f.p === 'literatur')) return folders; const out = folders.slice(); let i = out.findIndex(f => f.p === 'pendahuluan');
+  if (i < 0) i = out.findIndex(f => f.p === 'abstrak'); out.splice(i + 1, 0, Object.assign(folderLiteratur(), { tambahan: true })); return out;
+}
+
 /* ---- pengecaman peranan daripada tajuk seksyen sedia ada (BM dan Inggeris) ---- */
 export const KENAL = [
   ['abstrak', /^(abstrak|abstract|ringkasan eksekutif|ringkasan)\b/i],
   ['pendahuluan', /^(pendahuluan|pengenalan|introduction)\b/i],
-  ['literatur', /^((sorotan|kajian|tinjauan|ulasan)\s+(literatur|kajian lepas|kepustakaan)|literature review|kerangka teori|theoretical (background|framework)|latar( belakang)? (konsep|teori)|asas teori)/i],
+  ['literatur', /^((sorotan|kajian|tinjauan|ulasan)\s+(literatur|kajian lepas|kepustakaan)|literature review|kerangka teori|theoretical (background|framework)|conceptual (background|foundations?)|latar( belakang)? (konsep|konseptual|teori)|asas teori|related (work|literature))/i],
   ['kaedah', /^(metodologi|kaedah|methods?\b|methodology|bahan dan kaedah|materials and methods)/i],
   ['dapatan', /^(dapatan|keputusan|hasil\b|results?\b|findings)/i],
   ['perbincangan', /^(perbincangan|discussion|implikasi|implications)\b/i],
@@ -101,12 +115,15 @@ export function urutanTulis(folders) { const isi = folders.filter(f => f.p !== '
 const BAHAGI = {
   emp: { pendahuluan: [10, 14], literatur: [20, 28], kaedah: [12, 18], dapatan: [14, 20], perbincangan: [16, 22], kesimpulan: [3, 6] },
   kual: { pendahuluan: [10, 14], literatur: [16, 24], kaedah: [12, 18], dapatan: [24, 34], perbincangan: [14, 20], kesimpulan: [3, 6] },
-  ulasan: { pendahuluan: [12, 16], kaedah: [14, 20], dapatan: [28, 38], perbincangan: [16, 24], kesimpulan: [3, 6] },
+  ulasan: { pendahuluan: [12, 16], literatur: [12, 18], kaedah: [14, 20], dapatan: [28, 38], perbincangan: [16, 24], kesimpulan: [3, 6] },
   konsep: { pendahuluan: [12, 16], literatur: [28, 38], kerangka: [20, 30], perbincangan: [12, 18], kesimpulan: [3, 6] },
   naratif: { pendahuluan: [10, 15], badan: [18, 24], perbincangan: [12, 18], kesimpulan: [4, 7] },
   umum: { pendahuluan: [12, 18], kesimpulan: [4, 8] }
 };
 export const ABSTRAK_PATAH = [150, 250];
+/* Bahagian tengah (pecahan 0 hingga 1) folder Kajian Literatur daripada sasaran jumlah; digunakan untuk mengagih semula sasaran folder
+   lain apabila folder itu ditambah kepada struktur artikel contoh yang tidak mempunyainya. */
+export function bahagianLiteratur(kel) { const b = (BAHAGI[kumpulanDari(kel)] || {}).literatur || [12, 18]; return (b[0] + b[1]) / 200; }
 export function sasaranPatah(kel, folder, folders, jumlah) {
   if (folder.p === 'abstrak') return ABSTRAK_PATAH.slice(); if (folder.p === 'rujukan') return null;
   const g = BAHAGI[kumpulanDari(kel)] || BAHAGI.umum; let b = g[folder.p];
@@ -125,6 +142,7 @@ const C = {
   sumbangan: /(sumbangan|menyumbang|kepentingan (kajian|artikel)|memperluas|contribut(es|ion|ions)|significance|adds to|extends)/iu,
   susunan: /((artikel|kertas) ini disusun|bahagian (seterusnya|berikutnya)|seksyen (berikut|seterusnya)|the remainder of|is (organi[sz]ed|structured) as follows)/iu,
   jenisulasan: /(ulasan skop|scoping review|ulasan sistematik|systematic review|meta-?analisis|meta-?analysis|ulasan terdahulu|previous reviews?|earlier reviews?|PRISMA|Arksey|JBI)/iu,
+  ulasanlepas: /(ulasan (skop|sistematik|literatur|naratif|bersepadu|terdahulu|lepas|sedia ada)|sorotan (terdahulu|lepas)|meta-?analisis|bibliometrik|(scoping|systematic|literature|integrative|narrative|umbrella|previous|prior|earlier|existing) reviews?|meta-?analy(sis|ses)|bibliometric)/iu,
   takrif: /(ditakrifkan|didefinisikan|merujuk kepada|bermaksud|takrif|definisi|is defined as|refers to|defin(ed|ition|itions)|conceptuali[sz]ed as)/iu,
   teori: /(teori|model|kerangka (teori|konseptual)|theor(y|ies|etical)|framework)/iu,
   hipotesis: /(hipotesis|\bH\d\b|dihipotesiskan|hypothes[ie]s|hypothesi[sz]ed|proposisi|propositions?)/iu,
@@ -199,6 +217,18 @@ export function spec(kel, peranan) {
       kriteria: ['Kejelasan isu dan konteks', 'Sokongan literatur dan kepadatan sitasi', 'Ketajaman jurang', 'Kejelasan tujuan dan soalan', 'Liputan semua pemboleh ubah', 'Sumbangan dinyatakan', 'Aliran hujah daripada umum kepada khusus'], pemboleh: 'wajib', sitasi: 'padat', bahan: 'sumber', medan: ['objektif', 'jurang', 'dapatan', 'implikasi', 'batasan'] };
   }
   if (peranan === 'literatur') {
+    if (g === 'ulasan') {
+      /* Dalam artikel ulasan, dapatan ulasan itu sendiri ialah sintesis literatur. Folder ini menulis apa yang SUDAH diketahui sebelum
+         ulasan dijalankan (konsep, lensa teori, ulasan terdahulu) supaya soalan ulasan kelihatan wajar; ia tidak melaporkan hasil pencartaan. */
+      return { nama: 'Kajian Literatur', tujuan: 'Meletakkan asas konsep bagi ulasan ini sebelum kaedahnya diterangkan: takrif konsep dan pemboleh ubah utama, teori atau kerangka yang menjadi lensa, dan ulasan serta kajian terdahulu yang berkaitan berserta apa yang belum dijawabnya, sehingga soalan ulasan kelihatan wajar. Folder ini menulis apa yang sudah diketahui SEBELUM ulasan dijalankan. Ia bukan tempat melaporkan dapatan ulasan (bilangan sumber, taburan, tema daripada pencartaan); itu tugas folder Dapatan. Yang dinilai ialah sintesis, iaitu perbandingan dan pengelompokan sumber, bukan laporan kajian demi kajian.',
+        gerakan: [G('takrif', 'Takrif konsep dan pemboleh ubah', 'Takrifkan setiap konsep atau pemboleh ubah utama dan dimensinya dengan sumber; nyatakan takrif yang dipakai dalam ulasan ini.', C.takrif),
+          G('teori', 'Lensa teori atau kerangka', 'Teori, model atau kerangka yang digunakan untuk membaca literatur, dan sebab ia sesuai bagi soalan ulasan.', C.teori),
+          G('sintesis', 'Sintesis kajian berkaitan', 'Kelompokkan kajian mengikut pola dapatan, kaedah atau konteks; bandingkan yang selari dengan yang bercanggah. Dikira daripada perenggan yang memetik dua sumber atau lebih.', null),
+          G('ulasanlepas', 'Ulasan terdahulu dan batasnya', 'Namakan ulasan terdahulu tentang topik ini (skop, sistematik, meta-analisis atau bibliometrik), apa yang sudah diliputinya dan apa yang tertinggal: tempoh, konteks, populasi, konstruk atau jenis bukti.', C.ulasanlepas),
+          G('rumusjurang', 'Rumusan jurang', 'Tutup dengan jurang yang membawa terus kepada soalan ulasan dan kaedah yang dipilih.', C.rumusjurang)],
+        soalan: [S('konsep', 'Konsep dan pemboleh ubah yang mana perlu ditakrifkan, dan takrif pilihan Prof Dr bagi setiap satu?'), S('teori', 'Teori, model atau kerangka yang mana menjadi lensa ulasan ini, dan mengapa ia sesuai?'), S('ulasan', 'Ulasan terdahulu yang mana Prof Dr tahu tentang topik ini, dan apa yang belum dijawabnya (tempoh, konteks, populasi, konstruk)?', 'Jika belum pasti, tulis "belum disemak"; agen akan menandakannya sebagai [PERLU SUMBER].'), S('sempadan', 'Apa yang mahu disimpan untuk folder Dapatan dan tidak diulang di sini?', 'Contoh: bilangan dan taburan sumber, tema daripada pencartaan.'), S('susun', 'Susunan tema yang diingini (mengikut konsep, mengikut hubungan antara konsep atau mengikut masa)?')],
+        kriteria: ['Takrif konsep utama', 'Lensa teori atau kerangka', 'Ulasan terdahulu dan batasnya', 'Sintesis, bukan laporan kajian demi kajian', 'Tiada pertindihan dengan Dapatan ulasan', 'Jurang yang membawa kepada soalan ulasan', 'Liputan semua pemboleh ubah'], pemboleh: 'wajib', sitasi: 'padat', bahan: 'sumber', medan: ['definisi', 'teori', 'konstruk', 'dapatan', 'jurang', 'bandingan'] };
+    }
     const gerakan = [G('takrif', 'Takrif konsep dan pemboleh ubah', 'Takrifkan setiap pemboleh ubah dan dimensinya dengan sumber.', C.takrif), G('teori', 'Teori atau model sandaran', 'Teori yang menjelaskan mengapa pemboleh ubah itu berkait.', C.teori), G('sintesis', 'Sintesis kajian lepas', 'Kelompokkan kajian mengikut pola dapatan, kaedah atau konteks; bandingkan yang selari dengan yang bercanggah. Dikira daripada perenggan yang memetik dua sumber atau lebih.', null)];
     if (g === 'emp') gerakan.push(G('hipotesis', 'Hipotesis atau kerangka', 'Setiap hipotesis didahului hujah dan bukti; kerangka konseptual dinyatakan.', C.hipotesis));
     else if (g === 'konsep') gerakan.push(G('hipotesis', 'Arah kepada kerangka', 'Tunjukkan bagaimana literatur membawa kepada kerangka atau proposisi yang dicadangkan.', C.hipotesis, false));
