@@ -370,7 +370,7 @@ export function initPandu(R, C) {
     const L3 = det('L3', 'pd-l', `<span class="no">3</span> Cadangan penulisan daripada agen <span class="ring">${cad ? 'dijana ' + esc(R.fmtTime(cad.masa)) : 'belum dijana'}</span>`, `<p class="help">Agen menulis cadangan ${esc(sp.nama)} dalam ${esc(namaBahasa())}${ss ? ', ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) + ' patah perkataan' : ''}, mengikut rangka perbincangan dan jawapan Prof Dr. Ia cadangan untuk diparafrasa dan masuk ke RAM; ASAL tetap ditulis oleh Prof Dr.${ss ? ' Had token keluar panggilan ini dikira daripada sasaran panjang itu, ditambah ruang berfikir model.' : ''}</p>
       <label class="pd-q"><span>Arahan khusus kepada agen (pilihan)</span><textarea data-pdin="arahan" rows="2" placeholder="Contoh: tumpukan jurang konteks Malaysia; empat perenggan sahaja.">${esc(F.arahan || '')}</textarea></label>
       <div class="pd-acts"><button class="btn btn-ai" data-pd="agen" data-mod="cadangan"${mati}>${sibuk === 'cadangan' ? 'Agen sedang menulis cadangan' : cad ? 'Jana cadangan baharu' : 'Jana cadangan penulisan'}</button></div>
-      ${cad ? `<div class="pd-hasil"><div class="pd-hasil-h"><b>Cadangan terakhir</b><span>${esc(R.fmtTime(cad.masa))} · ${angka(patah(cad.jawapan))} patah · sudah dalam RAM</span></div><div class="pd-teks">${htmlCadangan(cad.jawapan)}</div></div>` : ''}`);
+      ${cad ? `<div class="pd-hasil"><div class="pd-hasil-h"><b>Cadangan terakhir</b><span>${esc(R.fmtTime(cad.masa))} · ${angka(patah(cad.jawapan))} patah · sudah dalam RAM</span></div><div class="pd-teks">${htmlCadangan(uraiKeputusan(cad.jawapan).length ? perenggan(cad.jawapan).filter(x => !RX_KEPUTUSAN.test(x)).join('\n\n') : cad.jawapan)}</div>${htmlKeputusan(F)}</div>` : ''}`);
     /* langkah 4 */
     const L4 = det('L4', 'pd-l', `<span class="no">4</span> Tulis ASAL dengan ayat Prof Dr sendiri <span class="ring">${angka(uk.n)} patah dalam ASAL</span>`, `<ol class="pd-tip"><li>Baca cadangan dan soal jawab dalam RAM, satu perenggan demi satu perenggan, dan semak setiap dakwaan terhadap rekod artikel sumber.</li><li>Tulis semula hujah itu dalam ASAL dengan ayat sendiri; jangan pindahkan perenggan agen bulat-bulat. Meter Parafrasa memberi amaran jika ASAL terlalu hampir dengan teks agen.</li><li>Isi setiap penanda [ISI: ...] dan [PERLU SUMBER: ...] dengan fakta dan sumber yang benar.</li><li>Guna warna untuk menanda bahagian yang masih perlu disunting; meter di atas editor dikemas kini semasa menaip.</li></ol><div class="pd-acts"><button class="btn btn-primary" data-pd="editor">Buka ASAL dan RAM folder ini</button></div>`);
     /* langkah 5 */
@@ -392,6 +392,42 @@ export function initPandu(R, C) {
   }
   function htmlBincang(x, ringkas) {
     return `<div class="pd-teks">${perenggan(x.cadanganIsi).map(p => `<p>${esc(p)}</p>`).join('')}</div>${(x.rangka || []).length ? `<div class="pd-jadual-wrap"><table class="pd-jadual"><thead><tr><th>Gerakan</th><th>Isi yang dicadangkan</th><th>Sumber dan bukti</th></tr></thead><tbody>${x.rangka.map(r => `<tr><td>${esc(r.gerakan)}</td><td>${esc(r.isi)}</td><td>${esc(r.sumber)}</td></tr>`).join('')}</tbody></table></div>` : ''}${x.sumberCadangan ? `<p class="pd-nota"><b>Tentang pilihan artikel panduan:</b> ${esc(x.sumberCadangan)}</p>` : ''}${(x.amaran || []).length ? `<ul class="pd-amaran-senarai">${x.amaran.map(a => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}${!ringkas && (x.soalanBalas || []).length ? `<p><b>Soalan agen kepada Prof Dr:</b></p><ol>${x.soalanBalas.map(q => `<li>${esc(q)}</li>`).join('')}</ol>` : ''}`;
+  }
+  /* Senarai semak keputusan (v1.32.1). Perenggan "KEPUTUSAN UNTUK PROF DR" atau "DECISIONS FOR PROF DR" dalam cadangan agen dipecahkan
+     kepada perkara satu demi satu; setiap perkara mendapat kotak tanda dan ruang jawapan. Jawapan dibaca oleh agen pada panggilan
+     seterusnya supaya perkara yang sudah diputuskan tidak dibangkitkan lagi. Tiada panggilan API: senarai dibina daripada teks cadangan
+     yang sudah ada, termasuk cadangan yang dijana sebelum versi ini. */
+  const RX_KEPUTUSAN = /^(KEPUTUSAN UNTUK PROF DR|DECISIONS FOR PROF DR)\s*:\s*/i;
+  function uraiKeputusan(teks) {
+    const p = perenggan(teks).find(x => RX_KEPUTUSAN.test(x)); if (!p) return []; const badan = p.replace(RX_KEPUTUSAN, '').trim(); if (!badan) return [];
+    let bahagian = null; const titik = []; let jangka = 1; let m; const rx = /\((\d{1,2})\)\s+/g;
+    /* penanda (n) dikira hanya jika mengikut urutan dan, selepas yang pertama, berada selepas tanda henti ayat: "Jadual (2)" di tengah ayat bukan penanda */
+    while ((m = rx.exec(badan))) { if (+m[1] === jangka && (jangka === 1 || /[.;:!?"”’)\]]\s*$/.test(badan.slice(0, m.index)))) { titik.push([m.index, m.index + m[0].length]); jangka++; } }
+    if (titik.length) bahagian = titik.map((t, n) => badan.slice(t[1], n + 1 < titik.length ? titik[n + 1][0] : badan.length));
+    else { const t2 = []; jangka = 1; const rx2 = /(?:^|\s)(\d{1,2})[.)]\s+(?=\S)/g; while ((m = rx2.exec(badan))) { if (+m[1] === jangka) { t2.push([m.index, m.index + m[0].length]); jangka++; } }
+      if (t2.length >= 2) bahagian = t2.map((t, n) => badan.slice(t[1], n + 1 < t2.length ? t2[n + 1][0] : badan.length));
+      else if (/(^|\n)\s*[-•]\s+\S/.test(badan)) bahagian = ('\n' + badan).split(/\n\s*[-•]\s+/);
+      else bahagian = [badan]; }
+    return bahagian.map(x => x.replace(/\s+/g, ' ').trim()).filter(x => x.length >= 8).slice(0, 12);
+  }
+  const cadTerakhir = F => (F.log || []).filter(x => x.mod === 'cadangan' && x.jawapan).slice(-1)[0] || null;
+  /* Selaraskan senarai dengan cadangan terakhir: perkara lama yang sudah dijawab atau ditanda disimpan sebagai konteks agen. */
+  function segarKeputusan(F) {
+    const cad = cadTerakhir(F); if (!cad) return F.keputusan || []; if (F.keputusanCad === cad.id && Array.isArray(F.keputusan)) return F.keputusan;
+    const lama = (F.keputusan || []).filter(x => x.siap || String(x.jawapan || '').trim()); if (lama.length) F.keputusanLama = (F.keputusanLama || []).concat(lama).slice(-16);
+    F.keputusan = uraiKeputusan(cad.jawapan).map((teks, i) => ({ id: cad.id + '-' + (i + 1), teks, jawapan: '', siap: false })); F.keputusanCad = cad.id; return F.keputusan;
+  }
+  function htmlKeputusan(F) {
+    const senarai = segarKeputusan(F); if (!senarai.length) return ''; const siap = senarai.filter(x => x.siap).length; const jawab = senarai.filter(x => String(x.jawapan || '').trim()).length;
+    return `<div class="pd-keputusan"><div class="pd-kp-kepala"><b>Keputusan untuk Prof Dr</b><span class="ring" id="pdKpKira">${siap} daripada ${senarai.length} selesai · ${jawab} dijawab</span></div>
+      <p class="help">Agen membangkitkan perkara berikut semasa menulis cadangan. Tulis keputusan atau jawapan Prof Dr bagi setiap satu dan tandakan apabila selesai. Agen membacanya pada panggilan seterusnya (Bincang semula atau Jana cadangan baharu) dan tidak membangkitkan perkara yang sudah diputuskan.</p>
+      ${senarai.map((x, i) => `<div class="pd-kp${x.siap ? ' siap' : ''}" data-kp="${esc(x.id)}"><label class="pd-kp-h"><input type="checkbox" data-pdkp="${esc(x.id)}"${x.siap ? ' checked' : ''}><span><b>${i + 1}.</b> ${esc(x.teks)}</span></label><textarea data-pdin="keputusan" data-id="${esc(x.id)}" rows="2" placeholder="Keputusan atau jawapan Prof Dr">${esc(x.jawapan || '')}</textarea></div>`).join('')}</div>`;
+  }
+  function kiraKeputusan(F) { const el = $('#pdKpKira'); const s = F.keputusan || []; if (el) el.textContent = `${s.filter(x => x.siap).length} daripada ${s.length} selesai · ${s.filter(x => String(x.jawapan || '').trim()).length} dijawab`; }
+  /* Keputusan yang sudah dibuat, untuk konteks agen. */
+  function teksKeputusan(F) {
+    segarKeputusan(F); const ada = (F.keputusanLama || []).concat(F.keputusan || []).filter(x => x.siap || String(x.jawapan || '').trim()).slice(-14); if (!ada.length) return '';
+    return '\n\nKEPUTUSAN PROF DR TERHADAP PERKARA YANG DIBANGKITKAN DALAM CADANGAN TERDAHULU (ikut keputusan ini dan jangan bangkitkan semula perkara yang sudah diputuskan):\n' + ada.map(x => `- Perkara: ${potong(x.teks, 420)}\n  Keputusan Prof Dr: ${String(x.jawapan || '').trim() || 'disahkan (ditanda selesai tanpa catatan)'}`).join('\n');
   }
   const htmlCadangan = t => perenggan(t).map(p => { const m = /^\[([^\]]{2,80})\]\s*([\s\S]*)$/.exec(p); return m ? `<p><strong>[${esc(m[1])}]</strong>${m[2] ? ' ' + esc(m[2]) : ''}</p>` : /^(SUMBER DIGUNAKAN|KEPUTUSAN UNTUK PROF DR|SOURCES USED|DECISIONS FOR PROF DR|UJI KESATUAN|NOTA JUJUR|UNION TEST|HONEST NOTE)\s*:/i.test(p) ? `<p><strong>${esc(p.split(':')[0])}:</strong>${esc(p.slice(p.indexOf(':') + 1))}</p>` : `<p>${esc(p)}</p>`; }).join('');
   function htmlSemak(x) {
@@ -521,7 +557,7 @@ ${sp.gerakan.map((g, n) => `${n + 1}. ${g.nama}${g.wajib ? '' : ' (pilihan)'}: $
 ${ss ? `SASARAN PANJANG FOLDER: ${ss[0]} hingga ${ss[1]} patah perkataan.` : ''}${sub.length ? `\nSUBSEKSYEN DALAM FOLDER: ${sub.join('; ')}.` : ''}
 
 JAWAPAN PROF DR KEPADA SOALAN PANDUAN:
-${jawab}${balas ? `\n\nJAWAPAN PROF DR KEPADA SOALAN AGEN TERDAHULU:\n${balas}` : ''}${dahulu ? `\n\nPETIKAN ASAL FOLDER TERDAHULU (untuk kesinambungan; ditulis oleh Prof Dr):\n${dahulu}` : ''}${teksAcuanFolder(f)}${notaLiteratur(f)}${dnaAktif(f) ? DNA.teksAgen(dnaCtx()) : ''}`;
+${jawab}${balas ? `\n\nJAWAPAN PROF DR KEPADA SOALAN AGEN TERDAHULU:\n${balas}` : ''}${teksKeputusan(F)}${dahulu ? `\n\nPETIKAN ASAL FOLDER TERDAHULU (untuk kesinambungan; ditulis oleh Prof Dr):\n${dahulu}` : ''}${teksAcuanFolder(f)}${notaLiteratur(f)}${dnaAktif(f) ? DNA.teksAgen(dnaCtx()) : ''}`;
   }
   /* Peta perenggan acuan bagi folder semasa, untuk agen. */
   /* Sempadan isi apabila folder Kajian Literatur ditambah: Pendahuluan tidak menghuraikan literatur secara terperinci, dan folder
@@ -770,11 +806,13 @@ ${PIAWAI_RINGKAS}`;
       if (jenis === 'sasaran') { const v = parseInt(el.value, 10); if (v >= 1000 && v <= 30000) { P.t.sasaran = v; P.t.sasaranAuto = false; simpanT(); clearTimeout(P.timers.sas); P.timers.sas = setTimeout(() => { if (document.activeElement !== el) render(); else { kemasBar(); } }, 900); } return; }
       if (jenis === 'dnanegara' || jenis === 'dnapaksi') { P.t.dna = DNA.tetapan(P.t); P.t.dna[jenis === 'dnanegara' ? 'negara' : 'paksi'] = el.value; simpanT(); P.cache = {}; return; }
       if (!k) return; const F = fd(k);
-      if (jenis === 'jawab') { F.jawab = F.jawab || {}; F.jawab[el.dataset.q] = el.value; } else if (jenis === 'balas') { const b = (F.balas || []).find(x => x.id === el.dataset.id); if (b) b.jawapan = el.value; } else if (jenis === 'tanya') F.tanya = el.value; else if (jenis === 'arahan') F.arahan = el.value; else return;
+      if (jenis === 'jawab') { F.jawab = F.jawab || {}; F.jawab[el.dataset.q] = el.value; } else if (jenis === 'balas') { const b = (F.balas || []).find(x => x.id === el.dataset.id); if (b) b.jawapan = el.value; } else if (jenis === 'tanya') F.tanya = el.value; else if (jenis === 'arahan') F.arahan = el.value; else if (jenis === 'keputusan') { const x = (F.keputusan || []).find(y => y.id === el.dataset.id); if (!x) return; x.jawapan = el.value; kiraKeputusan(F); } else return;
       simpanF(k);
     });
     root.addEventListener('change', e => {
-      const el = e.target; const s = el.dataset && el.dataset.pdsel; if (!s) { if (el.dataset && (el.dataset.pdin === 'sasaran' || el.dataset.pdin === 'dnanegara' || el.dataset.pdin === 'dnapaksi')) { if (el.dataset.pdin !== 'sasaran') P.terbuka.add('LJ'); render(); } return; }
+      const el = e.target;
+      if (el.dataset && el.dataset.pdkp) { const k = P.buka; if (!k) return; const F = fd(k); const x = (F.keputusan || []).find(y => y.id === el.dataset.pdkp); if (!x) return; x.siap = !!el.checked; const kad = el.closest('.pd-kp'); if (kad) kad.classList.toggle('siap', x.siap); kiraKeputusan(F); simpanF(k, true); return; }
+      const s = el.dataset && el.dataset.pdsel; if (!s) { if (el.dataset && (el.dataset.pdin === 'sasaran' || el.dataset.pdin === 'dnanegara' || el.dataset.pdin === 'dnapaksi')) { if (el.dataset.pdin !== 'sasaran') P.terbuka.add('LJ'); render(); } return; }
       if (s === 'dnamod' || s === 'dnaperingkat' || s === 'dnaperantara') { P.t.dna = DNA.tetapan(P.t); if (s === 'dnamod') P.t.dna.mod = ['auto', 'aktif', 'tiada'].includes(el.value) ? el.value : 'auto'; else if (s === 'dnaperingkat') P.t.dna.peringkat = el.value; else P.t.dna.perantara = !!el.checked; simpanT(true); P.cache = {}; P.terbuka.add('LJ'); render(); if (s === 'dnamod') toast(DNA.aktif(P.t, kel()) ? 'DNA jurang aktif bagi folder Pendahuluan: agen, meter dan pola ayat mengikut acuan pernyataan masalah ' + DNA.PENDEK + '.' : 'DNA jurang tidak aktif bagi artikel ini.'); return; }
       if (s === 'bahasa') { P.t.bahasa = el.value === 'en' ? 'en' : 'ms'; simpanT(true); render(); if (C.onTetapan) C.onTetapan('bahasa'); toast('Bahasa manuskrip: ' + namaBahasa() + '. Tajuk seksyen sedia ada tidak diubah; cadangan agen akan ditulis dalam bahasa ini.'); }
       else if (s === 'aras') { P.t.aras = el.value === 'scopus' ? 'scopus' : 'mycite'; simpanT(true); P.cache = {}; render(); if (C.onTetapan) C.onTetapan('aras'); toast('Jurnal sasaran: ' + (P.t.aras === 'scopus' ? 'berindeks Scopus atau WoS' : 'berindeks MyCite') + '. Agen menyemak mengikut piawaian ini.'); }
@@ -796,5 +834,5 @@ ${PIAWAI_RINGKAS}`;
 
   function onEditor() { kemasBar(); }
   function onTulis() { kemasHidup(); }
-  return { render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, D, ACUAN, POLA };
+  return { render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, D, ACUAN, POLA };
 }
