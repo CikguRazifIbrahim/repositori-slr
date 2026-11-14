@@ -14,7 +14,7 @@ import { initSintesis } from './mod/sintesis.js';
 import { initBengkel } from './mod/bengkel.js';
 import { initKumpulan } from './mod/kumpulan.js';
 import { initKalendar } from './mod/kalendar.js';
-const VERSION = '1.32.1';
+const VERSION = '1.33.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';

@@ -1,10 +1,10 @@
 /* Service worker Repositori SLR: cache cangkerang aplikasi supaya ia boleh dipasang dan dibuka pantas.
    Permintaan ke Google (Firestore, Drive, GIS) tidak pernah dicache. */
-const VERSION = 'rslr-v1.32.1';
+const VERSION = 'rslr-v1.33.0';
 const CACHE = 'rslr-' + VERSION;
 const SHELL = [
   './', './index.html', './app.js', './config.js', './manifest.webmanifest',
-  './mod/flip.js', './mod/harian.js', './mod/peta.js', './mod/web.js', './mod/isi.js', './mod/bahasa.js', './mod/bahasa-data.js', './mod/banding.js', './mod/laporanpdf.js', './mod/tulisan.js', './mod/artikel.js', './mod/sintesis.js', './mod/bengkel.js', './mod/bengkel-data.js', './mod/kumpulan.js', './mod/kalendar.js', './mod/pandu.js', './mod/pandu-data.js', './mod/pandu-acuan.js', './mod/pandu-dna.js', './mod/tajuk.js', './mod/tajuk-data.js', './mod/prisma.js', './mod/output.js', './vendor/tulisan.bundle.js', './vendor/laporan.bundle.js', './data/seen_dois.json', './data/scopus.json', './data/scopus_henti.json',
+  './mod/flip.js', './mod/harian.js', './mod/peta.js', './mod/web.js', './mod/isi.js', './mod/bahasa.js', './mod/bahasa-data.js', './mod/banding.js', './mod/laporanpdf.js', './mod/tulisan.js', './mod/artikel.js', './mod/sintesis.js', './mod/bengkel.js', './mod/bengkel-data.js', './mod/kumpulan.js', './mod/kalendar.js', './mod/pandu.js', './mod/pandu-data.js', './mod/pandu-acuan.js', './mod/pandu-dna.js', './mod/tajuk.js', './mod/tajuk-data.js', './mod/prisma.js', './mod/rajah.js', './mod/output.js', './vendor/tulisan.bundle.js', './vendor/laporan.bundle.js', './data/seen_dois.json', './data/scopus.json', './data/scopus_henti.json',
   './vendor/firebase.bundle.js', './vendor/pdf.min.mjs', './vendor/pdf.worker.min.mjs',
   './icons/icon-64.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'
 ];

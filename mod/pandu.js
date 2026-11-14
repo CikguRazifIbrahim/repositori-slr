@@ -15,6 +15,7 @@ import { ACUAN, POLA } from './pandu-acuan.js';
 import * as DNA from './pandu-dna.js';
 import { initPrisma } from './prisma.js';
 import { initOutput } from './output.js';
+import { initRajah } from './rajah.js';
 import { PIAWAI_RINGKAS } from './bahasa-data.js';
 
 export function initPandu(R, C) {
@@ -378,13 +379,15 @@ export function initPandu(R, C) {
     const L5 = det('L5', 'pd-l', `<span class="no">5</span> Semak dan tandakan siap <span class="ring">kesediaan ${uk.sedia}%${F.semak && F.semak.data ? ' · semakan agen: ' + esc(F.semak.data.keputusan || '') : ''}</span>`, `<div id="pdMeter" class="pd-meter-grid">${uk.meter.map(htmlMeter).join('')}</div>
       <div class="pd-acts"><button class="btn btn-sm" data-pd="segar">Kira semula meter</button><button class="btn btn-ai" data-pd="agen" data-mod="semak"${mati}>${sibuk === 'semak' ? 'Agen sedang menyemak' : 'Semakan agen (sebagai penilai jurnal)'}</button><button class="btn ${siap ? '' : 'btn-primary'}" data-pd="siap">${siap ? 'Buka semula folder ini' : 'Tanda folder siap'}</button></div>
       ${F.semak && F.semak.data ? `<div class="pd-hasil"><div class="pd-hasil-h"><b>Semakan agen terakhir: ${esc(F.semak.data.keputusan || '')}</b><span>${esc(R.fmtTime(F.semak.masa))}${F.semak.patah ? ' · ASAL ' + angka(F.semak.patah) + ' patah ketika disemak' : ''}${uk.n !== F.semak.patah ? ' · ASAL telah berubah sejak semakan ini' : ''}</span></div>${htmlSemak(F.semak.data)}</div>` : ''}`);
-    const ruang = (f.p === 'kaedah' || f.p === 'dapatan') && adaPrisma() ? det('prisma', 'pd-l pd-ruang', `<span class="no ruang">P</span> Ruang PRISMA 2020 <span class="ring">${esc(Prisma.ringkas())}</span>`, '<div id="pdPrisma"></div>') : '';
+    const ruang = f.p === 'kaedah' && adaPrisma() ? det('prisma', 'pd-l pd-ruang', `<span class="no ruang">P</span> Ruang PRISMA 2020 <span class="ring">${esc(Prisma.ringkas())}</span>`, '<div id="pdPrisma"></div>') : '';
     const ruangO = (f.p === 'dapatan' || f.p === 'kaedah' || f.p === 'perbincangan') && adaOutput() ? det('output', 'pd-l pd-ruang', `<span class="no ruang">O</span> Ruang Output ${kel() === 'kual' ? 'dan bahan dapatan' : 'SPSS dan AMOS'} <span class="ring">${esc(Output.ringkas())}</span>`, '<div id="pdOutput"></div>') : '';
+    /* v1.33.0: rajah aliran PRISMA diurus dalam folder Metodologi sahaja; folder Dapatan mendapat Ruang Rajah Statistik yang tidak wajib */
+    const ruangR = f.p === 'dapatan' ? det('rajah', 'pd-l pd-ruang', `<span class="no ruang">G</span> Ruang Rajah Statistik <em>(pilihan)</em> <span class="ring">${esc(Rajah.ringkas())}</span>`, `${adaPrisma() ? '<p class="help">Rajah aliran PRISMA 2020 dan angkanya diisi dalam Ruang PRISMA folder Metodologi sahaja; agen folder ini tetap menerima angka yang sama supaya teks selaras.</p>' : ''}<div id="pdRajah"></div>`) : '';
     const acF = acuan(); const LA = acF && (f.ac || f.p === 'abstrak') ? det('LA', 'pd-l pd-acuan', `<span class="no ruang">A</span> Acuan: ${f.p === 'abstrak' ? 'abstrak' : 'bahagian ini dalam'} ${esc(acF.pendek)} <span class="ring">${f.ac ? `${f.ac.per} perenggan · ${angka(f.ac.kata)} patah · ${f.ac.sit} sitasi · ${f.ac.peratus}% badan` : esc((acF.abstrak || {}).bentuk || '')}</span>`, htmlAcuanFolder(f, uk)) : '';
     const LJ = f.p === 'pendahuluan' ? det('LJ', 'pd-l pd-acuan pd-dna', `<span class="no ruang">J</span> DNA jurang: acuan pernyataan masalah ${esc(DNA.PENDEK)} <span class="ring">${esc(DNA.ringkasan(dnaCtx()))}</span>`, DNA.html(dnaCtx())) : '';
-    el.innerHTML = kepala + LA + LJ + L1 + L2 + (f.p === 'kaedah' ? ruang + ruangO : '') + (f.p === 'dapatan' ? ruangO + ruang : '') + (f.p === 'perbincangan' ? ruangO : '') + L3 + L4 + L5;
+    el.innerHTML = kepala + LA + LJ + L1 + L2 + (f.p === 'kaedah' ? ruang + ruangO : '') + (f.p === 'dapatan' ? ruangO + ruangR : '') + (f.p === 'perbincangan' ? ruangO : '') + L3 + L4 + L5;
     const sel = el.querySelector('[data-pdsel="peta"]'); if (sel) sel.value = sid;
-    if ($('#pdPrisma')) Prisma.render($('#pdPrisma'), f); if ($('#pdOutput')) Output.render($('#pdOutput'), f);
+    if ($('#pdPrisma')) Prisma.render($('#pdPrisma'), f); if ($('#pdOutput')) Output.render($('#pdOutput'), f); if ($('#pdRajah')) Rajah.render($('#pdRajah'), f);
   }
   function htmlPetaSel(f) {
     const d = C.doc(); const nb = Teks.nombor(A.id); const guna = new Set(folders().filter(x => x.k !== f.k).map(x => sidFolder(x)).filter(Boolean));
@@ -829,10 +832,10 @@ ${PIAWAI_RINGKAS}`;
   const edRoot = $('#artEditor'); if (edRoot) edRoot.addEventListener('input', () => kemasHidup());
 
   /* ---- ruang kerja folder ---- */
-  const X = { R, C, P, D, Teks, A, esc, toast, angka, patah, bersih, sekarang, idBaru, simpanT, gaya, en, namaBahasa, kel, folderDari, sidFolder, julat, sasaranRam, sisip, urai, renderFolder: () => renderFolder(), render: () => render(), kemasBar: () => kemasBar(), terbuka: () => P.terbuka };
-  const Prisma = initPrisma(X); const Output = initOutput(X);
+  const X = { R, C, P, D, Teks, A, esc, toast, angka, patah, bersih, sekarang, idBaru, simpanT, gaya, en, namaBahasa, kel, fd: k => fd(k), folderDari, sidFolder, julat, sasaranRam, sisip, urai, renderFolder: () => renderFolder(), render: () => render(), kemasBar: () => kemasBar(), terbuka: () => P.terbuka };
+  const Prisma = initPrisma(X); const Output = initOutput(X); const Rajah = initRajah(X);
 
   function onEditor() { kemasBar(); }
   function onTulis() { kemasHidup(); }
-  return { render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, D, ACUAN, POLA };
+  return { render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
 }
