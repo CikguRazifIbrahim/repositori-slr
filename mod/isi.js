@@ -7,14 +7,14 @@ export function initIsi(R) {
   const { $, $$, esc, toast, GROUPS, FIELD_BY_KEY } = R;
   const API = 'https://api.anthropic.com/v1/messages';
   const MODEL_DEFAULT = 'claude-sonnet-5-5';
-  const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (seimbang, disyorkan)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (paling pantas dan murah)'], ['claude-opus-5-5', 'Claude Opus 5.5 (paling teliti, kos tertinggi)']];
+  const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (seimbang, disyorkan)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (paling pantas dan murah)'], ['claude-opus-5-5', 'Claude Opus 5.5 (lebih teliti; kos 2 kali Sonnet 5.5)'], ['claude-fable-5-2', 'Claude Fable 5.2 (paling berkeupayaan; kos 4 kali Sonnet 5.5)']];
   /* Agen Bahasa selepas isian (mod/bahasa.js): nilai pertama ialah lalai. */
   const BAHASA_AUTO = [['sentiasa', 'Sentiasa, selepas setiap isian (lalai)'], ['perlu', 'Hanya apabila pengesan menemui istilah untuk dipiawaikan (jimat token)'], ['tidak', 'Tidak; saya panggil sendiri melalui butang Piawaikan bahasa']];
   /* Kedalaman berfikir model (output_config.effort); nilai pertama ('') bermaksud lalai model, iaitu effort tidak dihantar. */
-  const EFFORT = [['', 'Lalai model (Sonnet 5.5: tinggi; Opus 5.5 dan Haiku 5.5: sederhana)'], ['low', 'Rendah: paling jimat token, kurang teliti'], ['medium', 'Sederhana: seimbang'], ['high', 'Tinggi: paling teliti, paling banyak token']];
+  const EFFORT = [['', 'Lalai model (Fable 5.2 dan Sonnet 5.5: tinggi; Opus 5.5 dan Haiku 5.5: sederhana)'], ['low', 'Rendah: paling jimat token, kurang teliti'], ['medium', 'Sederhana: seimbang'], ['high', 'Tinggi: paling teliti, paling banyak token']];
   const effortSah = v => (EFFORT.some(x => x[0] === v) ? v : '');
   const SKIP = new Set(['catatan']);
-  const I = { cache: new Map(), busy: new Set(), semua: false, mod: {}, tanpaEffort: {}, effortDimaklum: false };
+  const I = { cache: new Map(), busy: new Set(), semua: false, mod: {}, tanpaEffort: {}, effortDimaklum: false, model: '' };
   const PROFIL_DEFAULT = `Tajuk: Pengaruh Kepimpinan Digital Guru Besar terhadap Kompetensi Digital Guru dengan Pengurusan Pengetahuan Organisasi sebagai Perantara di Sekolah Rendah Negeri Perak (calon PhD, Universiti Pendidikan Sultan Idris).
 Model: pemboleh ubah bebas Kepimpinan Digital Guru Besar (KD; kerangka ISTE Standards for Education Leaders 2024, lima dimensi: Penyokong Kewarganegaraan Digital, Perancang Berwawasan, Pemimpin Pemerkasa, Pereka Bentuk Sistem, Pembelajar Berhubung); pemboleh ubah perantara Pengurusan Pengetahuan Organisasi (PPO; Model SECI Nonaka dan Takeuchi: Sosialisasi, Eksternalisasi, Kombinasi, Internalisasi, serta konsep Ba dan Pandangan Berasaskan Pengetahuan Grant 1996; dilihat sebagai amalan dan tahap amalan); pemboleh ubah bersandar Kompetensi Digital Guru (KDG; DigCompEdu Redecker 2017, enam bidang, 22 kompetensi).
 Hipotesis: H1 KD mempengaruhi KDG secara langsung; H2 KD mempengaruhi PPO; H3 PPO mempengaruhi KDG; H4 PPO mengantara hubungan KD dengan KDG (kesan tidak langsung a x b).
@@ -23,7 +23,7 @@ Metodologi: kuantitatif, bukan eksperimen, keratan rentas, tinjauan soal selidik
 Bab tesis: Bab 1 Pengenalan dan pernyataan masalah; Bab 2 Sorotan literatur (konsep dan teori KD, PPO, KDG; kajian lepas; kerangka konseptual); Bab 3 Metodologi; Bab 4 Dapatan; Bab 5 Perbincangan.`;
 
   /* ---- tetapan ---- */
-  async function tetapan() { let m = {}; try { m = (await R.db().getMeta()) || {}; } catch (e) {} return { key: String(m.anthropicKey || '').trim(), model: String(m.anthropicModel || MODEL_DEFAULT).trim() || MODEL_DEFAULT, profil: String(m.profilKajian || '').trim() || PROFIL_DEFAULT, bahasaAuto: BAHASA_AUTO.some(x => x[0] === m.bahasaAuto) ? m.bahasaAuto : BAHASA_AUTO[0][0], effort: effortSah(m.effort) }; }
+  async function tetapan() { let m = {}; try { m = (await R.db().getMeta()) || {}; } catch (e) {} const model = String(m.anthropicModel || MODEL_DEFAULT).trim() || MODEL_DEFAULT; I.model = model; return { key: String(m.anthropicKey || '').trim(), model, profil: String(m.profilKajian || '').trim() || PROFIL_DEFAULT, bahasaAuto: BAHASA_AUTO.some(x => x[0] === m.bahasaAuto) ? m.bahasaAuto : BAHASA_AUTO[0][0], effort: effortSah(m.effort) }; }
 
   /* ---- teks penuh artikel ---- */
   function pageText(items) {
@@ -114,7 +114,7 @@ Pulangkan JSON sekarang.`;
   }
 
   /* ---- panggilan API ---- */
-  /* Output berstruktur. Model keluarga 5.5 (Sonnet, Opus) menolak tool_choice "tool" dan "any" dengan ralat 400, maka mod lalai ialah
+  /* Output berstruktur. Model keluarga 5.5 (Sonnet, Opus) dan Fable 5.2 menolak tool_choice "tool" dan "any" dengan ralat 400, maka mod lalai ialah
      output_config.format (json_schema): API menjamin teks jawapan ialah JSON yang sah mengikut skema. Satu skema dikongsi oleh semua
      bahagian supaya awalan cache prompt kekal sama (menukar output_config.format membatalkan cache). Had API: 24 medan pilihan (optional)
      bagi setiap permintaan, maka 19 medan pendek diwajibkan (nilai "-" jika bukan bahagian yang diminta) dan 22 medan panjang dibiarkan pilihan.
@@ -154,6 +154,7 @@ Pulangkan JSON sekarang.`;
   }
   /* Temperature, Top-K dan Top-P sengaja TIDAK dihantar. Dokumentasi API meminta ketiga-tiganya ditinggalkan bagi model keluarga 5.5:
      Sonnet 5.5 dan Opus 5.5 menolak permintaan yang menetapkannya dengan ralat 400, dan halaman Haiku 5.5 meminta ia ditinggalkan.
+     Halaman Fable 5.2 meminta perkara yang sama (disemak 15 November 2026).
      Bahasa dan gaya dikawal melalui arahan (PIAWAIAN BAHASA dalam bahasa-data.js) dan Agen Bahasa (bahasa.js). Disemak 14 November 2026. */
   const HAD_TOKEN = 8192;   // bajet JAWAPAN lalai; ruang berfikir ditambah di atasnya (lihat di bawah)
   /* Pemikiran model dan had token keluaran (v1.31.1). Model keluarga 5.5 berfikir sebelum menjawab (adaptive thinking; sentiasa hidup bagi
@@ -178,7 +179,17 @@ Pulangkan JSON sekarang.`;
      dalam Tetapan atau semasa ulangan. Jika API menolaknya (ralat 400, tidak dicaj), permintaan dihantar semula tanpanya dan effort
      diabaikan sehingga aplikasi dimuat semula. Disemak dengan dokumentasi pada 14 November 2026. */
   const RUANG_FIKIR = 10000, HAD_MAKS = 21000, HAD_TOKEN_ULANG = HAD_MAKS;
-  const hadKeluar = had => Math.min(HAD_MAKS, (had || HAD_TOKEN) + RUANG_FIKIR);
+  /* Fable 5.2 (v1.37.2). Pemikirannya sentiasa hidup dan tidak boleh dimatikan, effort lalainya tinggi, dan token pemikiran dikira dalam
+     max_tokens. Maka siling penuh HAD_MAKS dipakai dari percubaan pertama bagi model ini, supaya had tidak habis untuk pemikiran lalu
+     panggilan terpaksa diulang pada harga Fable (4 kali Sonnet 5.5). Siling bukan belian: yang dicaj ialah token yang benar-benar dijana.
+     Permintaan aplikasi ini serasi dengan Fable 5.2 tanpa perubahan lain: tiada temperature, top_p, top_k atau medan thinking;
+     tool_choice auto sahaja; tiada jawapan pembantu yang diisi awal (prefill). Pengelas keselamatan Fable memulangkan HTTP 200 dengan
+     stop_reason "refusal", yang sudah ditangani di bawah. Disemak dengan dokumentasi (halaman model Fable 5.2, panduan migrasi dan
+     halaman harga) pada 15 November 2026. */
+  const fikirPenuh = m => /^claude-(fable|mythos)-/.test(String(m || ''));
+  const hadKeluar = (had, model) => (fikirPenuh(model !== undefined ? model : I.model) ? HAD_MAKS : Math.min(HAD_MAKS, (had || HAD_TOKEN) + RUANG_FIKIR));
+  /* Anggaran kos dalam dialog ("beberapa sen") ditulis bagi Sonnet 5.5; nota ini membetulkannya bagi model yang lebih mahal. */
+  const notaKos = model => { const m = String(model !== undefined ? model : I.model || ''); return fikirPenuh(m) ? ' Model semasa ialah Fable 5.2: kosnya kira-kira 4 kali anggaran ini.' : /^claude-opus-/.test(m) ? ' Model semasa ialah Opus 5.5: kosnya kira-kira 2 kali anggaran ini.' : ''; };
   /* Permintaan tanpa penstriman menunggu seluruh jawapan: masa menunggu mengikut had token, antara 4 dengan 10 minit. */
   const masaTunggu = had => Math.min(600000, Math.max(240000, (had || HAD_TOKEN) * 30));
   const masukSemua = u => (u ? (u.masuk || 0) + (u.cacheBaca || 0) + (u.cacheTulis || 0) : 0);
@@ -191,7 +202,8 @@ Pulangkan JSON sekarang.`;
   async function hantar(t, p) {
     const kunci = p.kunciMod || t.model; let mod = modSemasa(kunci);
     const sendiri = p.ulang === false;
-    let had = sendiri ? (p.hadToken || HAD_TOKEN) : hadKeluar(p.hadToken);
+    I.model = t.model;
+    let had = fikirPenuh(t.model) ? HAD_MAKS : (sendiri ? (p.hadToken || HAD_TOKEN) : hadKeluar(p.hadToken));
     let effort = effortSah(p.effort !== undefined ? p.effort : t.effort); let ulang = 0; let tanpaEf = false; let efBersih = false;
     const guna = { masuk: 0, keluar: 0, cacheTulis: 0, cacheBaca: 0 }; let nGuna = 0; const bajet = p.hadToken || HAD_TOKEN; let sebelum = null;
     const gagal = e => { if (nGuna) e.usage = Object.assign({}, guna); return e; };
@@ -296,14 +308,15 @@ Pulangkan JSON sekarang.`;
     if (c === 'scan_besar') return `PDF ini imbasan tanpa teks dan melebihi 100 muka surat (${e.pages}); tidak dapat dihantar.`;
     const guna = e && e.usage ? ' Token masuk ' + angka(masukSemua(e.usage)) + ' dan keluar ' + angka(e.usage.keluar) + ' telah digunakan.' : '';
     if (c === 'json') return (e && e.stop === 'max_tokens' ? 'jawapan model terpotong kerana mencapai had token; cuba sekali lagi (medan yang panjang boleh diisi berasingan).' : 'jawapan model tidak dapat dibaca sebagai JSON walaupun selepas pembaikan; cuba sekali lagi.') + guna;
-    if (c === 'refusal') return 'model enggan menjawab permintaan ini (stop_reason refusal); cuba sekali lagi atau tukar model dalam Tetapan.';
+    const fable = fikirPenuh(I.model);
+    if (c === 'refusal') return 'model enggan menjawab permintaan ini (stop_reason refusal); ' + (fable ? 'Fable 5.2 mempunyai pengelas keselamatan tambahan yang boleh menghentikan jawapan. Cuba sekali lagi, atau tukar kepada Sonnet 5.5 dalam Tetapan.' : 'cuba sekali lagi atau tukar model dalam Tetapan.');
     if (c === 'kosong') { return e.stop === 'max_tokens' ? 'model menggunakan seluruh had token keluaran (' + angka(e.had) + ') untuk berfikir dan tidak sempat menulis jawapan, walaupun selepas diulang sekali.' + guna + ' Kurangkan bahan yang dihantar atau pilih kedalaman berfikir yang lebih rendah dalam Tetapan, kemudian cuba lagi.' : 'model memulangkan jawapan tanpa teks' + (e.stop ? ' (stop_reason ' + e.stop + ')' : '') + '.' + guna + ' Cuba sekali lagi.'; }
     if (c === 'masa') return 'tamat masa menunggu jawapan (' + (e.minit || 4) + ' minit).' + guna;
     if (c === 'rangkaian') return 'permintaan ke api.anthropic.com gagal (talian terputus atau disekat pelayar).';
     if (st === 401) return 'kunci API Anthropic tidak sah (semak Tetapan).';
     if (st === 403) return 'akses ditolak oleh API Anthropic.';
     if (st === 404) return 'model tidak ditemui; pilih model lain dalam Tetapan.';
-    if (st === 429) return 'had kadar atau kredit akaun Anthropic habis; cuba sebentar lagi.';
+    if (st === 429) return 'had kadar atau kredit akaun Anthropic habis; cuba sebentar lagi.' + (fable ? ' Fable 5.2 mempunyai had kadar tersendiri yang lebih rendah daripada model lain: tunggu seminit, atau tukar kepada Sonnet 5.5 dalam Tetapan bagi kerja pukal.' : '');
     if (st === 413) return 'artikel terlalu besar untuk satu permintaan.';
     if (st >= 500) return 'pelayan Anthropic sibuk (' + st + '); cuba sebentar lagi.';
     return (st ? 'ralat ' + st + ': ' : '') + (e && e.message ? e.message : 'ralat tidak diketahui');
@@ -322,7 +335,7 @@ Pulangkan JSON sekarang.`;
     const d0 = rekodSemasa(id); const kosong = sp.fields.filter(f => nilaiKosong(d0[f.k]));
     if (!kosong.length) { toast(`Bahagian ${letter}: semua medan sudah berisi. Kosongkan medan yang mahu diisi semula, kemudian klik lagi.`); return { diisi: 0, kekal: sp.fields.length }; }
     if (!opts.senyap && !R.lsGet('rslr_isi_faham', false)) {
-      const okk = await R.confirmBox('Mohon Prof Dr Claude isikan', 'Teks penuh PDF artikel akan dihantar ke API Anthropic menggunakan kunci API Prof Dr, dan kos dicaj kepada akaun Anthropic Prof Dr (lazimnya beberapa sen bagi setiap bahagian; bahagian seterusnya artikel yang sama lebih murah kerana cache). Hanya medan yang masih kosong diisi, sebagai draf untuk disemak.', 'Faham, teruskan', false);
+      const okk = await R.confirmBox('Mohon Prof Dr Claude isikan', 'Teks penuh PDF artikel akan dihantar ke API Anthropic menggunakan kunci API Prof Dr, dan kos dicaj kepada akaun Anthropic Prof Dr (lazimnya beberapa sen bagi setiap bahagian; bahagian seterusnya artikel yang sama lebih murah kerana cache).' + notaKos(t.model) + ' Hanya medan yang masih kosong diisi, sebagai draf untuk disemak.', 'Faham, teruskan', false);
       if (!okk) return null; R.lsSet('rslr_isi_faham', true);
     }
     I.busy.add(kunci); setBtn(letter, 'Mengambil PDF', true);
@@ -404,5 +417,5 @@ Pulangkan JSON sekarang.`;
   }
   $('#form').addEventListener('click', e => { const b = e.target.closest('[data-isi]'); if (!b) return; e.preventDefault(); isi(R.S.currentId, b.dataset.isi).catch(() => {}); });
   const bs = $('#btnIsiSemua'); if (bs) bs.addEventListener('click', () => isiSemua(R.S.currentId));
-  return { isi, isiSemua, renderStat, tetapan, MODELS, MODEL_DEFAULT, PROFIL_DEFAULT, BAHASA_AUTO, EFFORT, HAD_TOKEN, RUANG_FIKIR, HAD_MAKS, hadKeluar, masaTunggu, masukSemua, systemPrompt, PANDUAN, bacaArtikel, hantar, parseJson, msg, nilaiKosong, SKIP, state: I };
+  return { isi, isiSemua, renderStat, tetapan, MODELS, MODEL_DEFAULT, PROFIL_DEFAULT, BAHASA_AUTO, EFFORT, HAD_TOKEN, RUANG_FIKIR, HAD_MAKS, hadKeluar, fikirPenuh, notaKos, masaTunggu, masukSemua, systemPrompt, PANDUAN, bacaArtikel, hantar, parseJson, msg, nilaiKosong, SKIP, state: I };
 }

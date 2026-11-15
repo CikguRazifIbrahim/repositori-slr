@@ -235,7 +235,7 @@ ${profil}`;
     if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
     if (B.simpanan) { const okk = await R.confirmBox('Jana semula laporan?', 'Laporan agen bagi pasangan ini sudah ada (' + R.fmtTime(B.simpanan.masa) + '). Jana semula akan menggunakan token sekali lagi.', 'Jana semula', false); if (!okk) return; }
     if (!R.lsGet('rslr_banding_faham', false)) {
-      const okk = await R.confirmBox('Agen Banding Prof Dr Claude', 'Medan Bahagian A hingga F kedua-dua rekod (bukan PDF) akan dihantar ke API Anthropic menggunakan kunci API Prof Dr dan dicaj kepada akaun Anthropic Prof Dr (lazimnya beberapa sen setiap laporan). Laporan disimpan supaya tidak perlu dijana semula.', 'Faham, teruskan', false);
+      const okk = await R.confirmBox('Agen Banding Prof Dr Claude', 'Medan Bahagian A hingga F kedua-dua rekod (bukan PDF) akan dihantar ke API Anthropic menggunakan kunci API Prof Dr dan dicaj kepada akaun Anthropic Prof Dr (lazimnya beberapa sen setiap laporan).' + R.Isi.notaKos(t.model) + ' Laporan disimpan supaya tidak perlu dijana semula.', 'Faham, teruskan', false);
       if (!okk) return; R.lsSet('rslr_banding_faham', true);
     }
     const da = rekod(B.a), db = rekod(B.b); const btn = $('#btnBandingAgen');
@@ -344,7 +344,7 @@ ${profil}`;
     if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
     const senarai = senaraiPilihan().filter(([id, d]) => !(d.petaDimensi && d.petaDimensi.konstruk && d.petaDimensi.konstruk.length) && !kosong(d.konstruk));
     if (!senarai.length) { toast('Semua artikel yang ada medan konstruk sudah berpeta'); return; }
-    const okk = await R.confirmBox('Jana peta dimensi?', `${senarai.length} artikel akan dipetakan satu demi satu (medan konstruk, definisi, teori dan instrumen sahaja; kira-kira satu hingga dua sen setiap artikel).`, 'Jana', false); if (!okk) return;
+    const okk = await R.confirmBox('Jana peta dimensi?', `${senarai.length} artikel akan dipetakan satu demi satu (medan konstruk, definisi, teori dan instrumen sahaja; kira-kira satu hingga dua sen setiap artikel).${R.Isi.notaKos(t.model)}`, 'Jana', false); if (!okk) return;
     B.sibukPeta = true; renderPola(); let siap = 0, gagal = 0;
     for (const [id, d] of senarai) {
       try {
