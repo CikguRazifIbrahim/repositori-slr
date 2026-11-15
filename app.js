@@ -14,7 +14,7 @@ import { initSintesis } from './mod/sintesis.js';
 import { initBengkel } from './mod/bengkel.js';
 import { initKumpulan } from './mod/kumpulan.js';
 import { initKalendar } from './mod/kalendar.js';
-const VERSION = '1.34.0';
+const VERSION = '1.34.1';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -149,7 +149,7 @@ const searchCache = new WeakMap();
 function toast(msg, bad, action) {
   const t = document.createElement('div'); t.className = 'toast' + (bad ? ' bad' : ''); t.textContent = msg;
   if (action) { const b = document.createElement('button'); b.textContent = action.label; b.addEventListener('click', () => { t.remove(); action.fn(); }); t.appendChild(b); }
-  $('#toasts').appendChild(t); setTimeout(() => t.remove(), action ? 12000 : bad ? 6000 : 3200);
+  $('#toasts').appendChild(t); if (!(action && action.kekal)) setTimeout(() => t.remove(), action ? 12000 : bad ? 6000 : 3200);
 }
 let modalResolve = null;
 function confirmBox(title, text, okLabel, danger = true) {
@@ -1308,13 +1308,19 @@ if (TEST) window.__RSLR_intakeShared = intakeShared;
 /* ---------- PWA: service worker and install prompt ---------- */
 function registerSW() {
   if (!('serviceWorker' in navigator) || TEST) return;
+  /* Notis kemas kini kekal di skrin sehingga diklik. Dahulu ia toast 12 saat: jika terlepas, atau jika versi baharu sudah dimuat turun
+     pada bukaan terdahulu (tiada peristiwa updatefound), aplikasi terus berjalan pada versi lama tanpa sebarang tanda. */
+  let ditawar = false;
+  const tawar = w => { if (!w || ditawar) return; ditawar = true; toast('Versi baharu Repositori SLR sudah dimuat turun', false, { label: 'Muat semula sekarang', kekal: true, fn: () => { try { w.postMessage('SKIP_WAITING'); } catch (e) {} setTimeout(() => location.reload(), 3500); } }); };
   navigator.serviceWorker.register('./sw.js').then(reg => {
+    if (reg.waiting && navigator.serviceWorker.controller) tawar(reg.waiting);
     reg.addEventListener('updatefound', () => {
       const w = reg.installing; if (!w) return;
-      w.addEventListener('statechange', () => {
-        if (w.state === 'installed' && navigator.serviceWorker.controller) toast('Versi baharu tersedia', false, { label: 'Muat semula', fn: () => { w.postMessage('SKIP_WAITING'); } });
-      });
+      w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) tawar(w); });
     });
+    /* Sesi yang dibuka berjam-jam juga menyemak versi baharu: setiap 30 minit, dan apabila tetingkap kembali dilihat (paling kerap 10 minit sekali). */
+    let akhir = Date.now(); const semak = () => { if (Date.now() - akhir < 600000) return; akhir = Date.now(); reg.update().catch(() => {}); };
+    setInterval(semak, 1800000); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') semak(); });
   }).catch(() => {});
   let reloaded = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
