@@ -10,6 +10,13 @@
    carian yang sudah dibuat); (b) panduan pengisian tanpa token bagi setiap kotak; (c) baris "kaedah lain (nyatakan)" pada lajur kedua
    supaya rekod yang dikenal pasti melalui cara lain, contohnya carian berbantukan AI, dilaporkan dengan namanya yang sebenar. Angka aliran
    tidak pernah dicadangkan oleh agen kerana ia rekod proses pemilik sendiri. */
+/* v1.38.0: atas permintaan pemilik, ruang ini memaparkan RAJAH SAHAJA. Paparan pangkalan data dan rentetan carian, Jadual kriteria
+   kelayakan, Saringan rekod dan medan angka aliran dibuang. Setiap kotak putih rajah ialah teks yang ditulis terus oleh pemilik (klik
+   kotak untuk menyunting); kotak berwarna kekal mengikut templat. Pembayang terapung pada setiap kotak menerangkan apa yang patut
+   ditulis dan mencadangkan teks. Sistem tidak lagi mengira atau mengisi angka: ia hanya menyemak kira-kira antara kotak dan memberi
+   amaran. Data lama (d.pangkalan, d.kriteria dan log saringan) TIDAK dipadam: ia masih dibaca untuk agen dan boleh diambil di bawah
+   "Rekod lama". Kandungan kotak pada kali pertama dibina daripada data lama itu (dariLama), supaya tiada angka hilang. Enjin carian
+   (PENYAMBUNG) dan mod/saring.js disimpan tanpa paparan supaya log saringan lama masih boleh dibaca dan dieksport. */
 import { initSaring } from './saring.js';
 export function initPrisma(X) {
   const { R, C, P, D, esc, toast, angka, idBaru, simpanT, gaya, en, kel, sasaranRam, sisip, Teks, A } = X;
@@ -58,74 +65,175 @@ export function initPrisma(X) {
     return { d, nPang, dikenal, buang, disaring, dicari, dinilai, nSebab, masuk1, dikenal2, dinilai2, nSebab2, masuk2, kajian, laporan, isu, info, lengkap, adaPang, belumJalan, belumSaring, belumNilai };
   }
   const adaRajah = () => { const dok = C.doc(); return !!dok && Object.values(dok.seksyen || {}).some(s => !s.padam && /alt="[^"]*PRISMA/i.test(String(s.html || '') + String(s.ram || ''))); };
-  function meter() {
-    const k = kira(); const butir = k.isu.concat(k.info); let nilai = 0; const p = k.adaPang;
-    if (p.length) nilai += 20; if (p.length && p.every(x => isi(x.rentetan))) nilai += 25; if (p.length && p.every(x => isi(x.tarikh) && isi(x.n))) nilai += 10;
-    if (k.dikenal > 0 && isi(k.d.pendua) && isi(k.d.dikecualikan)) nilai += 15; if (k.kajian > 0 && !k.isu.some(x => /melebihi|kurang daripada/.test(x))) nilai += 20;
-    const raj = adaRajah(); if (raj) nilai += 10; else if (k.kajian > 0) butir.push('Rajah aliran belum disisip ke dalam manuskrip (butang Sisip rajah dalam Ruang PRISMA).');
-    const st = k.isu.some(x => /melebihi|kurang daripada|Peraturan gaya/.test(x)) ? 'gagal' : nilai >= 90 ? 'ok' : nilai >= 45 ? 'amaran' : 'gagal';
-    return [{ k: 'prisma', nama: 'PRISMA 2020', nilai, status: st, teks: ringkas(), butir }];
+  /* ---- v1.38.0: rajah sahaja. Setiap kotak putih ialah teks yang ditulis oleh pemilik; label berwarna kekal mengikut templat. ---- */
+  const KOTAK = ['a1', 'a1s', 'b1', 'a2', 'a2s', 'a3', 'a3s', 'b3', 'b3s', 'a4', 'a4s', 'b4', 'b4s', 'a5'];
+  const KOTAK2 = new Set(['b1', 'b3', 'b3s', 'b4', 'b4s']);   // lajur kaedah lain
+  const NBSP = String.fromCharCode(160);
+  const NAMA = { a1: 'Rekod dikenal pasti daripada pangkalan data dan daftar', a1s: 'Rekod dibuang sebelum saringan', b1: 'Rekod dikenal pasti melalui kaedah lain', a2: 'Rekod disaring', a2s: 'Rekod dikecualikan pada tajuk dan abstrak', a3: 'Laporan dicari untuk diperoleh', a3s: 'Laporan tidak diperoleh', b3: 'Laporan dicari (kaedah lain)', b3s: 'Laporan tidak diperoleh (kaedah lain)', a4: 'Laporan dinilai kelayakannya', a4s: 'Laporan dikecualikan selepas dinilai', b4: 'Laporan dinilai kelayakannya (kaedah lain)', b4s: 'Laporan dikecualikan selepas dinilai (kaedah lain)', a5: 'Kajian dimasukkan dalam ulasan' };
+  /* Pembayang terapung: apa yang patut ditulis dalam setiap kotak (bahasa mudah). Diambil daripada panduan pengisian terdahulu. */
+  const PANDUAN = {
+    a1: 'Tulis nama setiap pangkalan data yang dicari dan bilangan rekod yang dipaparkan pada hari carian, satu baris bagi satu pangkalan data. Daftar ialah daftar kajian, contohnya daftar percubaan klinikal; tulis 0 jika tidak digunakan. Tanda * ialah nota templat untuk penulis dan boleh dibuang.',
+    a1s: 'Rekod yang dibuang sebelum tajuk dan abstrak dibaca: pendua (rekod yang sama dalam dua pangkalan data), rekod yang ditolak oleh alat automasi, dan sebab lain. Tulis 0 jika tiada.',
+    b1: 'Rekod yang ditemui di luar carian pangkalan data: laman web, organisasi, carian sitasi dan senarai rujukan. Artikel yang ditemui melalui pembantu AI ditulis pada baris sendiri dengan nama alatnya.',
+    a2: 'Bilangan rekod yang tajuk dan abstraknya dibaca. Kiraannya: rekod dikenal pasti tolak rekod dibuang sebelum saringan.',
+    a2s: 'Bilangan rekod yang ditolak selepas tajuk dan abstraknya dibaca. Sebab boleh disenaraikan di bawah jumlah itu, satu baris bagi satu sebab; jumlah semua sebab mesti sama dengan angka di atasnya. Tanda ** ialah nota templat dan boleh dibuang.',
+    a3: 'Bilangan artikel yang teks penuhnya cuba diperoleh. Kiraannya: rekod disaring tolak rekod dikecualikan.',
+    a3s: 'Bilangan artikel yang teks penuhnya sudah dicari tetapi tidak dapat diperoleh. Artikel yang belum dicari atau belum dibaca tidak dikira di sini. Tulis 0 jika semua diperoleh.',
+    b3: 'Bilangan artikel daripada kaedah lain yang teks penuhnya cuba diperoleh. Lazimnya sama dengan jumlah kotak di atasnya.',
+    b3s: 'Artikel daripada kaedah lain yang teks penuhnya dicari tetapi tidak dapat diperoleh. Tulis 0 jika semua diperoleh.',
+    a4: 'Bilangan artikel yang teks penuhnya dibaca dan dinilai mengikut kriteria kelayakan. Kiraannya: laporan dicari tolak laporan tidak diperoleh.',
+    a4s: 'Artikel yang ditolak selepas teks penuhnya dibaca. Tulis satu baris bagi satu sebab berserta bilangannya; sebab mesti sepadan dengan kriteria kelayakan dalam teks. Tulis (n = 0) jika tiada.',
+    b4: 'Bilangan artikel daripada kaedah lain yang teks penuhnya dinilai. Kiraannya: laporan dicari tolak laporan tidak diperoleh.',
+    b4s: 'Artikel daripada kaedah lain yang ditolak selepas dinilai, satu baris bagi satu sebab. Tulis (n = 0) jika tiada.',
+    a5: 'Bilangan kajian yang dirangkum dalam ulasan ini. Kiraannya: laporan dinilai tolak laporan dikecualikan, campur kajian daripada kaedah lain. Tambah baris laporan hanya jika satu kajian dilaporkan dalam lebih daripada satu artikel.'
+  };
+  /* Teks templat PRISMA 2020 bagi kotak yang belum diisi; juga asas "cadangan teks" dalam pembayang. */
+  function templat(lang) {
+    const L = D.PRISMA_LABEL[lang] || D.PRISMA_LABEL.ms; const L2 = LBL2[lang] || LBL2.ms; const n = '(n = )';
+    return { a1: `${L.dikenal}\n   ${L.pangkalan} ${n}\n   ${L.daftar} ${n}`, a1s: `${L.dibuang}\n   ${L.pendua} ${n}\n   ${L.automasi} ${n}\n   ${L.lain} ${n}`, b1: `${L.dikenalLain}\n   ${L2.laman} ${n}\n   ${L2.organisasi} ${n}\n   ${L2.sitasi} ${n}`,
+      a2: `${L.disaring}\n${n}`, a2s: `${L.dikecualikan}\n${n}`, a3: `${L.dicari}\n${n}`, a3s: `${L.tidak}\n${n}`, b3: `${L.dicari}\n${n}`, b3s: `${L.tidak}\n${n}`,
+      a4: `${L.dinilai}\n${n}`, a4s: `${L.laporanKecuali}\n   ${L.sebab} 1 ${n}\n   ${L.sebab} 2 ${n}`, b4: `${L.dinilai}\n${n}`, b4s: `${L.laporanKecuali}\n   ${n}`, a5: `${L.kajian}\n${n}` };
   }
-  function ringkas() { const k = kira(); if (!k.adaPang.length && !k.dikenal && !k.dikenal2) return 'belum diisi'; return `${k.adaPang.length} pangkalan data · ${angka(k.dikenal + k.dikenal2)} rekod · ${k.belumSaring ? 'saringan belum direkodkan' : k.belumNilai ? 'teks penuh belum dinilai' : k.kajian > 0 ? angka(k.kajian) + ' kajian dimasukkan' : 'aliran belum lengkap'}${k.isu.length ? ' · ' + k.isu.length + ' perkara perlu disemak' : ''}`; }
+  const MEDAN_LAMA = ['daftar', 'pendua', 'automasi', 'lainBuang', 'dikecualikan', 'tidak', 'laman', 'organisasi', 'sitasi', 'lain2', 'tidak2', 'laporan'];
+  const adaLama = () => { const d = data(); return d.pangkalan.some(x => isi(x.nama) || isi(x.n)) || MEDAN_LAMA.some(m => isi(d[m])) || d.sebab.length > 0 || d.sebab2.length > 0; };
+  /* Pemindahan sekali: kandungan kotak dibina daripada medan lama, tepat seperti rajah yang dilukis sebelum v1.38.0, supaya tiada angka hilang. */
+  function dariLama(lang) {
+    const k = kira(); const d = k.d; const L = D.PRISMA_LABEL[lang] || D.PRISMA_LABEL.ms; const L2 = LBL2[lang] || LBL2.ms; const sebaris = t => String(t || '').replace(/\s+/g, ' ').trim();
+    const n = v => `(n = ${angka(v)})`; const nS = v => k.belumSaring ? '(n = )' : n(v); const nK = v => k.belumSaring || k.belumNilai ? '(n = )' : n(v);
+    const sebabTeks = arr => { const a = (arr || []).filter(x => num(x.n) > 0 || isi(x.t)); return a.length ? a.map((x, i) => `   ${isi(x.t) ? sebaris(x.t) : L.sebab + ' ' + (i + 1)} ${n(num(x.n))}`).join('\n') : `   ${n(0)}`; };
+    const pangTeks = k.adaPang.length && k.adaPang.length <= 4 ? k.adaPang.map(x => `   ${sebaris(x.nama)} ${isi(x.n) ? n(num(x.n)) : '(n = )'}`).join('\n') : `   ${L.pangkalan} ${n(k.nPang)}`;
+    return { a1: `${L.dikenal}\n${pangTeks}\n   ${L.daftar} ${n(num(d.daftar))}`, a1s: `${L.dibuang}\n   ${L.pendua} ${n(num(d.pendua))}\n   ${L.automasi} ${n(num(d.automasi))}\n   ${L.lain} ${n(num(d.lainBuang))}`,
+      b1: `${L.dikenalLain}\n   ${L2.laman} ${n(num(d.laman))}\n   ${L2.organisasi} ${n(num(d.organisasi))}\n   ${L2.sitasi} ${n(num(d.sitasi))}${isi(d.lain2t) || num(d.lain2) ? '\n   ' + (sebaris(d.lain2t) || (lang === 'en' ? 'Other method' : 'Kaedah lain')) + ' ' + n(num(d.lain2)) : ''}`,
+      a2: `${L.disaring}\n${n(Math.max(0, k.disaring))}`, a2s: `${L.dikecualikan}\n${nS(num(d.dikecualikan))}${!k.belumSaring && (d.sebab0 || []).some(x => num(x.n) > 0) ? '\n' + sebabTeks(d.sebab0) : ''}`,
+      a3: `${L.dicari}\n${nS(Math.max(0, k.dicari))}`, a3s: `${L.tidak}\n${n(num(d.tidak))}`, b3: `${L.dicari}\n${n(k.dikenal2)}`, b3s: `${L.tidak}\n${n(num(d.tidak2))}`,
+      a4: `${L.dinilai}\n${nS(Math.max(0, k.dinilai))}`, a4s: `${L.laporanKecuali}\n${sebabTeks(d.sebab)}`, b4: `${L.dinilai}\n${n(Math.max(0, k.dinilai2))}`, b4s: `${L.laporanKecuali}\n${sebabTeks(d.sebab2)}`,
+      a5: isi(d.laporan) && k.laporan !== k.kajian ? `${L.kajian}\n${nK(Math.max(0, k.kajian))}\n${L.laporan}\n${nK(Math.max(0, k.laporan))}` : `${L.kajian}\n${nK(Math.max(0, k.kajian))}` };
+  }
+  /* Apabila bahasa rajah ditukar, hanya frasa templat dalam kotak yang diterjemah; nama pangkalan data, sebab yang ditulis sendiri dan
+     semua angka kekal. Dua laluan (penanda dahulu, kemudian gantian) mengelakkan satu gantian mengubah hasil gantian yang lain. */
+  function alihBahasa(T, lama, baharu) {
+    const A1 = D.PRISMA_LABEL[lama], B1 = D.PRISMA_LABEL[baharu]; if (!A1 || !B1 || lama === baharu) return; const ps = []; const kecil = t => t.charAt(0).toLowerCase() + t.slice(1); const ke = baharu === 'en';
+    /* label yang tanda bintangnya sudah dibuang oleh pemilik turut diterjemah */
+    ['dikenal', 'pangkalan', 'daftar', 'dibuang', 'pendua', 'automasi', 'lain', 'disaring', 'dikecualikan', 'dicari', 'tidak', 'dinilai', 'laporanKecuali', 'kajian', 'laporan', 'dikenalLain'].forEach(k => { ps.push([A1[k], B1[k]]); if (A1[k].includes('*')) ps.push([A1[k].replace(/\*/g, ''), B1[k].replace(/\*/g, '')]); });
+    Object.keys(LBL2[lama]).forEach(k => ps.push([LBL2[lama][k], LBL2[baharu][k]]));
+    KRITERIA_TETAP.forEach(r => { const e1 = `${r[1]} criterion not met`, m1 = `Kriteria ${kecil(r[2])} tidak dipenuhi`; ps.push(ke ? [m1, e1] : [e1, m1]); });
+    [['Other reason', 'Sebab lain'], ['Reason not stated', 'Sebab belum dinyatakan'], ['Other method', 'Kaedah lain']].forEach(p => ps.push(ke ? [p[1], p[0]] : [p[0], p[1]]));
+    const pp = ps.filter(p => p[0] && p[1] && p[0] !== p[1]).sort((a, b) => b[0].length - a[0].length); const tanda = i => String.fromCharCode(1) + i + String.fromCharCode(2);
+    KOTAK.forEach(id => { let t = String(T[id] || ''); pp.forEach((p, i) => { t = t.split(p[0]).join(tanda(i)); }); pp.forEach((p, i) => { t = t.split(tanda(i)).join(p[1]); });
+      T[id] = ke ? t.replace(/\bSebab (\d+)\b/g, 'Reason $1') : t.replace(/\bReason (\d+)\b/g, 'Sebab $1'); });
+  }
+  /* Teks semua kotak. Kali pertama (rajah belum wujud), kandungan dibina daripada data lama jika ada, atau daripada templat kosong.
+     Selepas itu kotak inilah satu-satunya sumber rajah. Jika bahasa rajah berubah, frasa templat diselaraskan. */
+  function kotakD() {
+    const d = data(); const lang = bahasa();
+    if (!d.rajah || typeof d.rajah !== 'object' || !d.rajah.kotak || typeof d.rajah.kotak !== 'object') d.rajah = { v: 1, bahasa: lang, kotak: Object.assign(templat(lang), adaLama() ? dariLama(lang) : {}) };
+    const T = d.rajah.kotak; if (!d.rajah.lengkap) { const asas = templat(d.rajah.bahasa || lang); KOTAK.forEach(id => { if (typeof T[id] !== 'string') T[id] = asas[id]; }); d.rajah.lengkap = true; }
+    if (d.rajah.bahasa !== lang) { alihBahasa(T, d.rajah.bahasa === 'en' ? 'en' : 'ms', lang); d.rajah.bahasa = lang; }
+    return T;
+  }
+  const RX_N = /\(\s*n\s*=\s*([0-9][0-9.,\s]*)\)/i; const RX_N_SAHAJA = /^\(\s*n\s*=\s*[0-9][0-9.,\s]*\)$/i;
+  const nBaris = b => { const m = RX_N.exec(b); if (!m) return null; const v = parseInt(m[1].replace(/[^0-9]/g, ''), 10); return Number.isFinite(v) ? v : null; };
+  const barisKotak = id => String(kotakD()[id] || '').split('\n').map(x => x.trim()).filter(Boolean);
+  /* Jumlah sesuatu kotak: angka pada baris label; jika tiada, baris yang hanya mengandungi "(n = N)"; jika tiada, jumlah semua baris. */
+  function nilai(id) { const bs = barisKotak(id); if (!bs.length) return null; const n0 = nBaris(bs[0]); if (n0 != null) return n0; const t = bs.find(b => RX_N_SAHAJA.test(b)); if (t) return nBaris(t); const s = bs.map(nBaris).filter(v => v != null); return s.length ? s.reduce((a, v) => a + v, 0) : null; }
+  /* Butiran berlabel dalam kotak (pangkalan data, sebab) berserta angkanya. */
+  const butir = id => barisKotak(id).slice(1).filter(b => !RX_N_SAHAJA.test(b) && nBaris(b) != null).map(b => ({ t: b.replace(RX_N, '').replace(/[\s:;,]+$/, '').trim(), n: nBaris(b) }));
+  const kotakAktif = () => KOTAK.filter(id => data().guna2 || !KOTAK2.has(id));
+  /* Angka yang dijangka bagi kotak yang boleh dikira daripada kotak lain; sistem tidak mengisinya, ia hanya dipaparkan sebagai panduan dan semakan. */
+  function jangka(id) {
+    const v = nilai; const dua = !!data().guna2; const ada = (...ids) => ids.every(x => v(x) != null);
+    if (id === 'a2' && ada('a1', 'a1s')) return { n: v('a1') - v('a1s'), cara: `rekod dikenal pasti (${angka(v('a1'))}) tolak rekod dibuang sebelum saringan (${angka(v('a1s'))})` };
+    if (id === 'a3' && ada('a2', 'a2s')) return { n: v('a2') - v('a2s'), cara: `rekod disaring (${angka(v('a2'))}) tolak rekod dikecualikan (${angka(v('a2s'))})` };
+    if (id === 'a4' && ada('a3', 'a3s')) return { n: v('a3') - v('a3s'), cara: `laporan dicari (${angka(v('a3'))}) tolak laporan tidak diperoleh (${angka(v('a3s'))})` };
+    if (id === 'b3' && dua && ada('b1')) return { n: v('b1'), cara: `jumlah rekod kaedah lain (${angka(v('b1'))})` };
+    if (id === 'b4' && dua && ada('b3', 'b3s')) return { n: v('b3') - v('b3s'), cara: `laporan dicari (${angka(v('b3'))}) tolak laporan tidak diperoleh (${angka(v('b3s'))})` };
+    if (id === 'a5' && ada('a4', 'a4s') && (!dua || ada('b4', 'b4s'))) { const a = v('a4') - v('a4s'); const b = dua ? v('b4') - v('b4s') : 0; return { n: a + b, cara: dua ? `laporan dinilai tolak laporan dikecualikan (${angka(v('a4'))} tolak ${angka(v('a4s'))}), campur kaedah lain (${angka(v('b4'))} tolak ${angka(v('b4s'))})` : `laporan dinilai (${angka(v('a4'))}) tolak laporan dikecualikan (${angka(v('a4s'))})` }; }
+    return null;
+  }
+  function semakKira() {
+    const out = [];
+    kotakAktif().forEach(id => { const j = jangka(id); const n = nilai(id);
+      if (j && j.n < 0) out.push({ id, teks: `${NAMA[id]}: ${j.cara} memberi angka negatif. Semak kotak sebelumnya.` });
+      else if (j && n != null && n !== j.n) out.push({ id, teks: `${NAMA[id]}: kotak ini menulis ${angka(n)}, tetapi ${j.cara} ialah ${angka(j.n)}.` });
+      if (id === 'a2s' || id === 'a4s' || id === 'b4s') { const tot = barisKotak(id).find(b => RX_N_SAHAJA.test(b)); const pec = butir(id); if (tot && pec.length) { const s = pec.reduce((a, x) => a + x.n, 0); if (s !== nBaris(tot)) out.push({ id, teks: `${NAMA[id]}: jumlah mengikut sebab ialah ${angka(s)}, tetapi jumlah yang ditulis ialah ${angka(nBaris(tot))}.` }); } } });
+    return out;
+  }
+  function meter() {
+    const ids = kotakAktif(); const kosong = ids.filter(id => nilai(id) == null); const beza = semakKira(); const butirM = beza.map(x => x.teks);
+    if (kosong.length) butirM.push(`Kotak rajah yang belum ada angka: ${kosong.map(id => NAMA[id]).join('; ')}. Klik kotak itu dalam Ruang PRISMA dan tulis angkanya (tulis 0 jika tiada).`);
+    let nilaiM = Math.round(70 * (ids.length - kosong.length) / ids.length); if (!beza.length && !kosong.length) nilaiM += 20; else if (!beza.length && kosong.length < ids.length) nilaiM += 10;
+    const raj = adaRajah(); if (raj) nilaiM += 10; else if (!kosong.length) butirM.push('Rajah aliran belum disisip ke dalam manuskrip (butang Sisip rajah dalam Ruang PRISMA).');
+    const st = beza.length ? 'gagal' : nilaiM >= 90 ? 'ok' : nilaiM >= 45 ? 'amaran' : 'gagal';
+    return [{ k: 'prisma', nama: 'PRISMA 2020', nilai: nilaiM, status: st, teks: ringkas(), butir: butirM }];
+  }
+  function ringkas() { const a = nilai('a1'), b = data().guna2 ? nilai('b1') : null, k = nilai('a5'); const beza = semakKira().length; if (a == null && b == null && k == null) return 'rajah belum diisi'; return `${angka((a || 0) + (b || 0))} rekod dikenal pasti · ${k != null ? angka(k) + ' kajian dimasukkan' : 'kajian dimasukkan belum ditulis'}${beza ? ' · ' + beza + ' perkara perlu disemak' : ''}`; }
   const labelK = r => { if (isi(r.k)) return String(r.k).trim(); const t = KRITERIA_TETAP.find(z => z[0] === r.kunci); return t ? (bahasa() === 'en' ? t[1] : t[2]) : (bahasa() === 'en' ? 'Criterion' : 'Kriteria'); };
   const barisKriteria = () => data().kriteria.filter(r => isi(r.m) || isi(r.x));
   function teksJadual() {
     const rows = barisKriteria(); const nK = bahasa() === 'en' ? 'Table' : 'Jadual'; const adaPang = data().pangkalan.some(x => isi(x.nama));
     const strategi = adaPang ? `\n${nK} ${rows.length ? 2 : 1} (strategi carian dan bilangan rekod mengikut pangkalan data) boleh disisip oleh Prof Dr daripada Ruang PRISMA; jika merujuknya, gunakan nombor itu.` : '';
-    if (!rows.length) return `JADUAL KRITERIA KELAYAKAN: BELUM diisi dalam Ruang PRISMA. Jangan tulis ayat yang merujuk jadual kriteria seolah-olah jadual itu wujud, dan jangan mereka kriterianya. Huraikan kriteria dalam prosa hanya setakat yang dinyatakan dalam jawapan Prof Dr, dan letak penanda [ISI: lengkapkan Jadual kriteria kelayakan dalam Ruang PRISMA] di tempat jadual itu patut dirujuk.${strategi}`;
+    if (!rows.length) return '';   // sejak v1.38.0 tiada lagi paparan untuk mengisinya; agen tidak diarah mengisi jadual yang tiada
     return `JADUAL TETAP METODOLOGI (diisi oleh Prof Dr dalam Ruang PRISMA; jika seksyen ini menghuraikan kriteria kelayakan, rujuk jadual dengan nombor ini, selaraskan teks dengan isinya, jangan tambah kriteria yang tiada di dalamnya, dan jangan ulang semua barisnya dalam prosa):\n${nK} 1 (kriteria kelayakan): kriteria | diterima | ditolak\n${rows.map(r => `- ${labelK(r)} | ${String(r.m || '').trim() || 'belum diisi'} | ${String(r.x || '').trim() || 'belum diisi'}`).join('\n')}${strategi}`;
   }
-  const sebab0Teks = d => { const a = (d.sebab0 || []).filter(x => num(x.n)); return a.length ? ' (mengikut sebab: ' + a.map(x => `${x.t} ${num(x.n)}`).join('; ') + ')' : ''; };
-  function teksAgen() { return teksAgenAsas() + '\n' + teksJadual() + Saring.teksAgen(); }
-  function teksAgenAsas() {
-    const k = kira(); const d = k.d; if (!k.adaPang.length && !k.dikenal && !k.dikenal2) return 'DATA PRISMA: belum diisi oleh Prof Dr dalam Ruang PRISMA. Jangan mereka pangkalan data, tarikh, rentetan carian atau angka aliran; gunakan penanda [ISI: ...].';
-    return `DATA PRISMA 2020 (diisi oleh Prof Dr dalam Ruang PRISMA; ini satu-satunya sumber angka aliran):
-Pangkalan data: ${k.adaPang.map(x => `${x.nama} (tarikh carian: ${x.tarikh || 'belum diisi'}; rekod: ${isi(x.n) ? num(x.n) : 'belum diisi'}; rentetan: ${x.rentetan ? x.rentetan.slice(0, 900) : 'belum diisi'}${larianSah(x) ? '; kaedah larian: dijalankan oleh sistem melalui ' + x.jalan.kaedah : ''}${isi(x.rentetan) && (!isi(x.tarikh) || !isi(x.n)) ? (x.cad ? '; STATUS: RENTETAN CADANGAN AGEN YANG BELUM DIJALANKAN' : '; STATUS: RENTETAN BELUM DIJALANKAN (tiada tarikh carian atau bilangan rekod)') : ''})`).join(' | ') || 'belum diisi'}${k.belumJalan.length ? '\nPERINGATAN: rentetan yang belum dijalankan TIDAK boleh ditulis sebagai carian yang sudah dibuat. Jangan nyatakan tarikh, bilangan rekod atau hasil bagi pangkalan data itu; gunakan penanda [ISI: tarikh carian dan bilangan rekod selepas rentetan dijalankan].' : ''}
-Daftar: ${num(d.daftar)}. Rekod dikenal pasti (pangkalan data dan daftar): ${k.dikenal}.
-Dibuang sebelum saringan: pendua ${num(d.pendua)}, ditanda tidak layak oleh alat automasi ${num(d.automasi)}, sebab lain ${num(d.lainBuang)}.
-${k.belumSaring ? `Rekod disaring: ${k.disaring}. STATUS SARINGAN: BELUM DIREKODKAN. Bilangan rekod dikecualikan, laporan dicari, laporan dinilai dan kajian dimasukkan daripada pangkalan data BELUM diketahui; jangan nyatakan atau anggarkan angka itu, gunakan penanda [ISI: angka saringan].` : `Rekod disaring: ${k.disaring}. Rekod dikecualikan: ${num(d.dikecualikan)}${sebab0Teks(d)}. Laporan dicari: ${k.dicari}. Laporan tidak diperoleh: ${num(d.tidak)}. Laporan dinilai kelayakan: ${k.dinilai}.`}
-Laporan dikecualikan mengikut sebab: ${d.sebab.filter(x => num(x.n)).map(x => `${x.t || 'sebab belum dinyatakan'} (${num(x.n)})`).join('; ') || 'tiada direkodkan'}.
-${d.guna2 ? `Kaedah lain: laman web ${num(d.laman)}, organisasi ${num(d.organisasi)}, carian sitasi ${num(d.sitasi)}${isi(d.lain2t) || num(d.lain2) ? ', ' + (d.lain2t || 'kaedah lain yang belum dinamakan') + ' ' + num(d.lain2) : ''}; tidak diperoleh ${num(d.tidak2)}; dinilai ${k.dinilai2}; dikecualikan: ${d.sebab2.filter(x => num(x.n)).map(x => `${x.t || 'sebab belum dinyatakan'} (${num(x.n)})`).join('; ') || 'tiada'}.` : 'Kaedah lain: tidak digunakan.'}
-${k.belumSaring ? 'Kajian dimasukkan dalam ulasan: BELUM BOLEH DIKIRA (saringan belum direkodkan).' : k.belumNilai ? `Kajian dimasukkan dalam ulasan: BELUM BOLEH DIKIRA (${num(d.belumNilai)} laporan belum dinilai pada teks penuh); jangan nyatakan atau anggarkan angka itu, gunakan penanda [ISI: bilangan kajian dimasukkan].` : k.laporan === k.kajian ? `Kajian dimasukkan dalam ulasan: ${k.kajian}. Setiap kajian dilaporkan dalam satu laporan, maka gunakan istilah "studies" (kajian) sahaja bagi kajian yang dirangkum dan jangan sebut bilangan "reports" secara berasingan.` : `Kajian dimasukkan dalam ulasan: ${k.kajian}. Laporan kajian yang dimasukkan: ${k.laporan}.`}
-Semakan aritmetik sistem: ${k.isu.length ? k.isu.join(' ') : 'tiada percanggahan.'}`;
+  /* Bahan untuk agen penulisan: teks setiap kotak seperti yang ditulis oleh pemilik. Rekod carian, jadual kriteria dan kaedah saringan yang
+     direkodkan sebelum v1.38.0 masih disertakan jika wujud, supaya teks Metodologi kekal setia kepada apa yang benar-benar dibuat. */
+  function teksRajah() {
+    const ids = kotakAktif(); if (!ids.some(id => nilai(id) != null)) return 'RAJAH ALIRAN PRISMA 2020: kotak rajah belum diisi oleh Prof Dr dalam Ruang PRISMA. Jangan mereka pangkalan data, tarikh, rentetan carian atau angka aliran; gunakan penanda [ISI: ...].';
+    const beza = semakKira(); const nA5 = barisKotak('a5').filter(b => nBaris(b) != null).length;
+    return `RAJAH ALIRAN PRISMA 2020 (teks setiap kotak ditulis oleh Prof Dr sendiri dalam Ruang PRISMA; ini satu-satunya sumber angka aliran. Laporkan angka tepat seperti dalam kotak. Jangan ubah, jumlahkan semula, anggar atau tambah angka; jika sesuatu angka tiada, gunakan penanda [ISI: ...]):
+${ids.map(id => `- ${NAMA[id]}: ${barisKotak(id).join(' | ') || 'kotak kosong'}${nilai(id) == null ? ' [angka belum ditulis]' : ''}`).join('\n')}
+Lajur kaedah lain: ${data().guna2 ? 'digunakan' : 'tidak digunakan'}.
+${nA5 <= 1 ? 'Kotak akhir hanya menyebut kajian: gunakan istilah "studies" (kajian) sahaja bagi kajian yang dirangkum dan jangan sebut bilangan "reports" secara berasingan.\n' : ''}Semakan kira-kira sistem: ${beza.length ? beza.map(x => x.teks).join(' ') : 'tiada percanggahan.'}`;
   }
+  function teksCarianLama() {
+    const p = data().pangkalan.filter(x => isi(x.nama) && isi(x.rentetan)); if (!p.length) return '';
+    return '\nREKOD CARIAN (direkodkan terdahulu dalam Ruang PRISMA; jika berbeza daripada rajah, angka dalam rajah yang dipakai):\n' + p.map(x => `- ${x.nama} (tarikh carian: ${x.tarikh || 'belum direkodkan'}; rekod: ${isi(x.n) ? num(x.n) : 'belum direkodkan'}; rentetan: ${String(x.rentetan).slice(0, 900)}${larianSah(x) ? '; kaedah larian: dijalankan oleh sistem melalui ' + x.jalan.kaedah : ''}${!isi(x.tarikh) || !isi(x.n) ? '; STATUS: RENTETAN BELUM DIJALANKAN (tiada tarikh carian atau bilangan rekod): jangan tulis sebagai carian yang sudah dibuat' : ''})`).join('\n');
+  }
+  function teksAgen() { const j = teksJadual(); return teksRajah() + teksCarianLama() + (j ? '\n' + j : '') + Saring.teksAgen(); }
 
   /* ---- rajah SVG mengikut templat PRISMA 2020 ---- */
   const xml = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  function balut(t, max) { const out = []; String(t).replace(/\(n = ([^)]*)\)/g, '(n\u00a0=\u00a0$1)').split('\n').forEach(baris => { const inden = /^\s+/.test(baris) ? '   ' : ''; let cur = ''; baris.trim().split(/\s+/).forEach(w => { if ((cur + ' ' + w).trim().length > max - inden.length && cur) { out.push(inden + cur); cur = w; } else cur = (cur + ' ' + w).trim(); }); out.push(inden + cur); }); return out; }
-  function svg(lang) {
-    const k = kira(); const d = k.d; const L = D.PRISMA_LABEL[lang] || D.PRISMA_LABEL.ms; const L2 = LBL2[lang] || LBL2.ms; const n = v => `(n = ${angka(v)})`; const nS = v => k.belumSaring ? '(n = )' : n(v); const nK = v => k.belumSaring || k.belumNilai ? '(n = )' : n(v); const dua = !!d.guna2;
+  /* Pembalut baris. "(n = 5)" dikekalkan pada satu baris: ruang di dalamnya diganti dengan ruang tidak boleh pisah, dan baris dipecahkan
+     pada ruang biasa sahaja (dahulu \s turut memecahkan ruang tidak boleh pisah, lalu "(n =" dan "5)" terpisah). */
+  function balut(t, max) {
+    const out = [];
+    String(t).split('\n').forEach(baris => { const inden = /^[ \t]+/.test(baris) ? '   ' : ''; let cur = '';
+      baris.trim().replace(/\(\s*n\s*=\s*([^)]*)\)/gi, (m, v) => '(n' + NBSP + '=' + NBSP + String(v).trim() + ')').split(/[ \t]+/).forEach(w => { if ((cur + ' ' + w).length > max - inden.length && cur) { out.push(inden + cur); cur = w; } else cur = cur ? cur + ' ' + w : w; });
+      out.push(inden + cur); });
+    return out;
+  }
+  /* o.sunting: versi dalam halaman (kotak boleh diklik, kotak yang kira-kiranya bercanggah ditanda). Tanpa o: versi bersih untuk PNG dan manuskrip. */
+  function svg(lang, o) {
+    o = o || {}; const T = kotakD(); const L = D.PRISMA_LABEL[lang] || D.PRISMA_LABEL.ms; const dua = !!data().guna2; const beza = o.sunting ? new Set(semakKira().map(x => x.id)) : null;
     const F = 12.5, LH = 16.5, PAD = 9; const cw = w => Math.floor((w - 2 * PAD) / 6.15);
     const X1 = 58, W1 = 262, XS = 356, WS = 270, X2 = 668, W2 = 168, XS2 = 858, WS2 = 172; const W = dua ? 1042 : 640;
-    const kotak = (x, y, w, teks, o) => { o = o || {}; const baris = balut(teks, cw(w)); const h = Math.max(o.minH || 0, baris.length * LH + 2 * PAD - 3); return { x, y, w, h, svg: `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${o.fill || '#ffffff'}" stroke="#1f2937" stroke-width="1.2"/>` + baris.map((b, i) => `<text x="${x + PAD + (/^ {3}/.test(b) ? 12 : 0)}" y="${y + PAD + 10 + i * LH}" font-size="${F}" ${o.tebal && i === 0 ? 'font-weight="700"' : ''}>${xml(b.trim())}</text>`).join('') }; };
+    /* label fasa (tegak) mesti muat dalam jalurnya: baris pertama dan kotak akhir diberi tinggi minimum mengikut panjang label */
+    const pj = t => Math.ceil(String(t || '').length * 7.2) + 14;
+    const kotak = (id, x, y, w, minH) => { const teks = String(T[id] || ''); const baris = teks.trim() ? balut(teks, cw(w)) : []; const h = Math.max(minH || 0, 2 * LH + 2 * PAD - 3, baris.length * LH + 2 * PAD - 3);
+      const isiS = baris.length ? baris.map((b, i) => `<text x="${x + PAD + (/^ {3}/.test(b) ? 12 : 0)}" y="${y + PAD + 10 + i * LH}" font-size="${F}">${xml(b.trim())}</text>`).join('') : (o.sunting ? `<text x="${x + PAD}" y="${y + PAD + 10}" font-size="${F}" fill="#9ca3af" font-style="italic">Klik untuk menulis</text>` : '');
+      const ciri = o.sunting ? ` data-kotak="${id}" class="pr-k${beza.has(id) ? ' pr-k-beza' : ''}" tabindex="0" role="button" aria-label="${xml('Sunting kotak: ' + NAMA[id])}"` : '';
+      return { x, y, w, h, svg: `<g${ciri}><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#ffffff" stroke="#1f2937" stroke-width="1.2"/>${isiS}</g>` }; };
     const anak = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1f2937" stroke-width="1.3" marker-end="url(#pa)"/>`;
-    const sebabTeks = (arr) => { const a = arr.filter(x => num(x.n) > 0 || isi(x.t)); return a.length ? a.map((x, i) => `   ${isi(x.t) ? x.t : L.sebab + ' ' + (i + 1)} ${n(num(x.n))}`).join('\n') : `   ${n(0)}`; };
-    const pangTeks = k.adaPang.length && k.adaPang.length <= 4 ? k.adaPang.map(x => `   ${x.nama} ${isi(x.n) ? n(num(x.n)) : '(n = )'}`).join('\n') : `   ${L.pangkalan} ${n(k.nPang)}`;
-    let y = 58; const bh = []; let s = '';
+    const y = 58; let s = '';
     /* baris 1: pengenalpastian */
-    const a1 = kotak(X1, y, W1, `${L.dikenal}\n${pangTeks}\n   ${L.daftar} ${n(num(d.daftar))}`); const a1s = kotak(XS, y, WS, `${L.dibuang}\n   ${L.pendua} ${n(num(d.pendua))}\n   ${L.automasi} ${n(num(d.automasi))}\n   ${L.lain} ${n(num(d.lainBuang))}`);
-    const b1 = dua ? kotak(X2, y, W2 + (XS2 + WS2 - X2 - W2), `${L.dikenalLain}\n   ${L2.laman} ${n(num(d.laman))}\n   ${L2.organisasi} ${n(num(d.organisasi))}\n   ${L2.sitasi} ${n(num(d.sitasi))}${isi(d.lain2t) || num(d.lain2) ? '\n   ' + (d.lain2t || (lang === 'en' ? 'Other method' : 'Kaedah lain')) + ' ' + n(num(d.lain2)) : ''}`) : null;
-    const r1 = Math.max(a1.h, a1s.h, b1 ? b1.h : 0); bh.push([y, r1]); s += a1.svg + a1s.svg + (b1 ? b1.svg : '') + anak(X1 + W1, y + a1.h / 2, XS - 2, y + a1.h / 2);
+    const a1 = kotak('a1', X1, y, W1); const a1s = kotak('a1s', XS, y, WS); const b1 = dua ? kotak('b1', X2, y, XS2 + WS2 - X2) : null;
+    const r1 = Math.max(a1.h, a1s.h, b1 ? b1.h : 0, pj(L.fasa[0])); s += a1.svg + a1s.svg + (b1 ? b1.svg : '') + anak(X1 + W1, y + a1.h / 2, XS - 2, y + a1.h / 2);
     /* baris 2: disaring */
-    let y2 = y + r1 + 34; const a2 = kotak(X1, y2, W1, `${L.disaring}\n${n(Math.max(0, k.disaring))}`); const a2s = kotak(XS, y2, WS, `${L.dikecualikan}\n${nS(num(d.dikecualikan))}${!k.belumSaring && (d.sebab0 || []).some(x => num(x.n) > 0) ? '\n' + sebabTeks(d.sebab0) : ''}`); const r2 = Math.max(a2.h, a2s.h);
+    const y2 = y + r1 + 34; const a2 = kotak('a2', X1, y2, W1); const a2s = kotak('a2s', XS, y2, WS); const r2 = Math.max(a2.h, a2s.h);
     s += a2.svg + a2s.svg + anak(X1 + W1 / 2, y + a1.h, X1 + W1 / 2, y2 - 2) + anak(X1 + W1, y2 + a2.h / 2, XS - 2, y2 + a2.h / 2);
     /* baris 3: dicari */
-    const y3 = y2 + r2 + 34; const a3 = kotak(X1, y3, W1, `${L.dicari}\n${nS(Math.max(0, k.dicari))}`); const a3s = kotak(XS, y3, WS, `${L.tidak}\n${n(num(d.tidak))}`);
-    const b3 = dua ? kotak(X2, y3, W2, `${L.dicari}\n${n(k.dikenal2)}`) : null; const b3s = dua ? kotak(XS2, y3, WS2, `${L.tidak}\n${n(num(d.tidak2))}`) : null; const r3 = Math.max(a3.h, a3s.h, b3 ? b3.h : 0, b3s ? b3s.h : 0);
+    const y3 = y2 + r2 + 34; const a3 = kotak('a3', X1, y3, W1); const a3s = kotak('a3s', XS, y3, WS); const b3 = dua ? kotak('b3', X2, y3, W2) : null; const b3s = dua ? kotak('b3s', XS2, y3, WS2) : null; const r3 = Math.max(a3.h, a3s.h, b3 ? b3.h : 0, b3s ? b3s.h : 0);
     s += a3.svg + a3s.svg + anak(X1 + W1 / 2, y2 + a2.h, X1 + W1 / 2, y3 - 2) + anak(X1 + W1, y3 + a3.h / 2, XS - 2, y3 + a3.h / 2);
     if (dua) s += b3.svg + b3s.svg + anak(X2 + W2 / 2, y + b1.h, X2 + W2 / 2, y3 - 2) + anak(X2 + W2, y3 + b3.h / 2, XS2 - 2, y3 + b3.h / 2);
     /* baris 4: dinilai */
-    const y4 = y3 + r3 + 34; const a4 = kotak(X1, y4, W1, `${L.dinilai}\n${nS(Math.max(0, k.dinilai))}`); const a4s = kotak(XS, y4, WS, `${L.laporanKecuali}\n${sebabTeks(d.sebab)}`);
-    const b4 = dua ? kotak(X2, y4, W2, `${L.dinilai}\n${n(Math.max(0, k.dinilai2))}`) : null; const b4s = dua ? kotak(XS2, y4, WS2, `${L.laporanKecuali}\n${sebabTeks(d.sebab2)}`) : null; const r4 = Math.max(a4.h, a4s.h, b4 ? b4.h : 0, b4s ? b4s.h : 0);
+    const y4 = y3 + r3 + 34; const a4 = kotak('a4', X1, y4, W1); const a4s = kotak('a4s', XS, y4, WS); const b4 = dua ? kotak('b4', X2, y4, W2) : null; const b4s = dua ? kotak('b4s', XS2, y4, WS2) : null; const r4 = Math.max(a4.h, a4s.h, b4 ? b4.h : 0, b4s ? b4s.h : 0);
     s += a4.svg + a4s.svg + anak(X1 + W1 / 2, y3 + a3.h, X1 + W1 / 2, y4 - 2) + anak(X1 + W1, y4 + Math.min(a4.h, a4s.h) / 2, XS - 2, y4 + Math.min(a4.h, a4s.h) / 2);
     if (dua) s += b4.svg + b4s.svg + anak(X2 + W2 / 2, y3 + b3.h, X2 + W2 / 2, y4 - 2) + anak(X2 + W2, y4 + Math.min(b4.h, b4s.h) / 2, XS2 - 2, y4 + Math.min(b4.h, b4s.h) / 2);
     /* baris 5: dimasukkan */
-    const y5 = y4 + r4 + 40; /* Satu istilah sahaja apabila setiap kajian dilaporkan dalam satu laporan; baris laporan hanya muncul jika bilangannya memang berbeza. */
-    const a5 = kotak(X1, y5, W1, isi(d.laporan) && k.laporan !== k.kajian ? `${L.kajian}\n${nK(Math.max(0, k.kajian))}\n${L.laporan}\n${nK(Math.max(0, k.laporan))}` : `${L.kajian}\n${nK(Math.max(0, k.kajian))}`);
-    s += a5.svg + anak(X1 + W1 / 2, y4 + a4.h, X1 + W1 / 2, y5 - 2);
+    const y5 = y4 + r4 + 40; const a5 = kotak('a5', X1, y5, W1, pj(L.fasa[2])); s += a5.svg + anak(X1 + W1 / 2, y4 + a4.h, X1 + W1 / 2, y5 - 2);
     if (dua) s += `<polyline points="${X2 + W2 / 2},${y4 + b4.h} ${X2 + W2 / 2},${y5 + a5.h / 2} ${X1 + W1 + 3},${y5 + a5.h / 2}" fill="none" stroke="#1f2937" stroke-width="1.3" marker-end="url(#pa)"/>`;
     const H = y5 + a5.h + 34;
-    /* kepala lajur dan label fasa */
+    /* kepala lajur dan label fasa: tetap mengikut templat, tidak boleh disunting */
     const kepala = (x, w, t) => `<rect x="${x}" y="12" width="${w}" height="32" rx="3" fill="#f7c948" stroke="#1f2937" stroke-width="1.2"/><text x="${x + w / 2}" y="33" font-size="${F}" font-weight="700" text-anchor="middle">${xml(t)}</text>`;
     const fasa = (ya, yb, t) => `<rect x="12" y="${ya}" width="32" height="${yb - ya}" rx="3" fill="#a9c9ec" stroke="#1f2937" stroke-width="1.2"/><text transform="translate(33 ${(ya + yb) / 2}) rotate(-90)" font-size="${F}" font-weight="700" text-anchor="middle">${xml(t)}</text>`;
     const atas = kepala(X1, XS + WS - X1, L.h1) + (dua ? kepala(X2, XS2 + WS2 - X2, L.h2) : '') + fasa(y, y + r1, L.fasa[0]) + fasa(y2, y4 + r4, L.fasa[1]) + fasa(y5, y5 + a5.h, L.fasa[2]);
@@ -144,77 +252,101 @@ Semakan aritmetik sistem: ${k.isu.length ? k.isu.join(' ') : 'tiada percanggahan
     const rows = barisKriteria(); const e = bahasa() === 'en'; if (!rows.length) return '';
     return `<p><strong>${e ? 'Table 1' : 'Jadual 1'}</strong></p><p><em>${e ? 'Inclusion and Exclusion Criteria' : 'Kriteria Penerimaan dan Penolakan'}</em></p><table><tbody><tr><th>${e ? 'Criterion' : 'Kriteria'}</th><th>${e ? 'Inclusion' : 'Penerimaan'}</th><th>${e ? 'Exclusion' : 'Penolakan'}</th></tr>${rows.map(r => `<tr><td>${esc(labelK(r))}</td><td>${esc(String(r.m || '').trim())}</td><td>${esc(String(r.x || '').trim())}</td></tr>`).join('')}</tbody></table>`;
   }
-  /* Ayat aliran berangka: rangka fakta untuk diparafrasa oleh pemilik (bukan teks akhir); hanya angka yang sudah diisi digunakan. */
+  /* Ayat aliran berangka: rangka fakta untuk diparafrasa oleh pemilik (bukan teks akhir). Setiap angka diambil tepat daripada kotak rajah;
+     tiada angka dikira semula, supaya ayat dan rajah sentiasa sama. Kotak tanpa angka menjadi penanda [ISI: ...]. */
   function htmlAyat() {
-    const k = kira(); const d = k.d; const e = bahasa() === 'en'; if (!k.dikenal || k.belumSaring || k.belumNilai) return ''; const nama = k.adaPang.map(x => x.nama); const senarai = nama.length > 1 ? nama.slice(0, -1).join(', ') + (e ? ' and ' : ' dan ') + nama[nama.length - 1] : nama[0] || ''; const sb = d.sebab.filter(x => num(x.n) && isi(x.t)).map(x => `${x.t} (n = ${num(x.n)})`).join('; ');
+    const e = bahasa() === 'en'; const dua = !!data().guna2; const v = id => { const n = nilai(id); return n == null ? `[ISI: ${NAMA[id].toLowerCase()}]` : angka(n); };
+    if (nilai('a1') == null || nilai('a5') == null) return '';
+    const sen = (id, semua) => { const b = butir(id).filter(x => semua || x.n > 0); return b.length ? ' (' + b.map(x => `${x.t}, n = ${angka(x.n)}`).join('; ') + ')' : ''; };
     const t = e
-      ? `The search of ${senarai} identified ${angka(k.dikenal)} records. After ${angka(k.buang)} records were removed before screening (${angka(num(d.pendua))} duplicates), ${angka(k.disaring)} records were screened by title and abstract and ${angka(num(d.dikecualikan))} were excluded. Of the ${angka(k.dicari)} reports sought for retrieval, ${angka(num(d.tidak))} could not be retrieved, and ${angka(k.dinilai)} were assessed for eligibility. ${angka(k.nSebab)} reports were excluded${sb ? ' (' + sb + ')' : ''}.${d.guna2 && k.dikenal2 ? ` A further ${angka(k.dikenal2)} records were identified through other methods, of which ${angka(Math.max(0, k.masuk2))} met the criteria.` : ''} In total, ${angka(k.kajian)} studies were included in the review (Figure [n]).`
-      : `Carian dalam ${senarai} mengenal pasti ${angka(k.dikenal)} rekod. Selepas ${angka(k.buang)} rekod dibuang sebelum saringan (${angka(num(d.pendua))} pendua), ${angka(k.disaring)} rekod disaring berdasarkan tajuk dan abstrak, dan ${angka(num(d.dikecualikan))} dikecualikan. Daripada ${angka(k.dicari)} laporan yang dicari, ${angka(num(d.tidak))} tidak diperoleh dan ${angka(k.dinilai)} dinilai kelayakannya. Sebanyak ${angka(k.nSebab)} laporan dikecualikan${sb ? ' (' + sb + ')' : ''}.${d.guna2 && k.dikenal2 ? ` Sebanyak ${angka(k.dikenal2)} rekod lagi dikenal pasti melalui kaedah lain, dan ${angka(Math.max(0, k.masuk2))} daripadanya memenuhi kriteria.` : ''} Keseluruhannya, ${angka(k.kajian)} kajian dimasukkan dalam ulasan ini (Rajah [n]).`;
+      ? `The search identified ${v('a1')} records${sen('a1', true)}. Before screening, ${v('a1s')} records were removed${sen('a1s')}. A total of ${v('a2')} records were screened by title and abstract, and ${v('a2s')} were excluded${sen('a2s')}. Of the ${v('a3')} reports sought for retrieval, ${v('a3s')} could not be retrieved and ${v('a4')} were assessed for eligibility, of which ${v('a4s')} were excluded${sen('a4s')}.${dua && nilai('b1') ? ` A further ${v('b1')} records were identified through other methods${sen('b1')}; ${v('b4')} reports were assessed for eligibility and ${v('b4s')} were excluded${sen('b4s')}.` : ''} In total, ${v('a5')} studies were included in the review (Figure [n]).`
+      : `Carian mengenal pasti ${v('a1')} rekod${sen('a1', true)}. Sebelum saringan, ${v('a1s')} rekod dibuang${sen('a1s')}. Sebanyak ${v('a2')} rekod disaring berdasarkan tajuk dan abstrak, dan ${v('a2s')} dikecualikan${sen('a2s')}. Daripada ${v('a3')} laporan yang dicari, ${v('a3s')} tidak diperoleh dan ${v('a4')} dinilai kelayakannya, dan ${v('a4s')} daripadanya dikecualikan${sen('a4s')}.${dua && nilai('b1') ? ` Sebanyak ${v('b1')} rekod lagi dikenal pasti melalui kaedah lain${sen('b1')}; ${v('b4')} laporan dinilai kelayakannya dan ${v('b4s')} dikecualikan${sen('b4s')}.` : ''} Keseluruhannya, ${v('a5')} kajian dimasukkan dalam ulasan ini (Rajah [n]).`;
     return `<p><strong>[Ruang PRISMA · ayat aliran berangka untuk diparafrasa · ${esc(R.fmtTime(Date.now()))}]</strong></p><p>${esc(t)}</p>`;
   }
 
-  /* ---- paparan ---- */
   let ELF = null;
-  const HAD_KRITERIA = 2500;
-  const SKEMA_KRITERIA = { type: 'object', additionalProperties: false, required: ['baris', 'nota'], properties: {
-    baris: { type: 'array', description: 'Satu entri bagi setiap baris kriteria yang diberi, dengan kunci yang sama', items: { type: 'object', additionalProperties: false, required: ['kunci', 'masuk', 'keluar'], properties: { kunci: { type: 'string' }, masuk: { type: 'string', description: 'Kriteria penerimaan; rentetan kosong jika maklumat tidak mencukupi' }, keluar: { type: 'string', description: 'Kriteria penolakan; rentetan kosong jika maklumat tidak mencukupi' } } } },
-    nota: { type: 'array', description: 'Perkara yang perlu Prof Dr putuskan atau semak, jika ada', items: { type: 'string' } } } };
-  const HAD_RENTETAN = 3000;
-  const SKEMA_RENTETAN = { type: 'object', additionalProperties: false, required: ['konsep', 'pangkalan', 'langkah', 'semakan'], properties: {
-    konsep: { type: 'array', description: 'Konsep carian dan istilahnya', items: { type: 'object', additionalProperties: false, required: ['nama', 'istilah'], properties: { nama: { type: 'string' }, istilah: { type: 'array', items: { type: 'string' } } } } },
-    pangkalan: { type: 'array', description: 'Satu entri bagi setiap pangkalan data yang diminta', items: { type: 'object', additionalProperties: false, required: ['nama', 'rentetan', 'had', 'nota'], properties: { nama: { type: 'string', description: 'Nama pangkalan data tepat seperti diminta' }, rentetan: { type: 'string', description: 'Rentetan carian penuh mengikut sintaks pangkalan data itu' }, had: { type: 'string', description: 'Had dan penapis yang perlu ditetapkan' }, nota: { type: 'string', description: 'Nota sintaks atau perkara yang perlu disemak' } } } },
-    langkah: { type: 'array', description: 'Langkah menjalankan dan merekod carian', items: { type: 'string' } },
-    semakan: { type: 'array', description: 'Artikel sumber yang patut ditemui semula oleh rentetan', items: { type: 'string' } } } };
-  const inp = (medan, v, o) => `<input type="number" min="0" step="1" data-pr="${medan}"${o && o.i != null ? ` data-i="${o.i}"` : ''} value="${esc(isi(v) ? v : '')}" placeholder="0">`;
-  const kiraHtml = k => `<span class="pr-kira" data-prk="1">${angka(Math.max(0, k))}</span>`;
-  const nilaiPapar = (k, m) => k.belumSaring && (m === 'dicari' || m === 'dinilai') ? 'belum disaring' : (k.belumSaring || k.belumNilai) && m === 'kajian' ? 'belum boleh dikira' : angka(Math.max(0, k[m] || 0));
-  function htmlSemak(k) { return `<div class="pr-semak ${k.isu.length ? 'amaran' : k.lengkap ? 'ok' : ''}"><b>${k.isu.length ? 'Perlu disemak' : k.lengkap ? 'Aritmetik selaras dan maklumat lengkap' : 'Aritmetik selaras setakat ini'}</b>${k.isu.length || k.info.length ? `<ul>${k.isu.map(x => `<li class="isu">${esc(x)}</li>`).join('')}${k.info.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${k.belumNilai ? '<div class="pd-acts"><button class="btn btn-sm" data-pra="tunjuksaring" data-v="belum2">Tunjukkan laporan yang belum dinilai</button></div>' : ''}</div>`; }
-  const sebabHtml = (arr, medan) => `<div class="pr-sebab">${arr.map((x, i) => `<div class="pr-sb"><input type="text" data-pr="${medan}t" data-i="${i}" value="${esc(x.t || '')}" placeholder="Sebab pengecualian (contohnya bukan konteks sekolah)">${inp(medan + 'n', x.n, { i })}<button class="btn btn-sm" data-pra="buang" data-m="${medan}" data-i="${i}" title="Buang sebab ini">Buang</button></div>`).join('')}<button class="btn btn-sm" data-pra="tambah" data-m="${medan}">Tambah sebab</button></div>`;
-  const sebab0Html = d => { const a = (d.sebab0 || []).filter(x => num(x.n)); return a.length ? 'Rekod dikecualikan pada tajuk dan abstrak mengikut sebab (daripada Saringan rekod): ' + esc(a.map(x => `${x.t} ${angka(num(x.n))}`).join('; ')) + '.' : ''; };
-  function render(el, f) {
-    if (!el) return; ELF = { el, f }; const d = data(); const k = kira(); const g = gaya(); const lang = bahasa();
-    el.innerHTML = `<p class="help">Isi angka sebenar daripada carian dan saringan Prof Dr. Sistem mengira kotak yang boleh dikira, menyemak aritmetik dan melukis rajah mengikut templat rasmi PRISMA 2020. Agen boleh mencadangkan rentetan carian untuk Prof Dr jalankan; angka aliran tidak dicadangkan oleh agen kerana ia rekod proses Prof Dr sendiri. Sistem boleh menjalankan sendiri carian dalam pangkalan data yang mempunyai API terbuka (${esc(NAMA_API)}) dan mengisi bilangan serta tarikh sebenar; Scopus juga boleh dijalankan dengan kunci API Scopus Prof Dr sendiri. Laman penerbit tiada API terbuka: bagi ${esc(NAMA_PINTAS)}, butang "Buka carian" membuka carian itu terus di laman berkenaan dan bilangannya diisi oleh Prof Dr. <button class="btn btn-sm btn-ai" data-pra="jana"${P.busy ? ' disabled' : ''} title="Menjalankan carian yang boleh dijalankan oleh sistem, mengisi angka daripada larian dan rekod sebenar, lalu melukis rajah. Tiada angka dianggar atau direka.">${P.busy && P.busy.mod === 'jana' ? 'Sedang menjana daripada data sebenar' : 'Mohon Prof Dr Claude janakan Jadual PRISMA'}</button> <button class="btn btn-sm" data-pra="panduan">Panduan pengisian</button> ${kel() === 'skop' ? `Peraturan gaya Prof Dr sekarang: ulasan skop menggunakan paling banyak ${g.hadPangkalan || 2} pangkalan data (had ini boleh diubah dalam Peraturan gaya), dan rentetan carian dicetak penuh dalam manuskrip.` : 'Rentetan carian penuh setiap pangkalan data perlu dicetak dalam manuskrip.'}</p>
-      <h4>Kriteria kelayakan <span class="help">(<span data-prkj>${lang === 'en' ? 'Table' : 'Jadual'}</span> 1 dalam Metodologi)</span></h4>
-      <p class="help">Baris tetap bagi setiap artikel ulasan. Isi sendiri, klik "Isi daripada rentetan carian" (tahun, bahasa, jenis penerbitan dan capaian dibaca daripada rentetan yang direkodkan di bawah, tanpa token), atau minta agen melengkapkan sel yang kosong daripada jawapan Prof Dr. Agen penulisan membaca jadual ini supaya teks dan jadual sepadan. Label baris dan tajuk jadual mengikut pilihan "Bahasa rajah" di bahagian 5.</p>
-      <div class="pr-krit"><div class="pr-kr pr-kr-h"><span>Kriteria</span><span>Diterima (inclusion)</span><span>Ditolak (exclusion)</span><span></span></div>${d.kriteria.map((r, i) => `<div class="pr-kr${r.cad ? ' pr-kr-cad' : ''}"><input type="text" data-pr="kk" data-i="${i}" value="${esc(labelK(r))}" aria-label="Kriteria"><textarea data-pr="km" data-i="${i}" rows="2" placeholder="Diterima">${esc(r.m || '')}</textarea><textarea data-pr="kx" data-i="${i}" rows="2" placeholder="Ditolak">${esc(r.x || '')}</textarea><button class="btn btn-sm" data-pra="buangkrit" data-i="${i}">Buang</button><span class="pr-kr-nota">Cadangan agen: semak dan sunting baris ini sebelum jadual disisip.</span></div>`).join('') || '<div class="pd-kosong">Tiada baris kriteria.</div>'}</div>
-      <div class="pd-acts"><button class="btn btn-sm" data-pra="kritrentetan" title="Membaca had tahun, bahasa, jenis penerbitan dan capaian daripada rentetan carian yang direkodkan, dan mengisi sel yang masih kosong. Tiada token digunakan.">Isi daripada rentetan carian</button><button class="btn btn-sm btn-ai" data-pra="kritagen"${P.busy ? ' disabled' : ''} title="Agen melengkapkan sel yang masih kosong berdasarkan tajuk, pemboleh ubah dan jawapan Prof Dr. Sel yang sudah diisi tidak diubah.">${P.busy && P.busy.mod === 'kriteria' ? 'Agen sedang melengkapkan kriteria' : 'Mohon Prof Dr Claude lengkapkan kriteria'}</button><button class="btn btn-sm" data-pra="tambahkrit">Tambah baris</button><button class="btn btn-sm" data-pra="kritset">Pulihkan baris tetap</button><button class="btn btn-sm btn-primary" data-pra="kritram">Sisip Jadual kriteria ke RAM</button><button class="btn btn-sm" data-pra="kritasal">Sisip Jadual kriteria ke ASAL</button></div>
-      <p class="help" id="prKritStatus">${esc(statusKrit())}</p>
-      <h4>1. Pangkalan data dan rentetan carian</h4>
-      <div class="pr-pang">${d.pangkalan.map((x, i) => `<div class="pr-pg"><input type="text" data-pr="pnama" data-i="${i}" value="${esc(x.nama || '')}" placeholder="Nama pangkalan data (contohnya Scopus)"><input type="text" data-pr="ptarikh" data-i="${i}" value="${esc(x.tarikh || '')}" placeholder="Tarikh carian (contohnya 12 Oktober 2026)">${inp('pn', x.n, { i })}<button class="btn btn-sm" data-pra="buangpang" data-i="${i}">Buang</button><textarea data-pr="prentetan" data-i="${i}" rows="2" placeholder="Rentetan carian penuh, tepat seperti yang dimasukkan ke dalam pangkalan data, termasuk medan dan had">${esc(x.rentetan || '')}</textarea><span class="pr-pgacts"><button class="btn btn-sm btn-ai" data-pra="jalan" data-i="${i}"${penyambung(x) ? '' : ' hidden'}${P.busy ? ' disabled' : ''} title="Sistem menjalankan rentetan ini melalui API rasmi pangkalan data itu dan mengisi bilangan rekod serta tarikh sebenar. Tiada token digunakan.">${esc(labelJalan(x))}</button><button class="btn btn-sm" data-pra="buka" data-i="${i}"${pintas(x) ? '' : ' hidden'} title="Membuka carian ini terus di laman pangkalan data itu dalam tab baharu. Sistem tiada capaian ke hasilnya, jadi bilangan rekod diisi oleh Prof Dr.">${esc(labelBuka(x))}</button><button class="btn btn-sm" data-pra="salin" data-i="${i}">Salin rentetan</button><button class="btn btn-sm" data-pra="harini" data-i="${i}" title="Isi tarikh hari ini selepas rentetan dijalankan dalam pangkalan data itu">Tarikh hari ini</button>${x.hasil && x.hasil.length ? `<button class="btn btn-sm" data-pra="lihat" data-i="${i}">Lihat ${angka(x.hasil.length)} rekod</button>` : ''}</span><span class="help pr-jalan" data-prj="${i}"${teksJalan(x) ? '' : ' hidden'}>${esc(teksJalan(x))}</span><span class="help pr-belum" data-prb="${i}"${teksBelum(x) ? '' : ' hidden'}>${esc(teksBelum(x))}</span></div>`).join('') || '<div class="pd-kosong">Belum ada pangkalan data.</div>'}
-        <div class="pd-acts"><button class="btn btn-sm btn-primary" data-pra="tambahpang">Tambah pangkalan data</button><button class="btn btn-sm btn-ai" data-pra="cadang"${P.busy ? ' disabled' : ''} title="Agen mencadangkan rentetan carian mengikut sintaks setiap pangkalan data, untuk dijalankan oleh Prof Dr. Ia tidak menjalankan carian dan tidak mengisi tarikh atau bilangan rekod.">${P.busy && P.busy.mod === 'rentetan' ? 'Agen sedang menyusun rentetan' : 'Mohon Prof Dr Claude cadangkan rentetan carian'}</button><label class="pr-f">Daftar (jika ada) ${inp('daftar', d.daftar)}</label><span class="help">Rekod dikenal pasti: <b data-prv="dikenal">${angka(k.dikenal)}</b></span></div></div>
-      <div id="prSaring" class="sr-kotak">${Saring.html()}</div>
-      <h4>2. Aliran pangkalan data dan daftar</h4>
-      <div class="pr-grid">
-        <label class="pr-f">Rekod pendua dibuang ${inp('pendua', d.pendua)}</label><label class="pr-f">Ditanda tidak layak oleh alat automasi ${inp('automasi', d.automasi)}</label><label class="pr-f">Dibuang atas sebab lain ${inp('lainBuang', d.lainBuang)}</label>
-        <div class="pr-f auto">Rekod disaring <b data-prv="disaring">${angka(Math.max(0, k.disaring))}</b></div><label class="pr-f">Rekod dikecualikan (tajuk dan abstrak) ${inp('dikecualikan', d.dikecualikan)}</label>
-        <div class="pr-f auto">Laporan dicari <b data-prv="dicari">${nilaiPapar(k, 'dicari')}</b></div><label class="pr-f">Laporan tidak diperoleh ${inp('tidak', d.tidak)}</label>
-        <div class="pr-f auto">Laporan dinilai kelayakan <b data-prv="dinilai">${nilaiPapar(k, 'dinilai')}</b></div></div>
-      <p class="help" id="prSebab0"${sebab0Html(d) ? '' : ' hidden'}>${sebab0Html(d)}</p>
-      <div class="pr-f blok"><span>Laporan dikecualikan selepas dinilai, mengikut sebab</span><div id="prSebab1">${sebabHtml(d.sebab, 'sebab')}</div></div>
-      <h4>3. Kaedah lain <label class="pr-tog"><input type="checkbox" data-pr="guna2"${d.guna2 ? ' checked' : ''}> lajur kedua templat (laman web, organisasi, carian sitasi)</label></h4>
-      ${d.guna2 ? `<div class="pr-grid"><label class="pr-f">Laman web ${inp('laman', d.laman)}</label><label class="pr-f">Organisasi ${inp('organisasi', d.organisasi)}</label><label class="pr-f">Carian sitasi dan senarai rujukan ${inp('sitasi', d.sitasi)}</label><label class="pr-f">Kaedah lain (nyatakan) <input type="text" data-pr="lain2t" value="${esc(d.lain2t || '')}" placeholder="Contohnya carian berbantukan AI (nama alat)">${inp('lain2', d.lain2)}</label><label class="pr-f">Laporan tidak diperoleh ${inp('tidak2', d.tidak2)}</label><div class="pr-f auto">Laporan dinilai kelayakan <b data-prv="dinilai2">${angka(Math.max(0, k.dinilai2))}</b></div></div>
-        <div class="pr-f blok"><span>Laporan dikecualikan (kaedah lain), mengikut sebab</span>${sebabHtml(d.sebab2, 'sebab2')}</div>` : '<p class="help">Lajur kedua dimatikan: rajah dilukis dengan lajur pangkalan data dan daftar sahaja. Hidupkan jika carian manual, senarai rujukan atau laman web digunakan.</p>'}
-      <h4>4. Dimasukkan</h4>
-      <div class="pr-grid"><div class="pr-f auto">Kajian dimasukkan dalam ulasan <b data-prv="kajian">${nilaiPapar(k, 'kajian')}</b></div><label class="pr-f">Laporan kajian yang dimasukkan (kosongkan jika sama) ${inp('laporan', d.laporan)}</label></div>
-      <p class="help">Jika medan laporan dikosongkan atau sama dengan bilangan kajian, kotak terakhir rajah memaparkan satu istilah sahaja, iaitu "${lang === 'en' ? 'Studies included in review' : 'Kajian dimasukkan dalam ulasan'}". Isi medan itu hanya jika sesuatu kajian dilaporkan dalam lebih daripada satu artikel.</p>
-      <div id="prSemak">${htmlSemak(k)}</div>
-      <h4>5. Rajah aliran PRISMA 2020</h4>
-      <div class="pd-acts"><label class="pr-f">Bahasa rajah <select data-pr="bahasa"><option value="ms"${lang === 'ms' ? ' selected' : ''}>Bahasa Melayu</option><option value="en"${lang === 'en' ? ' selected' : ''}>English</option></select></label><button class="btn btn-sm btn-primary" data-pra="rajahram">Sisip rajah ke RAM</button><button class="btn btn-sm" data-pra="rajahasal">Sisip rajah ke ASAL</button><button class="btn btn-sm" data-pra="png">Muat turun PNG</button><button class="btn btn-sm" data-pra="strategi">Sisip jadual strategi carian ke RAM</button><button class="btn btn-sm" data-pra="ayat">Sisip ayat aliran berangka ke RAM</button></div>
-      <div id="prRajah" class="pr-rajah">${svg(lang)}</div>`;
+  /* ---- paparan (v1.38.0): rajah sahaja; kotak putih disunting terus; pembayang terapung pada setiap kotak ---- */
+  const E = { id: null, asal: '', ta: null };   // kotak yang sedang disunting
+  const htmlSemakKira = () => { const b = semakKira(); return b.length ? `<div class="pr-semak amaran"><b>Kira-kira rajah belum selaras pada ${b.length} tempat</b><ul>${b.map(x => `<li class="isu">${esc(x.teks)}</li>`).join('')}</ul></div>` : ''; };
+  function htmlLama() {
+    const adaKrit = barisKriteria().length > 0; const st = Saring.keadaan(); const adaLog = !!(st && st.tarik); if (!adaKrit && !adaLog) return '';
+    return `<details class="pr-lama"><summary>Rekod lama Ruang PRISMA</summary><p class="help">Paparan pangkalan data dan rentetan carian, kriteria kelayakan, saringan rekod dan medan angka telah dibuang daripada ruang ini. Data yang pernah direkodkan tidak dipadam. Butang di bawah hanya untuk mengambil data itu.</p><div class="pd-acts">${adaKrit ? '<button class="btn btn-sm" data-pra="kritram">Sisip Jadual kriteria ke RAM</button>' : ''}${adaLog ? '<button class="btn btn-sm" data-pra="csvlama">Muat turun log saringan (CSV)</button>' : ''}</div></details>`;
   }
-  const teksBelum = x => isi(x.rentetan) && (!isi(x.tarikh) || !isi(x.n)) ? `${x.cad ? 'Cadangan agen. ' : ''}Belum dijalankan: jalankan rentetan ini dalam ${String(x.nama || '').trim() || 'pangkalan data'}, kemudian isi tarikh carian dan bilangan rekod sebenar.${x.nota ? ' Had dan nota: ' + x.nota + '.' : ''}` : '';
+  function render(el, f) {
+    if (!el) return; if (E.ta) { try { kotakD()[E.id] = kemasTeks(E.ta.value, false); } catch (e) { /* abai */ } E.ta = null; E.id = null; } sorokBayang();
+    ELF = { el, f }; const d = data(); const lang = bahasa(); kotakD(); const adaStr = d.pangkalan.some(x => isi(x.nama));
+    el.innerHTML = `<p class="help">Klik mana-mana kotak putih untuk menulis atau membetulkan teksnya. Letak kursor pada kotak untuk melihat panduan dan cadangan teks. Kotak berwarna ialah label tetap templat PRISMA 2020. Angka dalam rajah ialah rekod carian dan saringan Prof Dr sendiri, maka sistem dan agen tidak mengisinya.</p>
+      <div class="pd-acts"><label class="pr-f">Bahasa rajah <select data-pr="bahasa"><option value="ms"${lang === 'ms' ? ' selected' : ''}>Bahasa Melayu</option><option value="en"${lang === 'en' ? ' selected' : ''}>English</option></select></label><label class="pr-tog" title="Papar atau sembunyikan lajur kedua templat: laman web, organisasi, carian sitasi dan kaedah lain"><input type="checkbox" data-pr="guna2"${d.guna2 ? ' checked' : ''}> Lajur kaedah lain</label><button class="btn btn-sm btn-primary" data-pra="rajahram">Sisip rajah ke RAM</button><button class="btn btn-sm" data-pra="rajahasal">Sisip rajah ke ASAL</button><button class="btn btn-sm" data-pra="png">Muat turun PNG</button>${adaStr ? '<button class="btn btn-sm" data-pra="strategi">Sisip jadual strategi carian ke RAM</button>' : ''}<button class="btn btn-sm" data-pra="ayat">Sisip ayat aliran berangka ke RAM</button></div>
+      <div id="prSemakKira">${htmlSemakKira()}</div>
+      <div id="prRajah" class="pr-rajah pr-sunting"><div class="pr-kanvas">${svg(lang, { sunting: true })}</div></div>
+      <div id="prLama">${htmlLama()}</div>`;
+    const host = el.querySelector('#prRajah'); const dariKotak = t => (t && t.closest ? t.closest('[data-kotak]') : null);
+    /* Dibuka pada mousedown, bukan click: jika editor lain sedang terbuka, penutupannya melukis semula rajah, lalu sasaran click hilang. */
+    host.addEventListener('mousedown', e => { const g = dariKotak(e.target); if (g && e.button === 0) { e.preventDefault(); bukaEditor(g.dataset.kotak); } });
+    host.addEventListener('click', e => { const g = dariKotak(e.target); if (g) bukaEditor(g.dataset.kotak); });
+    host.addEventListener('keydown', e => { const g = dariKotak(e.target); if (g && e.target === g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); bukaEditor(g.dataset.kotak); } });
+    host.addEventListener('mouseover', e => { const g = dariKotak(e.target); if (g && !E.ta) tunjukBayang(g.dataset.kotak, false); });
+    host.addEventListener('mouseout', e => { const g = dariKotak(e.target); if (g && !E.ta && !g.contains(e.relatedTarget)) sorokBayang(); });
+    host.addEventListener('focusin', e => { const g = dariKotak(e.target); if (g && e.target === g && !E.ta) tunjukBayang(g.dataset.kotak, false); });
+    host.addEventListener('focusout', e => { if (!E.ta && dariKotak(e.target)) sorokBayang(); });
+  }
   const segarRing = () => { const g = ELF && ELF.el.closest('details'); const rs = g && g.querySelector('summary .ring'); if (rs) rs.textContent = ringkas(); };
-  /* Medan bahagian 2 yang diisi oleh Saringan rekod dikemas kini di tempatnya, tanpa melukis semula seluruh panel. */
-  function segarMedan() { if (!ELF || !ELF.el.isConnected) return; const d = data(); ['pendua', 'dikecualikan', 'tidak', 'lain2'].forEach(m => { const el = ELF.el.querySelector(`[data-pr="${m}"]`); if (el && document.activeElement !== el) el.value = isi(d[m]) ? d[m] : ''; }); const sb = ELF.el.querySelector('#prSebab1'); if (sb) sb.innerHTML = sebabHtml(d.sebab, 'sebab'); segarHidup(); }
-  function segarHidup() { if (!ELF || !ELF.el.isConnected) return; const k = kira(); const s0 = ELF.el.querySelector('#prSebab0'); if (s0) { const h0 = sebab0Html(k.d); s0.innerHTML = h0; s0.hidden = !h0; } ELF.el.querySelectorAll('[data-prv]').forEach(b => { b.textContent = nilaiPapar(k, b.dataset.prv); }); const s = ELF.el.querySelector('#prSemak'); if (s) s.innerHTML = htmlSemak(k); const r = ELF.el.querySelector('#prRajah'); if (r) r.innerHTML = svg(bahasa()); ELF.el.querySelectorAll('[data-prb]').forEach(b => { const t = teksBelum(k.d.pangkalan[parseInt(b.dataset.prb, 10)] || {}); b.hidden = !t; b.textContent = t; }); ELF.el.querySelectorAll('[data-prj]').forEach(b => { const t = teksJalan(k.d.pangkalan[parseInt(b.dataset.prj, 10)] || {}); b.hidden = !t; b.textContent = t; }); ELF.el.querySelectorAll('[data-pra="jalan"]').forEach(b => { const x = k.d.pangkalan[parseInt(b.dataset.i, 10)]; b.hidden = !penyambung(x); b.textContent = labelJalan(x); }); ELF.el.querySelectorAll('[data-pra="buka"]').forEach(b => { const x = k.d.pangkalan[parseInt(b.dataset.i, 10)]; b.hidden = !pintas(x); b.textContent = labelBuka(x); }); segarRing(); X.kemasBar(); }
+  function segarRajah() { if (!ELF || !ELF.el.isConnected) return; const kv = ELF.el.querySelector('#prRajah .pr-kanvas'); if (kv) kv.innerHTML = svg(bahasa(), { sunting: true }); const sk = ELF.el.querySelector('#prSemakKira'); if (sk) sk.innerHTML = htmlSemakKira(); }
+  /* Teks kotak dikemas: tab menjadi tiga ruang, ruang hujung baris dibuang; selepas selesai, baris kosong di awal dan di akhir dibuang. */
+  const kemasTeks = (v, hidup) => { let t = String(v == null ? '' : v).replace(/\r/g, '').replace(/\t/g, '   ').split('\n').map(b => b.replace(/\s+$/, '')).join('\n').slice(0, 1500); if (!hidup) t = t.replace(/^\n+/, '').replace(/\n+$/, ''); return t; };
+  /* Editor diletakkan tepat di atas kotak yang diklik. Rajah dilukis semula semasa menaip supaya saiz kotak dan anak panah mengikut teks. */
+  function letakEditor() {
+    if (!E.ta || !ELF || !ELF.el.isConnected) return; const host = ELF.el.querySelector('#prRajah'); const r = host && host.querySelector(`[data-kotak="${E.id}"] rect`); if (!r) return;
+    const a = r.getBoundingClientRect(), h = host.getBoundingClientRect(); const skala = a.width / (parseFloat(r.getAttribute('width')) || a.width || 1); const kecil = window.innerWidth < 700; const s = E.ta.style;
+    const lebar = Math.min(Math.max(a.width, 230), host.clientWidth - 8); let kiri = a.left - h.left - host.clientLeft + host.scrollLeft; kiri = Math.max(host.scrollLeft + 2, Math.min(kiri, host.scrollLeft + host.clientWidth - lebar - 4));
+    s.left = Math.round(kiri) + 'px'; s.top = Math.round(a.top - h.top - host.clientTop + host.scrollTop) + 'px'; s.width = Math.round(lebar) + 'px';
+    const fs = kecil ? 16 : Math.max(13, 12.5 * skala); s.fontSize = fs + 'px'; s.lineHeight = Math.round(fs * 1.32) + 'px'; s.padding = Math.max(5, Math.round(7 * skala)) + 'px ' + Math.max(6, Math.round(8 * skala)) + 'px';
+    s.height = 'auto'; s.height = Math.max(a.height, E.ta.scrollHeight + 4) + 'px';
+  }
+  function bukaEditor(id) {
+    if (!ELF || !ELF.el.isConnected || !KOTAK.includes(id)) return; if (E.ta && E.id === id) return; tutupEditor(true);
+    const host = ELF.el.querySelector('#prRajah'); if (!host) return; const T = kotakD(); const ta = document.createElement('textarea');
+    ta.className = 'pr-ed'; ta.value = T[id] || ''; ta.spellcheck = false; ta.dataset.prk = id; ta.setAttribute('aria-label', 'Teks kotak: ' + NAMA[id]);
+    host.appendChild(ta); E.id = id; E.asal = T[id] || ''; E.ta = ta; letakEditor(); ta.focus({ preventScroll: true }); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) { /* abai */ }
+    ta.addEventListener('input', () => { if (E.ta !== ta) return; kotakD()[id] = kemasTeks(ta.value, true); simpanT(); segarRajah(); letakEditor(); tunjukBayang(id, true); });
+    ta.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ta.value = E.asal; tutupEditor(true, true); } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); tutupEditor(true, true); } });
+    ta.addEventListener('blur', () => { setTimeout(() => { if (E.ta === ta) tutupEditor(true); }, 0); });
+    tunjukBayang(id, true);
+  }
+  function tutupEditor(simpan, fokus) {
+    const ta = E.ta; if (!ta) return; const id = E.id; E.ta = null; E.id = null; if (simpan) { kotakD()[id] = kemasTeks(ta.value, false); simpanT(true); } ta.remove(); sorokBayang();
+    if (ELF && ELF.el.isConnected) { segarRajah(); segarRing(); X.kemasBar(); if (fokus) { const g = ELF.el.querySelector(`#prRajah [data-kotak="${id}"]`); if (g && g.focus) g.focus({ preventScroll: true }); } }
+  }
+  /* Pembayang terapung: satu elemen dikongsi, diletakkan di sisi kotak (atau editor) dan tidak pernah terpotong oleh bekas rajah. */
+  function elemBayang() { let b = document.getElementById('prBayang'); if (!b) { b = document.createElement('div'); b.id = 'prBayang'; b.className = 'pr-bayang'; b.setAttribute('role', 'tooltip'); b.hidden = true; document.body.appendChild(b);
+      b.addEventListener('mousedown', e => { const t = e.target.closest('[data-prguna]'); if (!t || !E.ta) return; e.preventDefault(); E.ta.value = cadanganTeks(E.id); E.ta.dispatchEvent(new Event('input', { bubbles: true })); E.ta.focus(); }); } return b; }
+  /* Cadangan teks: templat kotak itu; bagi kotak yang boleh dikira, angka yang dikira daripada kotak lain dimasukkan. */
+  function cadanganTeks(id) { const j = jangka(id); const t = templat(bahasa())[id]; return j && j.n >= 0 ? t.replace('(n = )', `(n = ${angka(j.n)})`) : t.replace(/\(n = \)/g, '(n = ...)'); }
+  function htmlBayang(id, sunting) {
+    const j = jangka(id); const n = nilai(id); const beza = j && n != null && n !== j.n; const kosongEd = sunting && E.ta && !E.ta.value.trim();
+    return `<b>${esc(NAMA[id])}</b><p>${esc(PANDUAN[id])}</p>${j ? `<p class="${beza || j.n < 0 ? 'beza' : 'kira'}">Kiraan daripada kotak lain: ${esc(angka(j.n))}, iaitu ${esc(j.cara)}.${beza ? ` Kotak ini menulis ${esc(angka(n))}.` : ''}</p>` : ''}<span class="lbl">Cadangan teks</span><pre>${esc(cadanganTeks(id))}</pre>${kosongEd ? '<button type="button" class="btn btn-sm" data-prguna="1">Guna cadangan teks</button>' : ''}<small>${sunting ? 'Klik di luar kotak untuk menyimpan. Esc untuk batal. Mulakan baris dengan ruang untuk menjorokkannya.' : 'Klik kotak untuk menulis.'}</small>`;
+  }
+  function tunjukBayang(id, sunting) {
+    if (!ELF || !ELF.el.isConnected) return; const g = ELF.el.querySelector(`#prRajah [data-kotak="${id}"]`); if (!g) return; const b = elemBayang();
+    b.innerHTML = htmlBayang(id, sunting); b.classList.toggle('sunting', !!sunting); b.dataset.id = id; b.hidden = false;
+    const a = (sunting && E.ta ? E.ta : g).getBoundingClientRect(); const bw = b.offsetWidth, bh = b.offsetHeight; const vw = window.innerWidth, vh = window.innerHeight;
+    let x = a.right + 10, y = a.top; if (x + bw > vw - 8) x = a.left - bw - 10;
+    if (x < 8) { x = Math.max(8, Math.min(a.left, vw - bw - 8)); y = a.bottom + 8; if (y + bh > vh - 8) y = Math.max(8, a.top - bh - 8); } else if (y + bh > vh - 8) y = Math.max(8, vh - bh - 8);
+    b.style.left = Math.round(x) + 'px'; b.style.top = Math.round(Math.max(8, y)) + 'px';
+  }
+  function sorokBayang() { const b = document.getElementById('prBayang'); if (b) b.hidden = true; }
+  /* Pembayang tidak boleh tertinggal apabila halaman ditatal, saiz tetingkap berubah, atau panel diganti semasa kursor masih di atas kotak. */
+  window.addEventListener('scroll', () => { const b = document.getElementById('prBayang'); if (!b || b.hidden) return; if (E.ta && ELF && ELF.el.isConnected) tunjukBayang(E.id, true); else sorokBayang(); }, true);
+  window.addEventListener('resize', () => { if (E.ta && ELF && ELF.el.isConnected) { letakEditor(); tunjukBayang(E.id, true); } else sorokBayang(); });
+  document.addEventListener('mouseover', e => { const b = document.getElementById('prBayang'); if (!b || b.hidden || E.ta) return; const t = e.target; if (b.contains(t)) return; const g = t && t.closest ? t.closest('[data-kotak]') : null; if (!g || !ELF || !ELF.el.isConnected || !ELF.el.contains(g)) sorokBayang(); });
   async function sisipRajah(mana) {
-    const f = ELF && ELF.f; const sid = f && sasaranRam(f); if (!sid) { toast('Seksyen folder ini tiada', true); return; } const k = kira(); if (!k.dikenal) { toast('Isi sekurang-kurangnya bilangan rekod pangkalan data dahulu', true); return; }
-    if (k.isu.some(x => /melebihi|kurang daripada/.test(x))) { const ok = await R.confirmBox('Aritmetik rajah belum selaras', k.isu.filter(x => /melebihi|kurang daripada/.test(x)).join(' ') + ' Sisip rajah juga?', 'Sisip juga', false); if (!ok) return; }
+    tutupEditor(true); const f = ELF && ELF.f; const sid = f && sasaranRam(f); if (!sid) { toast('Seksyen folder ini tiada', true); return; }
+    if (nilai('a1') == null && nilai('a5') == null) { toast('Tulis angka dalam kotak rajah dahulu', true); return; }
+    const beza = semakKira(); if (beza.length) { const ok = await R.confirmBox('Kira-kira rajah belum selaras', beza.map(x => x.teks).join(' ') + ' Sisip rajah juga?', 'Sisip juga', false); if (!ok) return; }
     try { const lang = bahasa(); const blob = await png(lang, 2); const kap = lang === 'en' ? 'PRISMA 2020 flow diagram of the study selection process' : 'Rajah aliran PRISMA 2020 bagi proses pemilihan kajian'; const r = await Teks.simpanImej(blob, { n: A.id, id: sid, nama: kap });
       const html = `<p><img data-imej="${r.id}" src="${r.dataUrl}" alt="${esc(kap)}"></p><p><em>${lang === 'en' ? 'Figure [n].' : 'Rajah [n].'} ${esc(kap)}. ${lang === 'en' ? 'Adapted from Page et al. (2021).' : 'Diadaptasi daripada Page et al. (2021).'}</em></p>`;
       if (sisip(sid, mana, html)) { toast(`Rajah aliran PRISMA disisip ke ${mana === 'asal' ? 'ASAL' : 'RAM'} seksyen. Tambah Page et al. (2021) dalam senarai rujukan.`); X.renderFolder(); } } catch (e) { toast('Rajah gagal disisip: ' + (e && e.message || e), true); }
   }
-  /* Panduan pengisian (tanpa token): maksud setiap kotak, dari mana angkanya datang, dan statusnya sekarang. */
   /* ---- larian sebenar oleh sistem (v1.34.0). Tidak terikat kepada mana-mana pangkalan data: setiap entri dipadankan dengan
      "penyambung" mengikut namanya. Pangkalan data yang mempunyai API rasmi terbuka (CORS dibenarkan) dijalankan terus oleh sistem;
      pangkalan data berlangganan atau tanpa API (Scopus, Web of Science, EBSCOhost, MyJurnal dan lain-lain) diisi oleh Prof Dr selepas
@@ -286,74 +418,12 @@ Semakan aritmetik sistem: ${k.isu.length ? k.isu.join(' ') : 'tiada percanggahan
       } }
   ];
   const penyambung = x => PENYAMBUNG.find(p => p.padan.test(String(x && x.nama || ''))) || null;
-  const NAMA_API = PENYAMBUNG.filter(p => !p.kunci).map(p => p.nama).join(', ');
-  const PINTAS = [
-    { padan: /taylor|francis|tandf/i, nama: 'Taylor & Francis Online', url: q => 'https://www.tandfonline.com/action/doSearch?AllField=' + encodeURIComponent(q) },
-    { padan: /springer/i, nama: 'SpringerLink', url: q => 'https://link.springer.com/search?query=' + encodeURIComponent(q) },
-    { padan: /science\s*direct/i, nama: 'ScienceDirect', url: q => 'https://www.sciencedirect.com/search?qs=' + encodeURIComponent(q) },
-    { padan: /\bsage\b/i, nama: 'SAGE Journals', url: q => 'https://journals.sagepub.com/action/doSearch?AllField=' + encodeURIComponent(q) },
-    { padan: /wiley/i, nama: 'Wiley Online Library', url: q => 'https://onlinelibrary.wiley.com/action/doSearch?AllField=' + encodeURIComponent(q) },
-    { padan: /jstor/i, nama: 'JSTOR', url: q => 'https://www.jstor.org/action/doBasicSearch?Query=' + encodeURIComponent(q) },
-    { padan: /google\s*scholar/i, nama: 'Google Scholar', url: q => 'https://scholar.google.com/scholar?q=' + encodeURIComponent(q) }
-  ];
-  const pintas = x => penyambung(x) ? null : (PINTAS.find(p => p.padan.test(String(x && x.nama || ''))) || null);
-  const labelBuka = x => { const p = pintas(x); return 'Buka carian di ' + (p ? p.nama : 'laman pangkalan data'); };
-  const NAMA_PINTAS = PINTAS.map(p => p.nama).join(', ');
   const kunciSimpan = async p => { try { const m = await R.db().getMeta(); return String(m && m[p.kunci] || '').trim(); } catch (e) { return ''; } };
-  const labelJalan = x => { const p = penyambung(x); return 'Jalankan dalam ' + (p ? p.nama : 'pangkalan data') + ' (sistem)'; };
-  const teksJalan = x => !x || !x.jalan ? '' : `Dijalankan oleh sistem melalui ${x.jalan.kaedah || 'API'} pada ${R.fmtTime(x.jalan.masa)}: ${angka(x.jalan.n)} rekod.${satuBaris(x.rentetan) !== x.jalan.q ? ' Rentetan diubah selepas larian itu: jalankan semula supaya bilangan sepadan dengan rentetan.' : ''}${isi(x.n) && num(x.n) !== x.jalan.n ? ` Bilangan rekod diubah daripada hasil larian (${angka(x.jalan.n)}).` : ''}${x.padan && x.hasil ? ` ${x.padan.k} daripada ${x.padan.n} artikel sumber ditemui dalam hasil ini.` : ''}`;
   const larianSah = x => !!(x && x.jalan && isi(x.n) && num(x.n) === x.jalan.n && satuBaris(x.rentetan) === x.jalan.q);
   const mesejLarian = (e, p) => { const nm = p ? p.nama : 'pangkalan data'; return e && e.code === 'sintaks' ? `${nm} tidak dapat membaca rentetan ini${e.msg ? ' (' + e.msg + ')' : ''}. ${p ? p.petua : ''}` : e && e.code === 'http' ? `API ${nm} membalas ralat ${e.status}${e.status === 429 ? ' (terlalu banyak permintaan)' : ''}; cuba sebentar lagi.` : e && e.code === 'rangkaian' ? `API ${nm} tidak dapat dihubungi; semak sambungan internet dan cuba lagi.` : e && e.code === 'kosong' ? 'rentetan kosong.' : e && e.code === 'kunci' ? `kunci API ${nm} tiada atau tidak sah; semak kunci yang ditampal.` : e && e.code === 'hak' ? `Elsevier menolak kunci ini bagi carian ${nm}${e.msg ? ' (' + e.msg + ')' : ''}. Kunci hanya berhak jika institusi melanggan API Scopus; cuba dari rangkaian kampus atau VPN universiti, atau rujuk perpustakaan. Sementara itu, jalankan rentetan di ${nm} dan isi bilangan rekod sendiri.` : `jawapan API ${nm} tidak dapat dibaca; cuba sebentar lagi.`; };
   function padanSumber(docs) {
     const dok = C.doc(); const ids = dok ? C.sumberAda(dok) : []; const set = new Set((docs || []).map(x => normT(x.t)).filter(Boolean));
     const jumpa = ids.filter(id => { const r = R.S.docs.get(id); const t = normT(r && r.tajuk); return !!t && set.has(t); }); return { n: ids.length, k: jumpa.length, ids: jumpa };
-  }
-  async function larian(x, o, teks) {
-    const p = penyambung(x); const asal = satuBaris(teks != null ? teks : x.rentetan); if (!p || !asal) throw { code: 'kosong' };
-    const q = p.bina(asal, o || {}); const res = await p.tanya(q, o || {});
-    x.rentetan = q; x.n = String(res.n); x.tarikh = hariIni(); x.jalan = { q, masa: Date.now(), n: res.n, kaedah: p.kaedah }; delete x.cad; delete x.nota;
-    if (res.docs.length >= res.n) { x.hasil = res.docs; x.padan = padanSumber(res.docs); } else { delete x.hasil; delete x.padan; }
-    return res;
-  }
-  const htmlHad = () => `<div class="pr-grid"><label class="pr-f">Tahun terbitan dari <input type="number" id="prDari" min="1950" max="2100" placeholder="contohnya 2022"></label><label class="pr-f">hingga <input type="number" id="prHingga" min="1950" max="2100" placeholder="contohnya 2026"></label></div>
-      <label class="pr-cek"><input type="checkbox" id="prWasit" checked> Berwasit sahaja (ERIC)</label><label class="pr-cek"><input type="checkbox" id="prJurnal" checked> Artikel jurnal sahaja</label>
-      <p class="help">Had yang dipilih ditulis ke dalam rentetan mengikut sintaks pangkalan data itu, supaya rentetan yang dicetak dalam manuskrip sama dengan yang dijalankan. Had yang sudah ada dalam rentetan tidak ditambah dua kali, dan had yang tidak disokong oleh sesuatu pangkalan data diabaikan.</p>`;
-  const hadDari = v => ({ dari: v.prDari, hingga: v.prHingga, wasit: v.prWasit, jurnal: v.prJurnal });
-  const ayatLarian = (x, res) => `${x.nama}: ${angka(res.n)} rekod pada ${x.tarikh}, dijalankan melalui ${x.jalan.kaedah}.${x.padan ? ` ${x.padan.k} daripada ${x.padan.n} artikel sumber ditemui dalam hasil ini.` : ' Senarai tajuk tidak disimpan kerana hasil melebihi satu halaman API; kecilkan rentetan jika mahu menyaringnya.'}${res.n > 1000 ? ' Jumlah sebesar ini menandakan rentetan terlalu luas untuk disaring; kecilkan rentetan dan jalankan semula.' : ''}`;
-  async function jalankan(i) {
-    const x = data().pangkalan[i]; const p = penyambung(x); if (!x || !p || P.busy) return; if (!isi(x.rentetan)) { toast('Isi rentetan carian dahulu', true); return; }
-    const sedia = p.kunci ? await kunciSimpan(p) : '';
-    const ok = await R.richModal('Jalankan carian dalam ' + p.nama, `<p>Sistem menghantar rentetan ini kepada ${esc(p.kaedah)}, kemudian mengisi <b>bilangan rekod sebenar</b> dan <b>tarikh hari ini</b>. Tiada token digunakan.</p>${p.kunci ? `<label class="pd-q"><span>Kunci API ${esc(p.nama)} (milik Prof Dr sendiri)</span><input type="password" id="prKunci" class="modal-in" autocomplete="off" value="${esc(sedia)}" placeholder="Tampal kunci API di sini"></label><p class="help">${esc(p.nama)} berlangganan, jadi sistem hanya boleh mencapainya melalui API rasmi Elsevier dengan kunci API Prof Dr sendiri. Dapatkan kunci percuma di <a href="https://dev.elsevier.com/apikey/manage" target="_blank" rel="noopener">dev.elsevier.com</a> (log masuk dengan akaun institusi, kemudian Create API Key) dan tampal di sini. Kunci disimpan dalam tetapan Prof Dr dan dihantar kepada Elsevier sahaja. Elsevier yang menentukan sama ada kunci itu berhak mencari; jika ditolak, sistem memaparkan sebabnya.</p>` : ''}<label class="pd-q"><span>Rentetan</span><textarea id="prQ" class="modal-in" rows="4">${esc(x.rentetan)}</textarea></label><p class="help">${esc(p.petua)}</p>${htmlHad()}`, 'Jalankan sekarang', 'Batal');
-    if (!ok) return; const v = R.richModal.values || {}; if (!satuBaris(v.prQ)) { toast('Rentetan kosong', true); return; }
-    const kunci = p.kunci ? String(v.prKunci || '').trim() : ''; if (p.kunci && !kunci) { toast(`Tampal kunci API ${p.nama} dahulu`, true); return; }
-    P.busy = { k: null, mod: 'larian' }; if (ELF) render(ELF.el, ELF.f);
-    try { const res = await larian(x, Object.assign(hadDari(v), { kunci }), v.prQ); simpanT(true); if (p.kunci && kunci !== sedia) { try { await R.db().setMeta({ [p.kunci]: kunci }); } catch (e) { /* kunci kekal untuk larian ini sahaja */ } } toast('Larian sebenar. ' + ayatLarian(x, res)); } catch (e) { toast(`Larian ${p.nama} gagal: ` + mesejLarian(e, p), true); } finally { P.busy = null; X.render(); }
-  }
-  function lihat(i) {
-    const x = data().pangkalan[i]; if (!x || !x.hasil) return; const dok = C.doc(); const set = new Set((dok ? C.sumberAda(dok) : []).map(id => normT((R.S.docs.get(id) || {}).tajuk)).filter(Boolean));
-    R.richModal(`${x.nama}: ${angka(x.hasil.length)} rekod`, `<p class="help">Hasil larian ${esc(x.jalan ? R.fmtTime(x.jalan.masa) : '')}. Rekod bertanda bintang sepadan dengan artikel sumber artikel ini. Gunakan senarai ini untuk saringan tajuk; keputusan saringan dicatat dalam bahagian 2.</p><ol class="pr-hasil">${x.hasil.map(r => `<li>${set.has(normT(r.t)) ? '<b title="Artikel sumber">★</b> ' : ''}${esc(r.t)} <span class="help">${esc([r.a, r.y, r.s].filter(Boolean).join(' · '))}${r.u ? ` · <a href="${esc(r.u)}" target="_blank" rel="noopener">buka</a>` : ''}</span></li>`).join('')}</ol>`, 'Tutup');
-  }
-  async function jana() {
-    if (P.busy) return; const d = data(); const dok = C.doc(); if (!dok || !ELF) return; const ada = d.pangkalan.filter(x => isi(x.nama));
-    const kunciAda = {}; for (const p of PENYAMBUNG.filter(z => z.kunci)) kunciAda[p.id] = await kunciSimpan(p);
-    const bolehAuto = x => { const p = penyambung(x); return !!p && (!p.kunci || !!kunciAda[p.id]); };
-    const auto = ada.filter(x => bolehAuto(x) && isi(x.rentetan)); const perluKunci = ada.filter(x => penyambung(x) && !bolehAuto(x)); const lain = ada.filter(x => !penyambung(x)); const nS = C.sumberAda(dok).length; const lainKosong = !isi(d.lain2t) && !isi(d.lain2);
-    const ok = await R.richModal('Janakan Jadual PRISMA daripada data sebenar', `<p>Sistem mengisi semua yang boleh diperoleh daripada <b>larian dan rekod sebenar</b>, kemudian melukis rajah. Tiada angka dianggar atau direka, dan tiada token digunakan.</p><ol class="pd-semak-awal pr-panduan">
-      <li class="${auto.length ? 'ok' : 'amaran'}"><b>Dijalankan oleh sistem.</b> ${auto.length ? `${esc(auto.map(x => x.nama).join(', '))}: rentetannya dijalankan sekarang melalui API rasmi pangkalan data itu; bilangan rekod dan tarikh hari ini diisi.` : `Tiada entri yang boleh dijalankan oleh sistem. Sistem boleh menjalankan pangkalan data yang mempunyai API terbuka (${esc(NAMA_API)}); tambah entri dengan nama itu berserta rentetannya.`}</li>
-      ${perluKunci.length ? `<li class="amaran"><b>${esc(perluKunci.map(x => x.nama).join(', '))}.</b> Perlu kunci API Prof Dr sendiri sebelum sistem boleh menjalankannya. Klik "Jalankan dalam ${esc(perluKunci[0].nama)} (sistem)" pada entri itu untuk memasukkan kunci, atau jalankan rentetannya di sana dan isi bilangan rekod.</li>` : ''}
-      ${lain.length ? `<li class="amaran"><b>${esc(lain.map(x => x.nama).join(', '))}.</b> Sistem tiada capaian ke pangkalan data ini (berlangganan atau tanpa API terbuka), jadi bilangannya tidak boleh diisi oleh sistem. Jalankan rentetannya di sana (butang "Buka carian" jika ada, atau "Salin rentetan"), kemudian isi bilangan rekod; butang "Tarikh hari ini" mengisi tarikh.</li>` : ''}
-      <li class="${lainKosong && nS ? 'ok' : 'amaran'}"><b>Kaedah lain.</b> ${lainKosong ? `Baris "Kaedah lain (nyatakan)" diisi dengan "Carian berbantukan AI (Claude)" dan bilangan artikel sumber artikel ini yang tidak ditemui dalam hasil pangkalan data (${angka(nS)} artikel sumber sekarang). Betulkan jika calon yang dinilai lebih banyak.` : 'Baris "Kaedah lain (nyatakan)" sudah diisi dan tidak diubah.'}</li>
-      <li class="amaran"><b>Saringan.</b> Pendua, rekod yang dikecualikan dan sebab pengecualian ialah keputusan saringan Prof Dr dan tidak boleh dijana; sistem menyenaraikan kotak yang masih kosong selepas ini.</li></ol>${auto.length ? '<p><b>Had bagi larian sistem</b></p>' + htmlHad() : ''}`, 'Janakan sekarang', 'Batal');
-    if (!ok) return; const v = R.richModal.values || {}; P.busy = { k: null, mod: 'jana' }; render(ELF.el, ELF.f); const baris = []; const jumpa = new Set();
-    try {
-      for (const x of auto) { try { const pp = penyambung(x); const res = await larian(x, Object.assign(hadDari(v), { kunci: pp.kunci ? kunciAda[pp.id] : '' })); (x.padan ? x.padan.ids : []).forEach(id => jumpa.add(id)); baris.push(['ok', ayatLarian(x, res)]); } catch (e) { baris.push(['amaran', `${x.nama}: larian gagal. ${mesejLarian(e, penyambung(x))}`]); } }
-      d.pangkalan.filter(x => isi(x.nama) && !bolehAuto(x)).forEach(x => { const siap = isi(x.n) && isi(x.tarikh); baris.push([siap ? 'ok' : 'amaran', siap ? `${x.nama}: ${angka(num(x.n))} rekod pada ${x.tarikh}, diisi oleh Prof Dr.` : penyambung(x) ? `${x.nama}: belum dijalankan kerana kunci API ${penyambung(x).nama} belum dimasukkan. Klik "Jalankan dalam ${penyambung(x).nama} (sistem)" pada entri itu, atau jalankan rentetannya di sana dan isi bilangan rekod.` : `${x.nama}: belum dijalankan. Sistem tiada capaian ke pangkalan data ini; jalankan rentetannya di sana dan isi bilangan rekod.`]); });
-      if (lainKosong && nS) { d.guna2 = true; d.lain2t = 'Carian berbantukan AI (Claude)'; d.lain2 = String(Math.max(0, nS - jumpa.size)); baris.push(['ok', `Kaedah lain: "Carian berbantukan AI (Claude)" diisi dengan ${angka(num(d.lain2))} rekod, iaitu artikel sumber yang tidak ditemui dalam hasil pangkalan data. Betulkan jika calon yang dinilai lebih banyak.`]); }
-      simpanT(true);
-    } finally { P.busy = null; X.render(); }
-    const k = kira(); const perlu = [];
-    if (k.dikenal > 0) { if (!isi(d.pendua)) perlu.push('Rekod pendua dibuang'); if (!isi(d.dikecualikan)) perlu.push('Rekod dikecualikan pada saringan tajuk dan abstrak'); if (!isi(d.tidak)) perlu.push('Laporan tidak diperoleh'); if (!d.sebab.some(z => isi(z.t) && isi(z.n))) perlu.push('Laporan dikecualikan selepas dinilai, mengikut sebab'); }
-    await R.richModal('Jadual PRISMA dijana daripada data sebenar', `<ul class="pd-semak-awal pr-panduan">${baris.map(b => `<li class="${b[0]}">${esc(b[1])}</li>`).join('') || `<li class="amaran">Tiada apa yang dapat diisi oleh sistem. Tambah entri pangkalan data yang mempunyai API terbuka (${esc(NAMA_API)}) berserta rentetannya dahulu.</li>`}</ul>${perlu.length ? `<p><b>Kotak yang masih perlu diisi oleh Prof Dr</b> (keputusan saringan, tidak boleh dijana):</p><ul>${perlu.map(z => `<li>${esc(z)}</li>`).join('')}</ul>` : ''}<p class="help">Rajah di bawah dilukis daripada angka semasa dan dikemas kini setiap kali angka berubah.${k.isu.length ? ' ' + esc(String(k.isu.length)) + ' perkara aritmetik perlu disemak.' : ''}</p>`, 'Faham');
   }
   /* Jadual kriteria dianggap sudah ada dalam manuskrip apabila tajuk atau baris kepalanya ditemui dalam ASAL atau RAM seksyen folder ini. */
   function jadualAda() {
@@ -361,161 +431,23 @@ Semakan aritmetik sistem: ${k.isu.length ? k.isu.join(' ') : 'tiada percanggahan
       return X.julat(f).some(sid => { const z = dok.seksyen[sid]; if (!z || z.padam) return false; const h = (Teks.htmlSeksyen(z) || '') + (z.ram || ''); return /Inclusion and Exclusion Criteria|Kriteria Penerimaan dan Penolakan/i.test(h) || /<th[^>]*>\s*(?:Inclusion|Penerimaan)\s*<\/th>/i.test(h); });
     } catch (e) { return false; }
   }
-  function statusKrit() {
-    const n = barisKriteria().length; const nK = bahasa() === 'en' ? 'Table' : 'Jadual';
-    if (!n) return `Belum ada baris yang diisi. Selagi jadual ini kosong, agen penulisan diberitahu supaya tidak merujuk ${nK} 1 seolah-olah ia wujud.`;
-    return `${n} baris diisi. ` + (jadualAda() ? `${nK} 1 sudah ada dalam seksyen Metodologi. Jika kriteria diubah di sini, sisip semula dan buang jadual yang lama.` : `${nK} 1 belum ada dalam seksyen Metodologi: klik "Sisip Jadual kriteria ke RAM" atau "Sisip Jadual kriteria ke ASAL" supaya jadual yang dirujuk dalam teks benar-benar wujud dalam manuskrip.`);
-  }
-  function segarKrit() {
-    if (!ELF || !ELF.el.isConnected) return; const d = data(); const st = ELF.el.querySelector('#prKritStatus'); if (st) st.textContent = statusKrit();
-    ELF.el.querySelectorAll('[data-prkj]').forEach(b => { b.textContent = bahasa() === 'en' ? 'Table' : 'Jadual'; });
-    ELF.el.querySelectorAll('[data-pr="kk"]').forEach(b => { const r = d.kriteria[parseInt(b.dataset.i, 10)]; if (r && !isi(r.k) && document.activeElement !== b) b.value = labelK(r); });
-  }
-  /* Had yang tertulis dalam rentetan carian dibaca terus, supaya Jadual kriteria sepadan dengan carian yang benar-benar direkodkan. Tiada token. */
-  const hadTahun = q => { let a = null, b = null, mm;
-    if ((mm = /PUBYEAR\s*(?:>|AFT)\s*(\d{4})/i.exec(q))) a = +mm[1] + 1; if ((mm = /PUBYEAR\s*(?:<|BEF)\s*(\d{4})/i.exec(q))) b = +mm[1] - 1;
-    const lim = Array.from(q.matchAll(/LIMIT-TO\s*\(\s*PUBYEAR\s*,\s*(\d{4})\s*\)/gi)).map(z => +z[1]); if (lim.length) { a = Math.min(...lim); b = Math.max(...lim); }
-    if ((mm = /(?:publicationdateyear|bibjson\.year|PUB_YEAR)\s*:\s*\[\s*(\d{4})\s+TO\s+(\d{4})\s*\]/i.exec(q))) { a = +mm[1]; b = +mm[2]; }
-    if ((mm = /publication_year\s*:\s*(\d{4})\s*-\s*(\d{4})/i.exec(q))) { a = +mm[1]; b = +mm[2]; }
-    if ((mm = /"?(\d{4})"?\s*\[(?:dp|pdat)\]\s*:\s*"?(\d{4})"?\s*\[(?:dp|pdat)\]/i.exec(q)) || (mm = /(\d{4})\s*:\s*(\d{4})\s*\[(?:dp|pdat)\]/i.exec(q))) { a = +mm[1]; b = +mm[2]; }
-    return [a, b]; };
-  const teksJulat = (a, b) => a && b ? `${a} hingga ${b}` : a ? `${a} dan selepasnya` : b ? `sehingga ${b}` : 'tiada had tahun';
-  function kritDariRentetan() {
-    const d = data(); const e = bahasa() === 'en'; const ada = d.pangkalan.filter(x => isi(x.rentetan)); if (!ada.length) { toast('Belum ada rentetan carian untuk dibaca. Rekodkan rentetan dalam bahagian 1 dahulu.', true); return; }
-    const th = []; const dari = { bahasa: [], jenis: [], capaian: [] }; const bhs = new Set(); let wasit = false, akhir = false, jurnal = false;
-    ada.forEach(x => { const q = String(x.rentetan); const nm = String(x.nama || '').trim() || 'pangkalan data tanpa nama'; const [a, b] = hadTahun(q); th.push({ nm, a, b });
-      let adaB = false; if (/LANGUAGE\s*\(\s*"?english"?\s*\)|LIMIT-TO\s*\(\s*LANGUAGE\s*,\s*"?English"?\s*\)|language\s*:\s*en\b|english\s*\[la\]|LANG\s*:\s*"?eng\b/i.test(q)) { bhs.add('en'); adaB = true; } if (/LANGUAGE\s*\(\s*"?malay"?\s*\)|LIMIT-TO\s*\(\s*LANGUAGE\s*,\s*"?Malay"?\s*\)|language\s*:\s*ms\b/i.test(q)) { bhs.add('ms'); adaB = true; } if (adaB) dari.bahasa.push(nm);
-      let adaJ = false; if (/DOCTYPE\s*\(\s*"?ar"?\s*\)|LIMIT-TO\s*\(\s*DOCTYPE\s*,\s*"?ar"?\s*\)|publicationtype\s*:\s*"Journal Articles"|(^|,)\s*type\s*:\s*article|journal article\s*\[pt\]/i.test(q)) { jurnal = true; adaJ = true; } if (/peerreviewed\s*:\s*T/i.test(q)) { wasit = true; adaJ = true; } if (/PUBSTAGE\s*\(\s*"?final"?\s*\)|LIMIT-TO\s*\(\s*PUBSTAGE\s*,\s*"?final"?\s*\)/i.test(q)) { akhir = true; adaJ = true; } if (adaJ) dari.jenis.push(nm);
-      if (/OPENACCESS\s*\(\s*1\s*\)|LIMIT-TO\s*\(\s*OA\s*,\s*"?all"?\s*\)|is_oa\s*:\s*true|OPEN_ACCESS\s*:\s*y/i.test(q)) dari.capaian.push(nm); });
-    const baris = kunci => { let r = d.kriteria.find(z => z.kunci === kunci); if (!r) { r = barisTetap(kunci); d.kriteria.push(r); } return r; };
-    const diisi = []; const kekal = []; const semak = [];
-    /* Satu baris diisi hanya apabila kedua-dua selnya kosong, supaya teks Prof Dr tidak bercampur dengan teks sistem. */
-    const isiBaris = (kunci, m, x, punca) => { const r = baris(kunci); const lab = labelK(r); if (isi(r.m) || isi(r.x)) { kekal.push(lab); return; } r.m = m; r.x = x; delete r.cad; diisi.push(lab + (punca && punca.length < ada.length ? ` (had ini hanya ada dalam rentetan ${punca.join(', ')}; bagi pangkalan data lain ia perlu digunakan semasa saringan)` : '')); };
-    const berhad = th.filter(z => z.a || z.b); const seragam = berhad.length === th.length && th.every(z => z.a === th[0].a && z.b === th[0].b);
-    if (seragam) { const a = th[0].a, b = th[0].b; const kini = new Date().getFullYear(); const rT = baris('tahun');
-      if (isi(rT.m) && [a, b].filter(Boolean).some(y => !String(rT.m).includes(String(y)))) semak.push(`Baris "${labelK(rT)}" sudah diisi ("${String(rT.m).trim()}") tetapi tidak menyebut julat dalam rentetan carian (${teksJulat(a, b)}). Selaraskan baris itu dengan rentetan, atau rentetan dengan baris itu.`);
-      isiBaris('tahun', e ? (a && b ? `${a} to ${b}` : a ? `${a} onwards` : `Up to ${b}`) : (a && b ? `${a} hingga ${b}` : a ? `${a} dan selepasnya` : `Sehingga ${b}`), [a ? (e ? `Before ${a}` : `Sebelum ${a}`) : '', b && (!a || b < kini) ? (e ? `after ${b}` : `selepas ${b}`) : ''].filter(Boolean).join(e ? ' or ' : ' atau ').replace(/^./, c => c.toUpperCase())); }
-    else if (berhad.length) semak.push('Julat tahun tidak seragam antara rentetan: ' + th.map(z => `${z.nm} ${teksJulat(z.a, z.b)}`).join('; ') + '. Baris tahun tidak diisi. Selaraskan had tahun dalam semua rentetan dahulu (dan jalankan semula carian yang berubah), kemudian klik butang ini sekali lagi.');
-    if (bhs.size) { const dua = bhs.has('en') && bhs.has('ms'); isiBaris('bahasa', dua ? (e ? 'English and Malay' : 'Bahasa Inggeris dan Bahasa Melayu') : bhs.has('en') ? (e ? 'English' : 'Bahasa Inggeris') : (e ? 'Malay' : 'Bahasa Melayu'), e ? 'Other languages' : 'Bahasa lain', dari.bahasa); }
-    if (jurnal || wasit || akhir) { const asas = jurnal ? (e ? (wasit ? 'Peer-reviewed journal articles' : 'Journal articles') : (wasit ? 'Artikel jurnal berwasit' : 'Artikel jurnal')) : wasit ? (e ? 'Peer-reviewed publications' : 'Penerbitan berwasit') : (e ? 'Publications' : 'Penerbitan');
-      const xs = []; if (jurnal) xs.push(e ? 'other document types (for example conference papers, book chapters and theses)' : 'jenis dokumen lain (contohnya kertas persidangan, bab buku dan tesis)'); else if (wasit) xs.push(e ? 'non-peer-reviewed publications' : 'penerbitan tidak berwasit'); if (akhir) xs.push(e ? 'articles in press' : 'artikel dalam cetakan');
-      isiBaris('jenis', asas + (akhir ? (e ? ' at the final publication stage' : ' pada peringkat terbitan akhir') : ''), xs.join('; ').replace(/^./, c => c.toUpperCase()), dari.jenis); }
-    if (dari.capaian.length) isiBaris('capaian', e ? 'Open-access full text' : 'Teks penuh akses terbuka', e ? 'Full text not openly accessible' : 'Teks penuh bukan akses terbuka', dari.capaian);
-    simpanT(true); render(ELF.el, ELF.f);
-    const ringkasan = diisi.length ? `${diisi.length} baris diisi daripada rentetan carian.` : 'Tiada baris baharu diisi daripada rentetan carian.';
-    if (semak.length || diisi.some(z => /hanya ada dalam rentetan/.test(z))) R.richModal('Kriteria daripada rentetan carian', `<p>${esc(ringkasan)} Populasi, konsep, konteks dan reka bentuk kajian tidak boleh dibaca daripada rentetan: isi sendiri atau minta agen melengkapkannya.</p><ul class="pd-semak-awal pr-panduan">${diisi.map(z => `<li class="ok">${esc(z)}</li>`).join('')}${kekal.map(z => `<li>${esc(z)}: sudah diisi, tidak diubah.</li>`).join('')}${semak.map(z => `<li class="amaran">${esc(z)}</li>`).join('')}</ul>`, 'Faham');
-    else toast(ringkasan + (diisi.length ? ' ' + diisi.join('; ') + '.' : '') + (kekal.length ? ' Tidak diubah kerana sudah diisi: ' + kekal.join('; ') + '.' : '') + (!diisi.length && !kekal.length ? ' Rentetan yang direkodkan tidak mengandungi had tahun, bahasa, jenis penerbitan atau capaian.' : ''), !diisi.length && !kekal.length);
-  }
-  async function kritAgen() {
-    if (P.busy) return; const dok = C.doc(); if (!dok || !ELF) return; const d = data(); const t = await R.Isi.tetapan();
-    if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
-    if (!d.kriteria.length) { toast('Tiada baris kriteria; klik "Pulihkan baris tetap" dahulu', true); return; }
-    const kosongSel = d.kriteria.reduce((n, r) => n + (isi(r.m) ? 0 : 1) + (isi(r.x) ? 0 : 1), 0); if (!kosongSel) { toast('Semua sel sudah diisi; kosongkan sel yang mahu dilengkapkan semula'); return; }
-    const ok = await R.richModal('Lengkapkan kriteria kelayakan: hantar kepada agen?', `<p>Agen melengkapkan <b>${angka(kosongSel)} sel yang masih kosong</b> berdasarkan tajuk kerja, pemboleh ubah, jawapan Prof Dr dalam folder Pendahuluan dan Metodologi, serta rentetan carian yang direkodkan. Sel yang sudah diisi tidak diubah. Kriteria ialah keputusan Prof Dr: semak dan sunting setiap baris selepas ini.</p><p class="help">Satu panggilan API dengan kunci API Prof Dr (had keluar ${angka(R.Isi.hadKeluar(HAD_KRITERIA))} token, iaitu ${angka(HAD_KRITERIA)} bagi jawapan dan ${angka(R.Isi.hadKeluar(HAD_KRITERIA) - HAD_KRITERIA)} ruang berfikir model; yang dicaj hanyalah token yang benar-benar dijana).</p>`, 'Hantar kepada agen', 'Batal');
-    if (!ok) return; const e = bahasa() === 'en'; const pv = (P.t.pemboleh || []).filter(v => v.nama); const ent = C.entri(A.id) || {};
-    const jawab = k => { const F = X.fd ? X.fd(k) : null; return F && F.jawab ? Object.values(F.jawab).map(x => String(x || '').trim()).filter(Boolean).join(' | ').slice(0, 2200) : ''; };
-    const system = `Anda ialah pakar metodologi ulasan literatur yang membantu seorang calon PhD menyediakan Jadual kriteria kelayakan (penerimaan dan penolakan) bagi satu artikel ulasan. Lengkapkan sel yang bertanda KOSONG sahaja.
-Peraturan: (1) Tulis isi sel dalam ${e ? 'Bahasa Inggeris' : 'Bahasa Melayu Malaysia'}, sebagai frasa ringkas (bukan ayat panjang), tanpa noktah akhir. (2) Berpandukan JAWAPAN PROF DR; jangan menambah syarat yang tidak dinyatakan atau tersirat di situ. (3) Kriteria mesti selaras dengan RENTETAN CARIAN: jangan nyatakan julat tahun, bahasa, jenis penerbitan atau capaian yang bercanggah dengan had dalam rentetan. Jika maklumat bagi sesuatu sel tidak ada dalam jawapan atau rentetan, pulangkan rentetan kosong bagi sel itu dan catat dalam "nota" apa yang perlu diputuskan; jangan meneka. (4) Sel bertanda TETAP sudah diisi oleh Prof Dr: pulangkan rentetan kosong baginya. (5) Kriteria penolakan mesti menjadi cermin kepada kriteria penerimaan pada baris yang sama dan boleh digunakan sebagai sebab pengecualian dalam rajah PRISMA. (6) Jangan gunakan sempang em atau en. Pulangkan JSON mengikut skema, satu entri bagi setiap baris dengan "kunci" yang sama.`;
-    const user = `[MOD:kriteria]\nTAJUK KERJA: ${ent.tajuk || 'belum bertajuk'}\nJENIS ARTIKEL: ${(C.JENIS_PETA[dok.jenis] || {}).nama || dok.jenis}\nPEMBOLEH UBAH ATAU KONSTRUK UTAMA: ${pv.length ? pv.map(x => x.nama + (x.alias ? ' (padanan: ' + x.alias + ')' : '')).join('; ') : 'belum ditetapkan'}\nJAWAPAN PROF DR (Pendahuluan): ${jawab('pendahuluan') || 'tiada'}\nJAWAPAN PROF DR (Metodologi): ${jawab('kaedah') || 'tiada'}\nRENTETAN CARIAN YANG DIREKODKAN:\n${d.pangkalan.filter(x => isi(x.rentetan)).map(x => `- ${x.nama || 'pangkalan data'}: ${String(x.rentetan).slice(0, 700)}`).join('\n') || 'tiada'}\n\nBARIS JADUAL (kunci | label | diterima | ditolak):\n${d.kriteria.map((r, i) => `- ${r.kunci || 'baris' + (i + 1)} | ${labelK(r)} | ${isi(r.m) ? 'TETAP: ' + String(r.m).trim() : 'KOSONG'} | ${isi(r.x) ? 'TETAP: ' + String(r.x).trim() : 'KOSONG'}`).join('\n')}\n\nTUGAS: Lengkapkan sel KOSONG sahaja.`;
-    P.busy = { k: null, mod: 'kriteria' }; render(ELF.el, ELF.f); const tk = P.t.token || { masuk: 0, keluar: 0, panggil: 0 };
-    try {
-      const res = await R.Isi.hantar(t, { kunciMod: 'pandu-kriteria:' + t.model, system, content: [{ type: 'text', text: user }], skema: SKEMA_KRITERIA, alat: { name: 'lengkap_kriteria', description: 'Pulangkan kriteria kelayakan mengikut struktur ini.', input_schema: SKEMA_KRITERIA }, hadToken: HAD_KRITERIA });
-      let j; try { j = res.input || R.Isi.parseJson(res.text, res.stop); } catch (er) { if (er && typeof er === 'object') er.usage = res.usage; throw er; }
-      const bersihSel = z => String(z || '').replace(/\s*[—–]\s*/g, ' ').replace(/\s+/g, ' ').trim().replace(/[.;]+$/, '').slice(0, 400);
-      const senarai = Array.isArray(j && j.baris) ? j.baris : []; if (!senarai.length) throw { code: 'json', stop: res.stop, usage: res.usage };
-      let n = 0; d.kriteria.forEach((r, i) => { const b = senarai.find(z => z && String(z.kunci || '') === (r.kunci || 'baris' + (i + 1))); if (!b) return; if (!isi(r.m) && bersihSel(b.masuk)) { r.m = bersihSel(b.masuk); r.cad = 1; n++; } if (!isi(r.x) && bersihSel(b.keluar)) { r.x = bersihSel(b.keluar); r.cad = 1; n++; } });
-      P.t.token = { masuk: (tk.masuk || 0) + R.Isi.masukSemua(res.usage), keluar: (tk.keluar || 0) + (res.usage ? res.usage.keluar : 0), panggil: (tk.panggil || 0) + 1, gagal: tk.gagal || 0 }; simpanT(true);
-      const nota = (Array.isArray(j.nota) ? j.nota : []).map(z => String(z || '').trim()).filter(Boolean).slice(0, 6);
-      toast(`Kriteria kelayakan: ${n} sel dilengkapkan oleh agen (token masuk ${angka(R.Isi.masukSemua(res.usage))}, keluar ${angka(res.usage ? res.usage.keluar : 0)}). Semak dan sunting setiap baris.`);
-      if (nota.length) { P.busy = null; X.render(); await R.richModal('Perkara untuk Prof Dr putuskan', `<p class="help">Agen tidak mengisi sel yang maklumatnya tidak ada dalam jawapan atau rentetan carian.</p><ul>${nota.map(z => `<li>${esc(z)}</li>`).join('')}</ul>`, 'Faham'); }
-    } catch (er) {
-      if (er && er.usage) { P.t.token = { masuk: (tk.masuk || 0) + R.Isi.masukSemua(er.usage), keluar: (tk.keluar || 0) + (er.usage.keluar || 0), panggil: (tk.panggil || 0) + 1, gagal: (tk.gagal || 0) + 1 }; simpanT(true); }
-      toast('Kriteria kelayakan gagal dilengkapkan: ' + R.Isi.msg(er), true);
-    } finally { P.busy = null; X.render(); }
-  }
-  function panduan() {
-    const k = kira(); const d = k.d; const dok = C.doc(); const nS = dok ? C.sumberAda(dok).length : 0; const p = k.adaPang;
-    const li = (ok, tajuk, teks) => `<li class="${ok ? 'ok' : 'amaran'}"><b>${tajuk}</b> ${ok ? '<em>(sudah diisi)</em>' : '<em>(belum diisi)</em>'}<br>${teks}</li>`;
-    R.richModal('Panduan pengisian Ruang PRISMA 2020', `<p>Rajah aliran ialah rekod proses carian dan saringan Prof Dr sendiri, dan penilai boleh meminta buktinya. Sebab itu sistem dan agen tidak mengisi angka aliran. Isi mengikut urutan berikut.</p><ol class="pd-semak-awal pr-panduan">
-      ${li(p.length > 0 && p.every(x => isi(x.rentetan)), '1. Rentetan carian setiap pangkalan data.', 'Taip sendiri, atau klik "Mohon Prof Dr Claude cadangkan rentetan carian" untuk mendapat draf mengikut sintaks pangkalan data. Draf itu perlu disemak dan dijalankan oleh Prof Dr.')}
-      ${li(p.length > 0 && p.every(x => isi(x.tarikh) && isi(x.n)), '2. Tarikh carian dan bilangan rekod.', 'Jalankan setiap rentetan dalam pangkalan datanya. Catat tarikh carian dan bilangan hasil yang dipaparkan pada tarikh itu, dan simpan eksport atau tangkapan skrin sebagai bukti. Bagi pangkalan data yang mempunyai API terbuka (' + NAMA_API + '), butang "Jalankan (sistem)" mengisi kedua-duanya daripada larian sebenar.')}
-      ${li(isi(d.pendua), '3. Rekod pendua dibuang.', 'Bilangan rekod yang sama merentas pangkalan data, daripada pengurus rujukan (Zotero, Mendeley, EndNote) atau kiraan manual. Isi 0 jika hanya satu pangkalan data dan tiada pendua.')}
-      ${li(isi(d.dikecualikan), '4. Rekod dikecualikan pada saringan tajuk dan abstrak.', 'Bilangan rekod yang ditolak selepas tajuk dan abstraknya dibaca berpandukan kriteria kelayakan.')}
-      ${li(isi(d.tidak), '5. Laporan tidak diperoleh.', 'Bilangan artikel yang teks penuhnya tidak dapat diakses. Isi 0 jika semua diperoleh.')}
-      ${li(d.sebab.some(x => isi(x.t) && isi(x.n)), '6. Laporan dikecualikan selepas dinilai, mengikut sebab.', 'Satu baris bagi setiap sebab (contohnya bukan konteks sekolah, bukan kajian empirikal), dengan bilangannya. Sebab mesti sepadan dengan kriteria kelayakan dalam teks.')}
-      ${li(!d.guna2 || k.dikenal2 > 0, '7. Kaedah lain (lajur kedua).', 'Rekod yang dikenal pasti di luar carian pangkalan data: laman web, organisasi, carian sitasi dan senarai rujukan. Artikel yang ditemui melalui pembantu AI dilaporkan pada baris "Kaedah lain (nyatakan)" dengan nama alatnya, bukan sebagai hasil pangkalan data, dan penggunaannya diisytiharkan dalam pernyataan penggunaan AI jurnal. Matikan lajur ini jika tiada kaedah lain digunakan.')}
-      ${li(k.kajian > 0 && (!nS || nS === k.kajian), '8. Semakan akhir.', `Sistem mengira kajian yang dimasukkan: ${angka(Math.max(0, k.kajian))}. Artikel sumber yang dipilih bagi artikel ini: ${angka(nS)}. Kedua-dua angka sepatutnya sama; jika berbeza, semak angka aliran atau senarai artikel sumber.`)}
-      </ol><p class="help">Rentetan yang belum dijalankan ditanda "belum dijalankan" dan agen penulisan tidak akan menulisnya sebagai carian yang sudah dibuat.</p>`, 'Faham');
-  }
-  /* Agen mencadangkan rentetan carian untuk DIJALANKAN oleh pemilik. Ia tidak menjalankan carian: tarikh dan bilangan rekod kekal kosong. */
-  async function cadangRentetan() {
-    if (P.busy) return; const dok = C.doc(); if (!dok) return; const d = data(); const g = gaya(); const t = await R.Isi.tetapan();
-    if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
-    const pv = (P.t.pemboleh || []).filter(v => v.nama); const e = C.entri(A.id) || {}; const sedia = d.pangkalan.filter(x => isi(x.nama)).map(x => x.nama); const had = kel() === 'skop' ? (g.hadPangkalan || 2) : 4;
-    const ok = await R.richModal('Cadangan rentetan carian: hantar kepada agen?', `<p>Agen menyusun rentetan carian mengikut sintaks setiap pangkalan data, berdasarkan tajuk kerja, pemboleh ubah, jawapan Prof Dr dalam folder Pendahuluan dan Metodologi, serta tajuk artikel sumber. <b>Agen tidak menjalankan carian.</b> Tarikh carian dan bilangan rekod kekal kosong sehingga Prof Dr menjalankan rentetan itu dan mengisi angka sebenar.</p>
-      <label class="pd-q"><span>Pangkalan data: mana-mana pangkalan data, pisahkan dengan koma${kel() === 'skop' ? '; peraturan gaya Prof Dr sekarang: paling banyak ' + had + ', boleh diubah dalam Peraturan gaya' : ''}</span><input type="text" id="prPang" class="modal-in" value="${esc(sedia.join(', ') || 'Scopus, ERIC')}"></label>
-      <label class="pd-q"><span>Julat tahun dan had lain (pilihan)</span><input type="text" id="prHad" class="modal-in" placeholder="Contohnya 2021 hingga 2026; artikel jurnal berwasit; Bahasa Inggeris dan Bahasa Melayu"></label>
-      <p class="help">Satu panggilan API dengan kunci API Prof Dr (had keluar ${angka(R.Isi.hadKeluar(HAD_RENTETAN))} token, iaitu ${angka(HAD_RENTETAN)} bagi jawapan dan ${angka(R.Isi.hadKeluar(HAD_RENTETAN) - HAD_RENTETAN)} ruang berfikir model; yang dicaj hanyalah token yang benar-benar dijana). Cadangan penuh juga dimasukkan ke RAM seksyen Metodologi.</p>`, 'Hantar kepada agen', 'Batal');
-    if (!ok) return; const v = R.richModal.values || {}; const nama = String(v.prPang || '').split(/[,;]/).map(x => x.trim()).filter(Boolean).slice(0, 8); if (!nama.length) { toast('Nyatakan sekurang-kurangnya satu pangkalan data', true); return; }
-    const jawab = k => { const F = X.fd ? X.fd(k) : null; return F && F.jawab ? Object.values(F.jawab).map(x => String(x || '').trim()).filter(Boolean).join(' | ').slice(0, 1800) : ''; };
-    const sumber = C.sumberAda(dok).slice(0, 40).map(id => { const r = R.S.docs.get(id) || {}; return `- ${r.penulis || '?'} (${r.tahun || '?'}). ${String(r.tajuk || '').slice(0, 160)}`; }).join('\n');
-    const system = `Anda ialah pakar maklumat (pustakawan penyelidikan) yang membantu seorang calon PhD menyusun strategi carian bagi satu artikel ulasan. Tugas anda: MENCADANGKAN rentetan carian yang boleh dijalankan semula, mengikut sintaks rasmi setiap pangkalan data yang diminta. Anda TIDAK menjalankan carian dan tidak tahu bilangan hasil: jangan nyatakan atau anggarkan bilangan rekod, tarikh carian atau hasil carian.
-Peraturan: (1) Pecahkan topik kepada konsep (contohnya mengikut Populasi, Konsep, Konteks); bagi setiap konsep senaraikan istilah sinonim, variasi ejaan dan istilah berkaitan dalam Bahasa Inggeris (tambah Bahasa Melayu jika pangkalan data itu mengindeks jurnal berbahasa Melayu). (2) Gabungkan istilah dalam satu konsep dengan OR dan antara konsep dengan AND; frasa dalam tanda petik. (3) Ikut sintaks pangkalan data itu: contohnya Scopus menggunakan TITLE-ABS-KEY( ), Web of Science menggunakan TS=( ), empat pangkalan data dijalankan oleh sistem melalui API rasmi dan rentetannya mesti mengikut sintaks API itu: ERIC hanya menggunakan AND, OR, kurungan dan tanda petik (tiada W/n, tiada simbol pemangkasan) dan hadnya ditulis ke dalam rentetan dengan medan publicationdateyear:[2022 TO 2026], peerreviewed:T dan publicationtype:"Journal Articles"; OpenAlex menerima ungkapan Boolean dengan AND, OR, NOT, kurungan dan tanda petik tanpa koma dan tanpa simbol pemangkasan (sistem membalutnya dengan title_and_abstract.search dan menambah publication_year serta type sebagai penapis); DOAJ menerima AND, OR, kurungan dan tanda petik dengan had tahun bibjson.year:[2022 TO 2026]; PubMed menggunakan tag medan seperti [tiab], [dp] dan [pt]. Jika tidak pasti tentang sesuatu operator, pilih bentuk paling asas dan nyatakan dalam nota. (4) Had (julat tahun, jenis dokumen, bahasa) ditulis dalam medan "had" sebagai arahan penapis, kecuali pangkalan data itu memang menulisnya dalam rentetan. (5) Rentetan mesti cukup luas untuk menemui semula ARTIKEL SUMBER yang disenaraikan; dalam "semakan", namakan tiga hingga enam artikel sumber yang patut ditemui oleh rentetan itu supaya Prof Dr boleh mengujinya. (6) Tulis nota, langkah dan semakan dalam Bahasa Melayu Malaysia; rentetan dalam bahasa pangkalan data. Jangan gunakan sempang em atau en. Pulangkan JSON mengikut skema.`;
-    const user = `[MOD:rentetan]\nTAJUK KERJA: ${e.tajuk || 'belum bertajuk'}\nJENIS ARTIKEL: ${(C.JENIS_PETA[dok.jenis] || {}).nama || dok.jenis}\nPEMBOLEH UBAH ATAU KONSTRUK UTAMA: ${pv.length ? pv.map(x => x.nama + (x.alias ? ' (padanan: ' + x.alias + ')' : '')).join('; ') : 'belum ditetapkan'}\nJAWAPAN PROF DR (Pendahuluan): ${jawab('pendahuluan') || 'tiada'}\nJAWAPAN PROF DR (Metodologi): ${jawab('kaedah') || 'tiada'}\nHAD YANG DIMINTA: ${String(v.prHad || '').trim() || 'tidak dinyatakan; cadangkan had yang munasabah dan nyatakan sebagai cadangan'}\nPANGKALAN DATA YANG DIMINTA: ${nama.join('; ')}\n\nARTIKEL SUMBER (sudah dikumpul oleh Prof Dr; rentetan patut menemuinya semula):\n${sumber || 'tiada'}\n\nTUGAS: Cadangkan satu rentetan carian bagi setiap pangkalan data yang diminta.`;
-    P.busy = { k: null, mod: 'rentetan' }; if (ELF) render(ELF.el, ELF.f); const tk = P.t.token || { masuk: 0, keluar: 0, panggil: 0 };
-    try {
-      const res = await R.Isi.hantar(t, { kunciMod: 'pandu-rentetan:' + t.model, system, content: [{ type: 'text', text: user }], skema: SKEMA_RENTETAN, alat: { name: 'cadang_rentetan', description: 'Pulangkan cadangan rentetan carian mengikut struktur ini.', input_schema: SKEMA_RENTETAN }, hadToken: HAD_RENTETAN });
-      let j; try { j = res.input || R.Isi.parseJson(res.text, res.stop); } catch (er) { if (er && typeof er === 'object') er.usage = res.usage; throw er; }
-      const senarai = (Array.isArray(j && j.pangkalan) ? j.pangkalan : []).map(x => ({ nama: String(x && x.nama || '').trim(), rentetan: String(x && x.rentetan || '').replace(/\s*[—–]\s*/g, ' ').trim(), had: String(x && x.had || '').trim(), nota: String(x && x.nota || '').trim() })).filter(x => x.nama && x.rentetan);
-      if (!senarai.length) throw { code: 'json', stop: res.stop, usage: res.usage };
-      let isiBaru = 0, kekal = 0; const masa = Date.now();
-      senarai.forEach(x => { let p = d.pangkalan.find(y => String(y.nama || '').trim().toLowerCase() === x.nama.toLowerCase()); if (!p) { p = { id: idBaru('p'), nama: x.nama, tarikh: '', rentetan: '', n: '' }; d.pangkalan.push(p); } if (isi(p.rentetan)) { kekal++; return; } p.rentetan = x.rentetan; p.cad = masa; p.nota = [x.had, x.nota].map(z => String(z || '').trim().replace(/\s*[.;]+$/, '')).filter(Boolean).join('. ').slice(0, 500); isiBaru++; });
-      P.t.token = { masuk: (tk.masuk || 0) + R.Isi.masukSemua(res.usage), keluar: (tk.keluar || 0) + (res.usage ? res.usage.keluar : 0), panggil: (tk.panggil || 0) + 1, gagal: tk.gagal || 0 }; simpanT(true);
-      const senaraiTeks = a => (Array.isArray(a) ? a : []).map(x => String(x || '').trim()).filter(Boolean);
-      const html = `<p><strong>[Ruang PRISMA · cadangan rentetan carian (BELUM DIJALANKAN) · ${esc(R.fmtTime(masa))}]</strong></p>` + ((Array.isArray(j.konsep) ? j.konsep : []).length ? `<table><tbody><tr><th>Konsep</th><th>Istilah</th></tr>${j.konsep.map(c => `<tr><td>${esc(c && c.nama || '')}</td><td>${esc(senaraiTeks(c && c.istilah).join('; '))}</td></tr>`).join('')}</tbody></table>` : '') + senarai.map(x => `<p><strong>${esc(x.nama)}:</strong> ${esc(x.rentetan)}${x.had ? '<br><em>Had:</em> ' + esc(x.had) : ''}${x.nota ? '<br><em>Nota:</em> ' + esc(x.nota) : ''}</p>`).join('') + (senaraiTeks(j.langkah).length ? `<p><strong>Langkah menjalankan:</strong></p><ol>${senaraiTeks(j.langkah).map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : '') + (senaraiTeks(j.semakan).length ? `<p><strong>Artikel sumber yang patut ditemui semula (uji rentetan):</strong></p><ul>${senaraiTeks(j.semakan).map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + '<p><em>Cadangan agen. Jalankan rentetan dalam setiap pangkalan data, catat tarikh carian dan bilangan rekod sebenar dalam Ruang PRISMA, dan laporkan dalam manuskrip hanya carian yang benar-benar dijalankan.</em></p>';
-      const sid = ELF && sasaranRam(ELF.f); const keRam = sid ? sisip(sid, 'ram', html) : false;
-      toast(`Cadangan rentetan carian siap: ${isiBaru} rentetan diisi${kekal ? ', ' + kekal + ' rentetan sedia ada tidak ditimpa' : ''}${keRam ? '; cadangan penuh dalam RAM' : ''} (token masuk ${angka(R.Isi.masukSemua(res.usage))}, keluar ${angka(res.usage ? res.usage.keluar : 0)}). Jalankan rentetan itu, kemudian isi tarikh dan bilangan rekod sebenar.`);
-    } catch (er) {
-      if (er && er.usage) { P.t.token = { masuk: (tk.masuk || 0) + R.Isi.masukSemua(er.usage), keluar: (tk.keluar || 0) + (er.usage.keluar || 0), panggil: (tk.panggil || 0) + 1, gagal: (tk.gagal || 0) + 1 }; simpanT(true); }
-      toast('Cadangan rentetan gagal: ' + R.Isi.msg(er), true);
-    } finally { P.busy = null; X.render(); }
-  }
   async function klik(e) {
-    const b = e.target.closest('[data-pra]'); if (!b || !ELF) return; e.preventDefault(); const a = b.dataset.pra; const d = data(); const i = parseInt(b.dataset.i, 10);
-    if (a === 'tambahpang') { d.pangkalan.push({ id: idBaru('p'), nama: '', tarikh: '', rentetan: '', n: '' }); simpanT(); render(ELF.el, ELF.f); const x = ELF.el.querySelectorAll('[data-pr="pnama"]'); if (x.length) x[x.length - 1].focus(); }
-    else if (a === 'buangpang') { const x = d.pangkalan[i]; if (x && (isi(x.nama) || isi(x.rentetan) || isi(x.n))) { const ok = await R.confirmBox('Buang pangkalan data ini?', `"${x.nama || 'tanpa nama'}" berserta tarikh, rentetan carian dan bilangan rekodnya dibuang daripada Ruang PRISMA.`, 'Buang'); if (!ok) return; } d.pangkalan.splice(i, 1); simpanT(true); render(ELF.el, ELF.f); X.kemasBar(); }
-    else if (a === 'tambah') { d[b.dataset.m].push({ id: idBaru('s'), t: '', n: '' }); if (b.dataset.m === 'sebab') { delete d.dariSaring; delete d.belumNilai; } simpanT(); render(ELF.el, ELF.f); }
-    else if (a === 'buang') { d[b.dataset.m].splice(i, 1); if (b.dataset.m === 'sebab') { delete d.dariSaring; delete d.belumNilai; } simpanT(true); render(ELF.el, ELF.f); }
-    else if (a === 'tambahkrit') { d.kriteria.push({ id: idBaru('k'), kunci: '', k: bahasa() === 'en' ? 'Criterion' : 'Kriteria', m: '', x: '' }); simpanT(); render(ELF.el, ELF.f); const x = ELF.el.querySelectorAll('[data-pr="kk"]'); if (x.length) x[x.length - 1].focus(); }
-    else if (a === 'buangkrit') { d.kriteria.splice(i, 1); simpanT(true); render(ELF.el, ELF.f); }
-    else if (a === 'kritset') { let n = 0; KRITERIA_TETAP.forEach(r => { if (!d.kriteria.some(z => z.kunci === r[0])) { d.kriteria.push(barisTetap(r[0])); n++; } }); simpanT(true); render(ELF.el, ELF.f); toast(n ? n + ' baris tetap dipulihkan' : 'Semua baris tetap sudah ada'); }
-    else if (a === 'kritrentetan') kritDariRentetan(); else if (a === 'kritagen') kritAgen(); else if (a === 'tunjuksaring') Saring.tunjuk(b.dataset.v);
-    else if (a === 'kritram' || a === 'kritasal') { const mana = a === 'kritasal' ? 'asal' : 'ram'; const h = htmlKriteria(); const sid = sasaranRam(ELF.f); if (!h) { toast('Isi sekurang-kurangnya satu baris kriteria dahulu', true); return; } if (!sid) { toast('Seksyen folder ini tiada', true); return; } const sudah = jadualAda();
-      if (sisip(sid, mana, h)) { toast(`Jadual kriteria kelayakan disisip ke ${mana === 'asal' ? 'ASAL' : 'RAM'} seksyen sebagai ${bahasa() === 'en' ? 'Table' : 'Jadual'} 1.${sudah ? ' Jadual kriteria yang lama masih ada dalam seksyen ini: buang yang lama.' : ''} Ubah nombornya jika ada jadual lain sebelum jadual ini.`); if (mana === 'asal') X.renderFolder(); else segarKrit(); } }
-    else if (a === 'panduan') panduan(); else if (a === 'cadang') cadangRentetan(); else if (a === 'jana') jana(); else if (a === 'jalan') jalankan(i); else if (a === 'lihat') lihat(i);
-    else if (a === 'buka') { const x = d.pangkalan[i]; const p = pintas(x); if (!p) return; if (!isi(x.rentetan)) { toast('Isi rentetan carian dahulu', true); return; } window.open(p.url(satuBaris(x.rentetan)), '_blank', 'noopener'); toast(`Carian dibuka di ${p.nama}. Catat bilangan hasil yang dipaparkan di sana, isi bilangan rekod, kemudian klik "Tarikh hari ini".`); }
-    else if (a === 'harini') { const x = d.pangkalan[i]; if (x) { x.tarikh = hariIni(); simpanT(); render(ELF.el, ELF.f); X.kemasBar(); } }
-    else if (a === 'salin') { const x = d.pangkalan[i]; if (!x || !isi(x.rentetan)) { toast('Tiada rentetan untuk disalin', true); return; } try { await navigator.clipboard.writeText(x.rentetan); toast('Rentetan disalin. Tampal dalam carian lanjutan pangkalan data itu.'); } catch (er) { toast('Rentetan tidak dapat disalin secara automatik; pilih teksnya dan salin sendiri.', true); } }
-    else if (a === 'rajahram') sisipRajah('ram'); else if (a === 'rajahasal') sisipRajah('asal');
-    else if (a === 'png') { try { const blob = await png(bahasa(), 3); const u = URL.createObjectURL(blob); const l = document.createElement('a'); l.href = u; l.download = 'Rajah_PRISMA_2020.png'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } catch (er) { toast('PNG gagal dijana: ' + (er && er.message || er), true); } }
-    else if (a === 'strategi') { const h = htmlStrategi(); const sid = sasaranRam(ELF.f); if (!h) { toast('Belum ada pangkalan data untuk dijadualkan', true); return; } if (sid && sisip(sid, 'ram', h)) toast('Jadual strategi carian disisip ke RAM seksyen'); }
-    else if (a === 'ayat') { const h = htmlAyat(); const sid = sasaranRam(ELF.f); if (!h) { toast('Isi angka aliran dahulu', true); return; } if (sid && sisip(sid, 'ram', h)) toast('Ayat aliran berangka disisip ke RAM; parafrasa sebelum dipindahkan ke ASAL'); }
+    const b = e.target.closest('[data-pra]'); if (!b || !ELF) return; e.preventDefault(); const a = b.dataset.pra;
+    if (a === 'rajahram') sisipRajah('ram'); else if (a === 'rajahasal') sisipRajah('asal');
+    else if (a === 'png') { tutupEditor(true); try { const blob = await png(bahasa(), 3); const u = URL.createObjectURL(blob); const l = document.createElement('a'); l.href = u; l.download = 'Rajah_PRISMA_2020.png'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } catch (er) { toast('PNG gagal dijana: ' + (er && er.message || er), true); } }
+    else if (a === 'strategi') { const h = htmlStrategi(); const sid = sasaranRam(ELF.f); if (!h) { toast('Tiada rekod pangkalan data untuk dijadualkan', true); return; } if (sid && sisip(sid, 'ram', h)) toast('Jadual strategi carian disisip ke RAM seksyen'); }
+    else if (a === 'ayat') { tutupEditor(true); const h = htmlAyat(); const sid = sasaranRam(ELF.f); if (!h) { toast('Tulis angka dalam kotak pertama dan kotak akhir rajah dahulu', true); return; } if (sid && sisip(sid, 'ram', h)) toast('Ayat aliran berangka disisip ke RAM; parafrasa sebelum dipindahkan ke ASAL'); }
+    else if (a === 'kritram') { const h = htmlKriteria(); const sid = sasaranRam(ELF.f); if (!h) { toast('Tiada baris kriteria yang direkodkan', true); return; } if (!sid) { toast('Seksyen folder ini tiada', true); return; } const sudah = jadualAda(); if (sisip(sid, 'ram', h)) toast(`Jadual kriteria kelayakan disisip ke RAM seksyen sebagai ${bahasa() === 'en' ? 'Table' : 'Jadual'} 1.${sudah ? ' Jadual kriteria yang lama masih ada dalam seksyen ini: buang yang lama.' : ''}`); }
+    else if (a === 'csvlama') { if (!Saring.keadaan().n) { toast('Log saringan sedang dimuatkan daripada awan; cuba sebentar lagi', true); return; } Saring.csv(); }
   }
   function input(e) {
-    const el = e.target; const m = el.dataset && el.dataset.pr; if (!m || !ELF) return; const d = data(); const i = parseInt(el.dataset.i, 10);
-    if (m === 'pnama' || m === 'ptarikh' || m === 'prentetan' || m === 'pn') { const x = d.pangkalan[i]; if (!x) return; x[{ pnama: 'nama', ptarikh: 'tarikh', prentetan: 'rentetan', pn: 'n' }[m]] = el.value; }
-    else if (m === 'kk' || m === 'km' || m === 'kx') { const x = d.kriteria[i]; if (!x) return; const t = KRITERIA_TETAP.find(z => z[0] === x.kunci);
-      if (m === 'kk') x.k = t && (el.value.trim() === t[1] || el.value.trim() === t[2]) ? '' : el.value; else x[m === 'km' ? 'm' : 'x'] = el.value;
-      if (x.cad) { delete x.cad; const n = el.closest('.pr-kr'); if (n) n.classList.remove('pr-kr-cad'); } simpanT(); segarKrit(); return; }
-    else if (/^sebab2?[tn]$/.test(m)) { const arr = d[m.slice(0, -1)]; const x = arr[i]; if (!x) return; x[m.slice(-1)] = el.value; if (m.slice(0, -1) === 'sebab') { delete d.dariSaring; delete d.belumNilai; } }
-    else if (m === 'guna2') { d.guna2 = !!el.checked; simpanT(true); render(ELF.el, ELF.f); X.kemasBar(); return; }
-    else if (m === 'bahasa') { d.bahasa = el.value === 'en' ? 'en' : 'ms'; simpanT(); if (d.dariSaring) Saring.isiAngka({ senyap: true }); segarHidup(); segarKrit(); return; }
-    else if (m in kosong()) { d[m] = el.value; if (m === 'pendua' || m === 'dikecualikan' || m === 'tidak') { delete d.dariSaring; if (m === 'dikecualikan') { delete d.sebab0; delete d.belumNilai; } } } else return;
-    simpanT(); segarHidup();
+    const el = e.target; const m = el.dataset && el.dataset.pr; if (!m || !ELF) return; const d = data();
+    if (m === 'guna2') { tutupEditor(true); d.guna2 = !!el.checked; simpanT(true); render(ELF.el, ELF.f); segarRing(); X.kemasBar(); }
+    else if (m === 'bahasa') { tutupEditor(true); d.bahasa = el.value === 'en' ? 'en' : 'ms'; kotakD(); simpanT(true); render(ELF.el, ELF.f); }
   }
-  const Saring = initSaring(X, { data, isi, num, penyambung, kunciSimpan, satuBaris, hariIni, normT, mesejLarian, padanSumber, labelK, bahasa, namaApi: PENYAMBUNG.map(p => p.nama).join(', '), kriteria: () => data().kriteria, segar: () => { if (ELF && ELF.el.isConnected) render(ELF.el, ELF.f); }, segarMedan, elf: () => ELF });
+  const Saring = initSaring(X, { data, isi, num, penyambung, kunciSimpan, satuBaris, hariIni, normT, mesejLarian, padanSumber, labelK, bahasa, namaApi: PENYAMBUNG.map(p => p.nama).join(', '), kriteria: () => data().kriteria, segar: () => {}, segarMedan: () => {}, elf: () => null,
+    selepasMuat: () => { const k = ELF && ELF.el.isConnected ? ELF.el.querySelector('#prLama') : null; if (k) k.innerHTML = htmlLama(); } });
   document.addEventListener('click', e => { if (ELF && ELF.el.isConnected && ELF.el.contains(e.target)) klik(e); });
-  document.addEventListener('input', e => { if (ELF && ELF.el.isConnected && ELF.el.contains(e.target)) input(e); });
   document.addEventListener('change', e => { if (ELF && ELF.el.isConnected && ELF.el.contains(e.target) && e.target.dataset && (e.target.dataset.pr === 'guna2' || e.target.dataset.pr === 'bahasa')) input(e); });
-  return { meter, ringkas, render, teksAgen, kira, svg, png, data, htmlStrategi, htmlAyat, htmlKriteria, Saring };
+  return { meter, ringkas, render, teksAgen, kira, svg, png, data, htmlStrategi, htmlAyat, htmlKriteria, Saring, kotak: kotakD, nilai, jangka, semakKira, templat, bukaEditor, tutupEditor, KOTAK, NAMA };
 }

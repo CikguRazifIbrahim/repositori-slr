@@ -26,7 +26,7 @@ export function initSaring(X, H) {
     try {
       const a = await R.db().get(kunci(id)); if (!a || S.id !== id) return; if ((a.masa || 0) > (S.d.masa || 0)) { pasang(a); R.lsSet(ls(id), S.d); }
       const t = S.d.tarik; if (t && t.cebis && (!S.rekod || S.rekod.length !== t.unik)) { const out = []; for (let i = 0; i < t.cebis; i++) { const c = await R.db().get(kunciC(id, i)); if (c && Array.isArray(c.rekod)) out.push(...c.rekod); } if (S.id === id && out.length) S.rekod = out; }
-      if (S.id === id) segar();
+      if (S.id === id) { segar(); if (H.selepasMuat) H.selepasMuat(); }
     } catch (e) { /* tanpa awan: salinan pada peranti digunakan */ }
   }
   function simpan(segera) {
@@ -272,5 +272,5 @@ PERATURAN: (1) Bagi setiap rekod pulangkan satu keputusan. L bermaksud rekod itu
     return `\nKAEDAH SARINGAN (direkodkan oleh sistem dalam Saringan rekod): ${t.unik} rekod unik disaring pada tajuk dan abstrak selepas ${t.pendua} pendua dibuang secara automatik mengikut DOI dan tajuk.${t.absLuar ? ` Abstrak ${t.absLuar} rekod yang tidak dibekalkan oleh API pangkalan data diambil daripada OpenAlex mengikut DOI.` : ''} ${ai ? `Bagi ${ai} rekod, keputusan awal dicadangkan oleh model AI mengikut Jadual kriteria kelayakan dan setiap cadangan disahkan atau diubah oleh pengkaji sebelum dikira. Nyatakan perkara ini dalam Metodologi, dan jangan tulis bahawa saringan dibuat oleh dua penyaring bebas.` : 'Semua keputusan dibuat oleh pengkaji tanpa cadangan AI; jangan tulis bahawa saringan dibuat oleh dua penyaring bebas kecuali Prof Dr menyatakannya.'}${st && st.belum1 ? ` STATUS: ${st.belum1} rekod belum diputuskan pada tajuk dan abstrak.` : ''}`;
   }
   const keadaan = () => { data(); return { tarik: S.d.tarik, n: (S.rekod || []).length, status: S.rekod ? status() : null, tapis: S.tapis, hal: S.hal, papar: S.papar, kep: Array.from(S.kep.values()), rekod: S.rekod || [] }; };
-  return { html, teksAgen, isiAngka, segar, keadaan, tunjuk };
+  return { html, teksAgen, isiAngka, segar, keadaan, tunjuk, csv };
 }
