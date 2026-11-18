@@ -855,6 +855,11 @@ body.web-open{overflow:hidden}
 .pd-kp-op>b{flex:none;width:22px;height:22px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:12px} .pd-kp-op.on>b{background:var(--accent);color:#fff}
 .pd-kp-op>span{min-width:0} .pd-kp-op em{font-style:normal;font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:0 6px;margin-left:4px;white-space:nowrap} .pd-kp-op.on em{background:var(--surface,#fff)}
 .pd-kp-op small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+/* v1.39.0: jadual dan rajah dalam jawapan agen; rekod CSV tambahan */
+.pd-jadual-agen th{background:var(--surface-2);text-align:left} .pd-jadual-agen td,.pd-jadual-agen th{vertical-align:top}
+.pd-rajah-agen{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0} .pd-rajah-agen svg{max-width:100%;height:auto;display:block;margin:0 auto}
+.pd-csv{display:grid;gap:6px;margin-top:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px} .pd-csv>b{font-size:13.5px} .pd-csv p{margin:0} .pd-csv-ring{font-size:13px}
+.pd-csv-senarai{margin:6px 0 0;padding-left:22px;font-size:12.5px;line-height:1.5;max-height:340px;overflow:auto} .pd-csv-senarai li.repo{opacity:.6} .pd-csv-senarai em{color:var(--muted)}
 .pd-hasil{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--surface)}
 details.pd-hasil>summary{cursor:pointer;font-weight:600;font-size:13px}
 details.pd-hasil[open]>summary{margin-bottom:8px}
