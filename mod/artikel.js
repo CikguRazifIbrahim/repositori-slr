@@ -386,7 +386,7 @@ ${bahan.map(x => Bd().teksRekod(x.i, x.d)).join('\n\n')}`;
   }
   function peringatan() { Teks.peringatan(); }
   /* Pandu Tulis: folder mengikut jenis artikel dan acuan artikel contoh, soal jawab, cadangan ke RAM, meter dan semakan (mod/pandu.js). */
-  Pandu = initPandu(R, { A, Teks, doc, entri, JENIS_PETA, STRUKTUR, sumberAda, onTetapan: () => { if (Tajuk) Tajuk.render(); } });
+  Pandu = initPandu(R, { A, Teks, doc, entri, JENIS_PETA, STRUKTUR, sumberAda, tambahSumber: id => tambahSumber(id), onTetapan: () => { if (Tajuk) Tajuk.render(); } });
   /* Pembantu Tajuk: pembayang tajuk, cadangan agen dalam tetingkap timbul dan semakan tajuk (mod/tajuk.js). */
   Tajuk = initTajuk(R, { A, Teks, doc, entri, JENIS_PETA, sumberAda, Pandu, tetapTajuk, medanTajuk });
   let timerSaiz = null; window.addEventListener('resize', () => { clearTimeout(timerSaiz); timerSaiz = setTimeout(() => medanTajuk(), 150); });
