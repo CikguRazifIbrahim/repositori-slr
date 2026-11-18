@@ -858,8 +858,15 @@ body.web-open{overflow:hidden}
 /* v1.39.0: jadual dan rajah dalam jawapan agen; rekod CSV tambahan */
 .pd-jadual-agen th{background:var(--surface-2);text-align:left} .pd-jadual-agen td,.pd-jadual-agen th{vertical-align:top}
 .pd-rajah-agen{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0} .pd-rajah-agen svg{max-width:100%;height:auto;display:block;margin:0 auto}
-.pd-csv{display:grid;gap:6px;margin-top:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px} .pd-csv>b{font-size:13.5px} .pd-csv p{margin:0} .pd-csv-ring{font-size:13px}
-.pd-csv-senarai{margin:6px 0 0;padding-left:22px;font-size:12.5px;line-height:1.5;max-height:340px;overflow:auto} .pd-csv-senarai li.repo{opacity:.6} .pd-csv-senarai em{color:var(--muted)}
+.pd-csv{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-top:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px} .pd-csv>*{min-width:0} .pd-csv>b{font-size:13.5px} .pd-csv p{margin:0} .pd-csv-ring{font-size:13px}
+.pd-sumber-tatal{max-height:540px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:6px;background:var(--surface)}
+.pd-sr.csv .bil{color:var(--accent);font-weight:700} .pd-sr-s{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400}
+.pd-sn-tapis{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0}
+.pd-sn-tapis input{flex:1 1 260px;min-width:0;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:inherit;font-size:13px}
+button.pd-pil{cursor:pointer;border:1px solid var(--accent-line);padding:2px 8px;margin-right:0;font-family:inherit} button.pd-pil.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)} button.pd-pil:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pd-sn-lagi{margin:4px 0 2px} .pd-csv-aras{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px} .pd-csv-aras select{max-width:100%}
+.pd-stat-j{font-size:12.5px} .pd-stat-j th{background:var(--surface-2);text-align:left} .pd-stat-j td,.pd-stat-j th{vertical-align:top} .pd-stat-j td:first-child{min-width:150px;font-weight:600}
+.pd-csv textarea{width:100%} .pd-bahan{margin:0 0 6px} .pd-teks ul{margin:0 0 8px;padding-left:20px}
 .pd-hasil{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--surface)}
 details.pd-hasil>summary{cursor:pointer;font-weight:600;font-size:13px}
 details.pd-hasil[open]>summary{margin-bottom:8px}
@@ -926,7 +933,7 @@ details.pd-hasil[open]>summary{margin-bottom:8px}
 .ot-guna{font-size:12px;display:inline-flex;gap:4px;align-items:center;color:var(--muted)}
 .ot-b{margin-top:6px;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:6px;background:#fff;color:#111} .ot-b img{max-width:100%;display:block} .ot-jadual table{border-collapse:collapse;font-size:12px;width:100%} .ot-jadual th,.ot-jadual td{border:1px solid #cbd5e1;padding:3px 6px;text-align:left}
 .pd-sumber,.ot-senarai,.pr-pang,.pd-soalan,.pd-balas,.pd-tanya,.pd-ac-peta{grid-template-columns:minmax(0,1fr)} .pd-sr,.ot-item,.pr-pg{min-width:0}
-@media (max-width:720px){.pr-pg,.ot-h,.pr-sb{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pd-l>summary .ring{margin-left:0;text-align:left;flex-basis:100%}.pd-sr .tj{flex-basis:100%;white-space:normal}.pd-sr-acts{margin-left:0;flex-wrap:wrap}.pd-ac-peta .uk{margin-left:0;flex-basis:100%}.pd-f input[type=number],.pd-ac select{max-width:100%}}
+@media (max-width:720px){.pr-pg,.ot-h,.pr-sb{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pd-l>summary .ring{margin-left:0;text-align:left;flex-basis:100%}.pd-sr .tj{flex-basis:100%;white-space:normal}.pd-sr-acts{margin-left:0;flex-wrap:wrap}.pd-sr-s{max-width:100%}.pd-sumber-tatal{max-height:70vh}.pd-ac-peta .uk{margin-left:0;flex-basis:100%}.pd-f input[type=number],.pd-ac select{max-width:100%}}
 .art-sumber-pilih{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 .art-sumber-pilih select{width:100%;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:7px;padding:7px 9px;font-size:14px}
 .art-sumber-senarai{display:flex;flex-direction:column;gap:6px}

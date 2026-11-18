@@ -210,7 +210,10 @@ Pulangkan JSON sekarang.`;
     for (;;) {
       const content = p.content.slice();
       if (mod === 'alat' && p.alat) { const last = content[content.length - 1]; if (last && last.type === 'text') content[content.length - 1] = { type: 'text', text: last.text + '\n\nPanggil alat ' + p.alat.name + ' untuk memulangkan jawapan; jangan balas dalam bentuk teks.' }; }
-      const body = { model: t.model, max_tokens: had, system: [{ type: 'text', text: p.system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] };
+      /* v1.40.0: systemAwal ialah bahagian pertama mesej sistem yang sama bagi banyak panggilan (contohnya blok rekod CSV Pandu Tulis). Ia
+         mendapat penanda cache tersendiri, maka panggilan lain yang berkongsi awalan itu membacanya daripada cache walaupun selebihnya berbeza. */
+      const sys = []; if (p.systemAwal) sys.push({ type: 'text', text: p.systemAwal, cache_control: { type: 'ephemeral' } }); sys.push({ type: 'text', text: p.system, cache_control: { type: 'ephemeral' } });
+      const body = { model: t.model, max_tokens: had, system: sys, messages: [{ role: 'user', content }] };
       const ef = effort && !I.tanpaEffort[t.model] && !tanpaEf ? effort : '';
       const oc = {}; if (mod === 'skema' && p.skema) oc.format = { type: 'json_schema', schema: p.skema }; if (ef) oc.effort = ef;
       if (Object.keys(oc).length) body.output_config = oc;
@@ -316,6 +319,8 @@ Pulangkan JSON sekarang.`;
     if (st === 401) return 'kunci API Anthropic tidak sah (semak Tetapan).';
     if (st === 403) return 'akses ditolak oleh API Anthropic.';
     if (st === 404) return 'model tidak ditemui; pilih model lain dalam Tetapan.';
+    if (st === 400 && /prompt is too long|too many (input )?tokens|exceeds? (the )?(maximum )?context|context (window|length)/i.test(String(e && e.message || ''))) return 'bahan yang dihantar melebihi konteks model ini (' + String(e.message).slice(0, 140) + '). Tiada kos dikenakan. Kurangkan bahan (dalam Pandu Tulis, Langkah 1: tukar kandungan rekod CSV kepada Abstrak ringkas), atau pilih model lain dalam Tetapan.';
+    if (st === 429 && /input tokens? per minute|ITPM/i.test(String(e && e.message || ''))) return 'had token masuk seminit akaun Anthropic dicapai. Tunggu seminit dan cuba lagi. Jika bahan satu panggilan sahaja sudah melebihi had itu, kurangkan bahan (dalam Pandu Tulis, Langkah 1: tukar kandungan rekod CSV kepada Abstrak ringkas).' + (fable ? ' Fable 5.2 mempunyai had kadar tersendiri yang lebih rendah daripada model lain; Sonnet 5.5 membenarkan lebih banyak token masuk seminit.' : '');
     if (st === 429) return 'had kadar atau kredit akaun Anthropic habis; cuba sebentar lagi.' + (fable ? ' Fable 5.2 mempunyai had kadar tersendiri yang lebih rendah daripada model lain: tunggu seminit, atau tukar kepada Sonnet 5.5 dalam Tetapan bagi kerja pukal.' : '');
     if (st === 413) return 'artikel terlalu besar untuk satu permintaan.';
     if (st >= 500) return 'pelayan Anthropic sibuk (' + st + '); cuba sebentar lagi.';
