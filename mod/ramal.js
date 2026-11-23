@@ -10,7 +10,8 @@
    (3) Popup rujukan: klik mana-mana sitasi dalam RAM atau ASAL (termasuk yang ditaip sendiri) memaparkan rujukan APA 7 lengkap rekod itu
        (medan Rujukan APA 7) dengan butang Salin, Buka rekod dan Senarai rujukan seksyen ini. Sitasi yang sepadan dengan rekod digaris
        bawah titik-titik melalui CSS Custom Highlight API (tanpa mengubah HTML yang disimpan).
-   Kos: setiap ramalan ialah satu panggilan kecil ke API Anthropic dengan kunci Prof Dr (lalai Claude Haiku 5.5, effort rendah).
+   Kos: setiap ramalan ialah satu panggilan kecil ke API Anthropic dengan kunci Prof Dr (lalai Claude Opus 5.5 atas pilihan Prof Dr demi
+   mutu bahasa akademik, effort rendah; Haiku 5.5 dan Sonnet 5.5 boleh dipilih dalam Tetapan ramalan).
    Pustaka repositori diletakkan dalam mesej sistem yang dicache, maka ramalan berturut-turut dalam masa lima minit membacanya daripada
    cache. Harga (USD per juta token, disemak dengan dokumentasi Anthropic pada 23 November 2026): Haiku 5.5 masuk 0.10, keluar 0.50;
    Sonnet 5.5 masuk 2, keluar 10; Opus 5.5 masuk 4, keluar 20; Fable 5.2 masuk 8, keluar 40. */
@@ -19,11 +20,11 @@ import { PIAWAI_RINGKAS } from './bahasa-data.js';
 export function initRamal(R, H) {
   const { esc, toast } = R;
   const LS = 'rslr_ramal', LS_GUNA = 'rslr_ramal_guna';
-  const MODEL_RAMAL = [['claude-haiku-5-5', 'Claude Haiku 5.5: paling pantas dan paling murah (disyorkan)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5: bahasa lebih halus, kira-kira 20 kali kos Haiku 5.5'], ['tetapan', 'Ikut model dalam Tetapan aplikasi']];
+  const MODEL_RAMAL = [['claude-opus-5-5', 'Claude Opus 5.5: bahasa akademik paling halus (lalai), lebih perlahan, kira-kira 30 kali kos Haiku 5.5'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5: seimbang, kira-kira separuh kos Opus 5.5'], ['claude-haiku-5-5', 'Claude Haiku 5.5: paling pantas dan paling murah'], ['tetapan', 'Ikut model dalam Tetapan aplikasi']];
   /* [masuk, keluar, cache dibaca, cache ditulis 5 minit] USD per juta token */
   const HARGA = { 'claude-haiku-5-5': [0.10, 0.50, 0.01, 0.125], 'claude-sonnet-5-5': [2, 10, 0.10, 2.5], 'claude-opus-5-5': [4, 20, 0.20, 5], 'claude-fable-5-2': [8, 40, 0.20, 10] };
   const JEDA = [[800, '0.8 saat'], [1200, '1.2 saat (lalai)'], [2000, '2 saat'], [3000, '3 saat']];
-  const LALAI = { on: false, model: 'claude-haiku-5-5', jeda: 1200, bil: 3, popup: true, had: 300 };
+  const LALAI = { on: false, model: 'claude-opus-5-5', jeda: 1200, bil: 3, popup: true, had: 300 };
   /* Pustaka penuh dihantar jika anggarannya tidak melebihi had ini (supaya dicache); jika lebih, hanya rekod paling hampir. Had diletakkan
      jauh di bawah 100,000 token kerana Haiku 5.5 mengenakan kadar lebih tinggi bagi permintaan yang melebihi 100,000 token masuk. */
   const HAD_PENUH = 36000, BIL_HAMPIR = 45;
