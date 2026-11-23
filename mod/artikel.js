@@ -148,7 +148,9 @@ export function initArtikel(R, initTulisan) {
     tambahan: () => ({ jenis: '', sumber: [], soalan: [] }),
     onUnit: id => { A.id = id; R.lsSet(LS_SEMASA, id); renderPanel(); },
     onEditor: () => { if (Pandu) Pandu.onEditor(); }, onTulis: n => { if (Pandu && n === A.id) Pandu.onTulis(); },
-    tanda: (n, id) => (Pandu && Pandu.tandaSeksyen ? Pandu.tandaSeksyen(n, id) : '')
+    tanda: (n, id) => (Pandu && Pandu.tandaSeksyen ? Pandu.tandaSeksyen(n, id) : ''),
+    /* ramalan ayat (mod/ramal.js) mengutamakan artikel sumber penerbitan ini apabila sama kuat */
+    sumberRamal: id => ((Teks.doc(id) || {}).sumber || [])
   };
   let Pandu = null, Tajuk = null;
   const Teks = initTulisan(R, cfg);

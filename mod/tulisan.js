@@ -6,6 +6,8 @@
    dan hanya kemudian menimpa; setiap fail disimpan dalam subfolder Tulisan di Google Drive sebagai arkib. Peringatan dipaparkan
    selagi bab yang dipinjam keluar belum dimuat naik semula. Log harian merekodkan patah perkataan yang ditulis bagi setiap seksyen
    supaya esoknya Prof Dr nampak apa yang sudah ditulis semalam. */
+import { initRamal } from './ramal.js';
+
 export function initTulisan(R, konfig) {
   const { $, $$, esc, toast } = R;
   const BAB = [[1, 'Pengenalan'], [2, 'Sorotan Literatur'], [3, 'Metodologi'], [4, 'Dapatan Kajian'], [5, 'Perbincangan dan Kesimpulan']];
@@ -79,6 +81,7 @@ export function initTulisan(R, konfig) {
     src.childNodes.forEach(c => {
       if (c.nodeType === 3) { dst.appendChild(document.createTextNode(c.nodeValue.replace(/[ ]/g, ' '))); return; }
       if (c.nodeType !== 1) return; const tag = c.tagName.toLowerCase();
+      if (c.hasAttribute('data-ramal')) return; /* bayang ramalan ayat (mod/ramal.js) tidak pernah disimpan */
       if (tag === 'img') { const im = imejBersih(c); if (im) dst.appendChild(im); return; }
       if (tag === 'br') { dst.appendChild(el('br')); return; }
       if (tag === 'script' || tag === 'style' || tag === 'template' || tag === 'noscript') return;
@@ -124,6 +127,7 @@ export function initTulisan(R, konfig) {
     const flush = () => { if (para) { if (para.textContent.trim() || para.querySelector('img')) out.appendChild(para); para = null; } };
     const tutupJd = () => { if (!jd) return; const t = jadualBersih(jd); if (t) jd.replaceWith(t); else jd.remove(); jd = null; jdBaris = null; };
     Array.from(src.childNodes).forEach(c => {
+      if (c.nodeType === 1 && c.hasAttribute('data-ramal')) return;
       const tag = c.nodeType === 1 ? c.tagName.toLowerCase() : '';
       /* pembalut sebaris yang mengandungi blok (Google Docs membalut keseluruhan kandungan dengan <b id="docs-internal-guid">): diturun sebagai blok supaya jadual dan perenggan kekal */
       if (c.nodeType === 1 && !BLOK.test(tag) && !/^(script|style|template|noscript)$/.test(tag) && adaBlok(c)) { flush(); salinBlok(c, out); return; }
@@ -415,6 +419,12 @@ export function initTulisan(R, konfig) {
      muat naik Word peringkat seksyen masuk ke RAM; butang Pindah menggerakkan teks, jadual dan rajah antara kedua-duanya. */
   const ED = { n: null, id: null, timer: null, kotor: { asal: false, ram: false }, aktif: 'asal', julat: { asal: null, ram: null } };
   const PANE = { asal: idp('Teks'), ram: idp('Ram') };
+  /* Ramalan ayat bersitasi dalam RAM dan popup rujukan APA 7 apabila sitasi diklik (v1.46.0, mod/ramal.js). */
+  const Ramal = initRamal(R, {
+    prefix: P, tesis: !!cfg.tesis, editor: m => editor(m), tandaKotor: m => tandaKotor(m), flush: () => flushEditor(),
+    sumberUtama: () => (cfg.sumberRamal && ED.n != null ? cfg.sumberRamal(ED.n) || [] : []),
+    konteks: () => { const s = ED.n != null && ED.id ? (doc(ED.n).seksyen || {})[ED.id] : null; return { sasaran: cfg.tesis ? 'Tulisan Tesis' : 'Artikel penerbitan', unit: ED.n != null ? (cfg.tesis ? label(ED.n) + ': ' + tajukBab(ED.n) : tajukBab(ED.n)) : '', seksyen: s ? tanpaNombor(s.tajuk || '') : '' }; }
+  });
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
   function editor(mana) { return $('#' + PANE[mana || ED.aktif]); }
   function paneDari(node) { const a = $(I('Teks')), r = $(I('Ram')); if (!node) return null; if (a && a.contains(node)) return 'asal'; if (r && r.contains(node)) return 'ram'; return null; }
@@ -515,6 +525,7 @@ export function initTulisan(R, konfig) {
   }
   function kemasBar() { const nd = selNod(); const mana = paneDari(nd); ['asal', 'ram'].forEach(m => { const bar = $(I(m === 'asal' ? 'Bar' : 'BarRam')); if (!bar) return; const cell = nd && nd.closest ? nd.closest('td,th') : null; bar.classList.toggle('jadual', !!(mana === m && cell && editor(m).contains(cell))); }); }
   document.addEventListener('selectionchange', () => {
+    Ramal.pilihan();
     const nd = selNod(); const mana = paneDari(nd); if (!mana) return; ED.aktif = mana;
     const sl = window.getSelection(); if (sl && sl.rangeCount) ED.julat[mana] = sl.getRangeAt(0).cloneRange();
     kemasBar();
@@ -561,7 +572,7 @@ export function initTulisan(R, konfig) {
         <span class="grp warna"><span class="lbl" title="Pilih teks (seret), kemudian klik warna; Asal membuang warna">Warna:</span>${Object.keys(WARNA).map(k => `<button class="w-dot" data-warna="${k}" style="--w:${WARNA[k][0]}" title="${k.charAt(0).toUpperCase() + k.slice(1)}: ${WARNA[k][2]}"><span></span></button>`).join('')}<button data-warna="asal" title="Warna asal (buang warna pada teks yang dipilih)">Asal</button></span>
         <span class="grp"><button data-cmd="insertUnorderedList" title="Senarai berbutir">&#8226; Senarai</button><button data-cmd="insertOrderedList" title="Senarai bernombor">1. Senarai</button></span>
         <span class="grp"><button data-jadual="sisip" title="Sisip jadual pada kedudukan kursor">Jadual</button><button data-imejbtn="1" title="Sisip rajah (fail imej PNG atau JPG) pada kedudukan kursor">Rajah</button>${ram ? '<button data-naikseksyen="1" class="naik" title="Baca fail Word (.docx) dan masukkan keseluruhan kandungannya, termasuk jadual dan rajah, ke dalam RAM seksyen ini">Muat naik Word ke RAM</button>' : ''}</span>
-        <span class="grp pindah">${ram ? '<button data-pindah="asal" class="naik" title="Pindahkan teks yang dipilih (atau blok di kursor, atau keseluruhan RAM jika tiada kursor) ke ASAL pada kedudukan kursor terakhir dalam ASAL">&#8592; Pindah ke ASAL</button><button data-kosongram="1" title="Buang semua kandungan RAM seksyen ini">Kosongkan RAM</button>' : '<button data-pindah="ram" class="naik" title="Pindahkan teks yang dipilih (atau blok di kursor) ke RAM untuk diolah">Pindah ke RAM &#8594;</button>'}</span>
+        ${ram ? Ramal.barHtml() : ''}<span class="grp pindah">${ram ? '<button data-pindah="asal" class="naik" title="Pindahkan teks yang dipilih (atau blok di kursor, atau keseluruhan RAM jika tiada kursor) ke ASAL pada kedudukan kursor terakhir dalam ASAL">&#8592; Pindah ke ASAL</button><button data-kosongram="1" title="Buang semua kandungan RAM seksyen ini">Kosongkan RAM</button>' : '<button data-pindah="ram" class="naik" title="Pindahkan teks yang dipilih (atau blok di kursor) ke RAM untuk diolah">Pindah ke RAM &#8594;</button>'}</span>
         <span class="grp jd"><span class="lbl">Jadual:</span><button data-jadual="baris+" title="Tambah baris di bawah">+ Baris</button><button data-jadual="baris-" title="Tambah baris di atas">Baris di atas</button><button data-jadual="padambaris" title="Padam baris ini">&#8722; Baris</button><button data-jadual="lajur+" title="Tambah lajur di kanan">+ Lajur</button><button data-jadual="padamlajur" title="Padam lajur ini">&#8722; Lajur</button><button data-jadual="kepala" title="Jadikan atau batalkan baris ini sebagai kepala jadual">Kepala</button><button data-jadual="padamjadual" title="Padam keseluruhan jadual">Padam jadual</button></span>
       </div>`;
   }
@@ -591,18 +602,20 @@ export function initTulisan(R, konfig) {
     const edR = editor('ram'); edR.innerHTML = (s.ram || '') || '<p><br></p>'; kemasKosong(edR); pasangWarna(edR); pasangImej(edR);
     [['asal', edA], ['ram', edR]].forEach(([mana, ed]) => {
       ed.addEventListener('focus', () => { ED.aktif = mana; });
-      ed.addEventListener('input', () => { ED.aktif = mana; kemasKosong(ed); tandaKotor(mana); });
+      ed.addEventListener('input', e => { ED.aktif = mana; kemasKosong(ed); tandaKotor(mana); Ramal.input(e, mana); });
       ed.addEventListener('paste', tampal);
-      ed.addEventListener('keydown', e => { ED.aktif = mana; kekunci(e); });
-      ed.addEventListener('blur', () => { flushEditor(); renderSenarai(); renderBab(); });
+      ed.addEventListener('keydown', e => { ED.aktif = mana; if (Ramal.kekunci(e, mana)) return; kekunci(e); });
+      ed.addEventListener('mousedown', e => Ramal.tekan(e));
+      ed.addEventListener('click', e => Ramal.klik(e, mana));
+      ed.addEventListener('blur', () => { Ramal.kabur(); flushEditor(); renderSenarai(); renderBab(); });
       const bar = $(I(mana === 'asal' ? 'Bar' : 'BarRam'));
-      bar.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
-      bar.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; ED.aktif = mana; if (b.dataset.cmd) perintah(b.dataset.cmd); else if (b.dataset.warna) warnakan(b.dataset.warna); else if (b.dataset.jadual === 'sisip') sisipJadual(); else if (b.dataset.jadual) jadualOps(b.dataset.jadual); else if (b.dataset.imejbtn) $(I('ImejFail')).click(); else if (b.dataset.naikseksyen) $(I('FailSek')).click(); else if (b.dataset.pindah) pindah(mana, b.dataset.pindah); else if (b.dataset.kosongram) kosongkanRam(); });
+      bar.addEventListener('mousedown', e => { if (e.target.closest('button')) { e.preventDefault(); if (!e.target.closest('[data-ramal]')) Ramal.tutup(); } });
+      bar.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; ED.aktif = mana; if (b.dataset.ramal) Ramal.butang(b.dataset.ramal); else if (b.dataset.cmd) perintah(b.dataset.cmd); else if (b.dataset.warna) warnakan(b.dataset.warna); else if (b.dataset.jadual === 'sisip') sisipJadual(); else if (b.dataset.jadual) jadualOps(b.dataset.jadual); else if (b.dataset.imejbtn) $(I('ImejFail')).click(); else if (b.dataset.naikseksyen) $(I('FailSek')).click(); else if (b.dataset.pindah) pindah(mana, b.dataset.pindah); else if (b.dataset.kosongram) kosongkanRam(); });
     });
     $(I('ImejFail')).addEventListener('change', e => { masukImej(e.target.files); e.target.value = ''; });
     $(I('Tajuk')).addEventListener('input', e => { tulisSeksyen(n, T.sek, { tajuk: tanpaNombor(e.target.value) }, { senyap: true }); if (cfg.onTajukSeksyen) cfg.onTajukSeksyen(n, T.sek); });
     $(I('Tajuk')).addEventListener('change', () => renderSenarai());
-    kemasBar();
+    kemasBar(); Ramal.pasang();
     if (cfg.onEditor) { try { cfg.onEditor(T.bab, T.sek); } catch (e) { console.warn('tulisan: onEditor', e); } }
   }
   function semuaSeksyen() { const out = []; unit().forEach(([n]) => senarai(n).forEach(id => out.push({ n, id, s: doc(n).seksyen[id] }))); return out; }
@@ -970,6 +983,6 @@ export function initTulisan(R, konfig) {
     $(I('FailSek')).addEventListener('change', e => { const f = e.target.files && e.target.files[0]; muatNaikSeksyen(f); e.target.value = ''; });
     $(I('Cari')).addEventListener('input', e => { T.cari = e.target.value; renderCari(); });
   }
-  return { show, muatTurun, muatNaik, muatNaikSeksyen, daripadaBanding, muatSemua, muatBab, peringatan, huraiHtml, bersihHtml, teksDariHtml, htmlDariTeks, warnaDariDocx, padanWarna, WARNA, pindah, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, simpanEditor, flushEditor, TEMPLAT, state: T, BAB,
+  return { ramal: Ramal, show, muatTurun, muatNaik, muatNaikSeksyen, daripadaBanding, muatSemua, muatBab, peringatan, huraiHtml, bersihHtml, teksDariHtml, htmlDariTeks, warnaDariDocx, padanWarna, WARNA, pindah, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, simpanEditor, flushEditor, TEMPLAT, state: T, BAB,
     doc, docxHtml, senarai, adaUnit, simpanAwan, simpanLokal, simpanImej, muatImej, tulisSeksyen, seksyenBaru, padamSeksyen, renderSemua, renderEditor, renderSenarai, renderBab, renderSambung, renderCari, jumlahPatah, htmlSeksyen, patah, buka, cfg };
 }

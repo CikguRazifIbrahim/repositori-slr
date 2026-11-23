@@ -221,12 +221,16 @@ Pulangkan JSON sekarang.`;
       const oc = {}; if (mod === 'skema' && p.skema) oc.format = { type: 'json_schema', schema: p.skema }; if (ef) oc.effort = ef;
       if (Object.keys(oc).length) body.output_config = oc;
       if (mod === 'alat' && p.alat) { body.tools = [p.alat]; body.tool_choice = { type: 'auto' }; }
-      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), masaTunggu(had));
-      let r;
-      try { r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': t.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body), signal: ctl.signal }); }
-      catch (e) { throw gagal({ code: e && e.name === 'AbortError' ? 'masa' : 'rangkaian', message: String(e && e.message || e), minit: Math.round(masaTunggu(had) / 60000) }); }
-      finally { clearTimeout(tm); }
-      let j = null; try { j = await r.json(); } catch (e) {}
+      /* p.signal (pilihan, v1.46.0): pemanggil boleh membatalkan permintaan, contohnya ramalan ayat yang menjadi basi apabila Prof Dr terus menaip. */
+      if (p.signal && p.signal.aborted) throw gagal({ code: 'batal' });
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), masaTunggu(had)); const henti = () => ctl.abort();
+      if (p.signal) p.signal.addEventListener('abort', henti, { once: true });
+      let r; let j = null;
+      try {
+        try { r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': t.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body), signal: ctl.signal }); }
+        catch (e) { throw gagal(p.signal && p.signal.aborted ? { code: 'batal' } : { code: e && e.name === 'AbortError' ? 'masa' : 'rangkaian', message: String(e && e.message || e), minit: Math.round(masaTunggu(had) / 60000) }); }
+        try { j = await r.json(); } catch (e) { if (p.signal && p.signal.aborted) throw gagal({ code: 'batal' }); }
+      } finally { clearTimeout(tm); if (p.signal) p.signal.removeEventListener('abort', henti); }
       const mesej = (j && j.error && j.error.message) || '';
       /* Ralat 400 tidak dicaj. Jika effort dihantar, hantar semula sekali tanpanya dahulu: jika berjaya, effort itulah puncanya dan ia
          diabaikan bagi model ini sehingga aplikasi dimuat semula; jika masih 400, effort bukan punca dan logik mod di bawah mengambil alih. */
@@ -308,6 +312,7 @@ Pulangkan JSON sekarang.`;
   }
   function msg(e) {
     const c = e && e.code; const st = e && e.status;
+    if (c === 'batal') return 'permintaan dibatalkan.';
     if (c === 'no_pdf') return 'rekod ini belum ada fail PDF. Muat naik PDF dahulu.';
     if (c === 'no_key') return 'kunci API Anthropic belum ditetapkan (menu Tetapan).';
     if (c === 'no_token') return 'Google Drive belum disambung.';
