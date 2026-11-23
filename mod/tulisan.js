@@ -610,6 +610,7 @@ export function initTulisan(R, konfig) {
       ed.addEventListener('blur', () => { Ramal.kabur(); flushEditor(); renderSenarai(); renderBab(); });
       const bar = $(I(mana === 'asal' ? 'Bar' : 'BarRam'));
       bar.addEventListener('mousedown', e => { if (e.target.closest('button')) { e.preventDefault(); if (!e.target.closest('[data-ramal]')) Ramal.tutup(); } });
+      bar.addEventListener('change', e => { const sel = e.target.closest('[data-ramal-model]'); if (sel) Ramal.tukarModel(sel.value); });
       bar.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; ED.aktif = mana; if (b.dataset.ramal) Ramal.butang(b.dataset.ramal); else if (b.dataset.cmd) perintah(b.dataset.cmd); else if (b.dataset.warna) warnakan(b.dataset.warna); else if (b.dataset.jadual === 'sisip') sisipJadual(); else if (b.dataset.jadual) jadualOps(b.dataset.jadual); else if (b.dataset.imejbtn) $(I('ImejFail')).click(); else if (b.dataset.naikseksyen) $(I('FailSek')).click(); else if (b.dataset.pindah) pindah(mana, b.dataset.pindah); else if (b.dataset.kosongram) kosongkanRam(); });
     });
     $(I('ImejFail')).addEventListener('change', e => { masukImej(e.target.files); e.target.value = ''; });

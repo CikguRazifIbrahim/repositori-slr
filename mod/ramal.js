@@ -10,8 +10,9 @@
    (3) Popup rujukan: klik mana-mana sitasi dalam RAM atau ASAL (termasuk yang ditaip sendiri) memaparkan rujukan APA 7 lengkap rekod itu
        (medan Rujukan APA 7) dengan butang Salin, Buka rekod dan Senarai rujukan seksyen ini. Sitasi yang sepadan dengan rekod digaris
        bawah titik-titik melalui CSS Custom Highlight API (tanpa mengubah HTML yang disimpan).
-   Kos: setiap ramalan ialah satu panggilan kecil ke API Anthropic dengan kunci Prof Dr (lalai Claude Opus 5.5 atas pilihan Prof Dr demi
-   mutu bahasa akademik, effort rendah; Haiku 5.5 dan Sonnet 5.5 boleh dipilih dalam Tetapan ramalan).
+   Kos: setiap ramalan ialah satu panggilan kecil ke API Anthropic dengan kunci Prof Dr (lalai Claude Sonnet 5.5 atas pilihan Prof Dr,
+   effort rendah). Model boleh ditukar bila-bila masa melalui pemilih Model dalam bar RAM (Sonnet 5.5, Opus 5.5, Haiku 5.5 atau model
+   dalam Tetapan aplikasi); pilihan itu dikongsi oleh Tulisan dan Artikel pada peranti yang sama.
    Pustaka repositori diletakkan dalam mesej sistem yang dicache, maka ramalan berturut-turut dalam masa lima minit membacanya daripada
    cache. Harga (USD per juta token, disemak dengan dokumentasi Anthropic pada 23 November 2026): Haiku 5.5 masuk 0.10, keluar 0.50;
    Sonnet 5.5 masuk 2, keluar 10; Opus 5.5 masuk 4, keluar 20; Fable 5.2 masuk 8, keluar 40. */
@@ -20,11 +21,13 @@ import { PIAWAI_RINGKAS } from './bahasa-data.js';
 export function initRamal(R, H) {
   const { esc, toast } = R;
   const LS = 'rslr_ramal', LS_GUNA = 'rslr_ramal_guna';
-  const MODEL_RAMAL = [['claude-opus-5-5', 'Claude Opus 5.5: bahasa akademik paling halus (lalai), lebih perlahan, kira-kira 30 kali kos Haiku 5.5'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5: seimbang, kira-kira separuh kos Opus 5.5'], ['claude-haiku-5-5', 'Claude Haiku 5.5: paling pantas dan paling murah'], ['tetapan', 'Ikut model dalam Tetapan aplikasi']];
+  /* [nilai, label panjang (Tetapan ramalan), label pendek (pemilih dalam bar RAM)] */
+  const MODEL_RAMAL = [['claude-sonnet-5-5', 'Claude Sonnet 5.5: seimbang antara mutu bahasa, kelajuan dan kos (lalai)', 'Sonnet 5.5'], ['claude-opus-5-5', 'Claude Opus 5.5: bahasa akademik paling halus, lebih perlahan, kira-kira dua kali kos Sonnet 5.5', 'Opus 5.5'], ['claude-haiku-5-5', 'Claude Haiku 5.5: paling pantas dan paling murah, bahasa kurang halus', 'Haiku 5.5'], ['tetapan', 'Ikut model dalam Tetapan aplikasi', 'Ikut Tetapan']];
+  const namaPendek = v => { const m = MODEL_RAMAL.find(x => x[0] === v); return m ? m[2] : String(v || '').replace(/^claude-/, ''); };
   /* [masuk, keluar, cache dibaca, cache ditulis 5 minit] USD per juta token */
   const HARGA = { 'claude-haiku-5-5': [0.10, 0.50, 0.01, 0.125], 'claude-sonnet-5-5': [2, 10, 0.10, 2.5], 'claude-opus-5-5': [4, 20, 0.20, 5], 'claude-fable-5-2': [8, 40, 0.20, 10] };
   const JEDA = [[800, '0.8 saat'], [1200, '1.2 saat (lalai)'], [2000, '2 saat'], [3000, '3 saat']];
-  const LALAI = { on: false, model: 'claude-opus-5-5', jeda: 1200, bil: 3, popup: true, had: 300 };
+  const LALAI = { on: false, model: 'claude-sonnet-5-5', jeda: 1200, bil: 3, popup: true, had: 300 };
   /* Pustaka penuh dihantar jika anggarannya tidak melebihi had ini (supaya dicache); jika lebih, hanya rekod paling hampir. Had diletakkan
      jauh di bawah 100,000 token kerana Haiku 5.5 mengenakan kadar lebih tinggi bagi permintaan yang melebihi 100,000 token masuk. */
   const HAD_PENUH = 36000, BIL_HAMPIR = 45;
@@ -322,7 +325,7 @@ export function initRamal(R, H) {
     if (mesej) k.innerHTML = `<div class="rm-kad-b">${mesej}</div><div class="rm-kad-a"><button class="btn btn-sm" data-rk="tutup">Tutup</button><button class="btn btn-sm" data-rk="tetapan" title="Tetapan ramalan">Tetapan</button></div>`;
     else {
       const nama = c.ids.map(id => P.peta.get(id)).filter(Boolean).map(e => naratif(e, c.en)).join('; ');
-      k.innerHTML = `<div class="rm-kad-h"><b>Ramalan ayat</b>${Z.calon.length > 1 ? `<span>${Z.i + 1}/${Z.calon.length}</span>` : ''}${c.fungsi ? `<span class="rm-fn">${esc(c.fungsi)}</span>` : ''}</div>
+      k.innerHTML = `<div class="rm-kad-h"><b>Ramalan ayat</b>${Z.calon.length > 1 ? `<span>${Z.i + 1}/${Z.calon.length}</span>` : ''}${c.fungsi ? `<span class="rm-fn">${esc(c.fungsi)}</span>` : ''}${c.model ? `<span class="rm-mdl" title="Model yang menjana cadangan ini">${esc(namaPendek(c.model))}</span>` : ''}</div>
         <div class="rm-kad-b">Disokong oleh <b>${esc(nama)}</b>${c.bukti ? `, medan ${esc(c.medan || 'rekod')}: <q>${esc(potong(c.bukti, 220))}</q>` : ''}</div>
         ${c.lemah ? '<div class="rm-amaran">Petikan bukti tidak sepadan sepenuhnya dengan teks rekod. Semak rekod sebelum menggunakan ayat ini.</div>' : ''}
         <div class="rm-kad-a"><button class="btn btn-sm btn-primary" data-rk="terima">Terima <kbd>Tab</kbd></button>${Z.calon.length > 1 ? '<button class="btn btn-sm" data-rk="lain">Lain <kbd>Alt+]</kbd></button>' : ''}<button class="btn btn-sm" data-rk="tolak">Tolak <kbd>Esc</kbd></button><button class="btn btn-sm" data-rk="rujukan">Rujukan</button><button class="btn btn-sm" data-rk="tetapan" title="Tetapan ramalan">Tetapan</button></div>`;
@@ -446,7 +449,7 @@ ${PIAWAI_RINGKAS}`;
       let j = res.input; if (!j) { try { j = R.Isi.parseJson(res.text, res.stop); } catch (e) { j = { cadangan: [] }; } }
       const ctx = { ayat: ayatKonteks, en };
       calon = (Array.isArray(j && j.cadangan) ? j.cadangan : []).map(c => sahkan(c, dibenar, ctx)).filter(Boolean);
-      const unik = []; calon.forEach(c => { if (!unik.some(u => serupa(u.ayat, c.ayat) > 0.85)) unik.push(c); }); calon = unik.slice(0, t.bil);
+      const unik = []; calon.forEach(c => { if (!unik.some(u => serupa(u.ayat, c.ayat) > 0.85)) unik.push(c); }); calon = unik.slice(0, t.bil); calon.forEach(c => { c.model = tk.model; });
       Z.cache.set(kunciCache, calon); if (Z.cache.size > 60) Z.cache.delete(Z.cache.keys().next().value);
     }
     if (seq !== Z.seq) return;
@@ -500,7 +503,7 @@ ${PIAWAI_RINGKAS}`;
     const ok = await R.richModal('Ramalan ayat bersitasi', `<p>Apabila hidup, setiap kali Prof Dr menamatkan ayat dalam <b>RAM</b> dengan noktah (atau tanda soal) di hujung perenggan dan berhenti menaip seketika, sistem mencadangkan satu ayat seterusnya yang berkaitan dengan ayat itu, sebagai teks bayang berwarna kelabu. Teruskan menaip seperti biasa jika tidak mahu menggunakannya; bayang itu hilang serta-merta.</p>
       <p>Ayat itu hanya bersandarkan <b>rekod dalam repositori</b> (${angka(P.N)} rekod boleh disitasi${P.tiada ? `; ${angka(P.tiada)} rekod tiada Penulis atau Tahun dan tidak digunakan` : ''}). Model hanya menulis ayat dan menamakan kod rekod; <b>sitasi APA 7 dibina oleh sistem</b> daripada medan Penulis dan Tahun rekod, dan petikan bukti disemak dengan teks rekod sebenar. Klik sitasi dalam RAM atau ASAL untuk melihat rujukan APA 7 lengkapnya.</p>
       <label class="tul-cb"><input type="checkbox" id="rmOn"${t.on ? ' checked' : ''}> Hidupkan ramalan automatik selepas noktah dalam RAM</label>
-      <div class="rm-tet"><label>Model <select id="rmModel" class="modal-in">${MODEL_RAMAL.map(([v, l]) => `<option value="${v}"${v === t.model ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+      <div class="rm-tet"><label>Model (juga boleh ditukar terus melalui pemilih Model dalam bar RAM) <select id="rmModel" class="modal-in">${MODEL_RAMAL.map(([v, l]) => `<option value="${v}"${v === t.model ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
       <label>Jeda selepas noktah <select id="rmJeda" class="modal-in">${JEDA.map(([v, l]) => `<option value="${v}"${v === t.jeda ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
       <label>Bilangan cadangan <select id="rmBil" class="modal-in">${[1, 2, 3].map(v => `<option value="${v}"${v === t.bil ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
       <label>Had ramalan sehari <input id="rmHad" class="modal-in" type="number" min="10" max="5000" value="${t.had}"></label></div>
@@ -513,13 +516,20 @@ ${PIAWAI_RINGKAS}`;
     if (!tet().popup) tutupPopup(); serlah();
     toast(tet().on ? 'Ramalan ayat automatik dihidupkan dalam RAM' : 'Ramalan ayat automatik dimatikan; butang Ramal ayat dan Ctrl+. masih boleh digunakan');
   }
-  function kemasButang() { document.querySelectorAll('.tul-bar [data-ramal="tetapan"]').forEach(b => { const on = tet().on; b.textContent = on ? 'Auto: Hidup' : 'Auto: Mati'; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); }
-  function barHtml() { const on = tet().on; return `<span class="grp ramal"><button data-ramal="kini" title="Ramal satu ayat seterusnya bersitasi daripada rekod repositori pada kedudukan kursor (Ctrl+.)">Ramal ayat</button><button data-ramal="tetapan" class="rm-tog${on ? ' on' : ''}" aria-pressed="${on}" title="Tetapan ramalan ayat automatik selepas noktah">${on ? 'Auto: Hidup' : 'Auto: Mati'}</button><button data-ramal="rujukan" title="Senarai rujukan APA 7 bagi semua sitasi dalam ASAL dan RAM seksyen ini">Rujukan</button></span>`; }
+  /* Butang Auto dan pemilih Model dalam bar RAM Tulisan dan Artikel disegerakkan kerana kedua-duanya berkongsi tetapan yang sama. */
+  function kemasButang() {
+    const t = tet();
+    document.querySelectorAll('.tul-bar [data-ramal="tetapan"]').forEach(b => { b.textContent = t.on ? 'Auto: Hidup' : 'Auto: Mati'; b.classList.toggle('on', t.on); b.setAttribute('aria-pressed', t.on ? 'true' : 'false'); });
+    document.querySelectorAll('.tul-bar [data-ramal-model]').forEach(sel => { if (sel.value !== t.model) sel.value = t.model; });
+  }
+  const tajukModel = 'Model untuk ramalan ayat. Sonnet 5.5: seimbang (lalai). Opus 5.5: bahasa paling halus, lebih perlahan, kira-kira dua kali kos Sonnet. Haiku 5.5: paling pantas dan paling murah. Pilihan disimpan pada peranti ini.';
+  function barHtml() { const t = tet(); return `<span class="grp ramal"><button data-ramal="kini" title="Ramal satu ayat seterusnya bersitasi daripada rekod repositori pada kedudukan kursor (Ctrl+.)">Ramal ayat</button><select class="rm-model" data-ramal-model aria-label="Model ramalan ayat" title="${esc(tajukModel)}">${MODEL_RAMAL.map(([v, , p]) => `<option value="${v}"${v === t.model ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select><button data-ramal="tetapan" class="rm-tog${t.on ? ' on' : ''}" aria-pressed="${t.on}" title="Tetapan ramalan ayat automatik selepas noktah">${t.on ? 'Auto: Hidup' : 'Auto: Mati'}</button><button data-ramal="rujukan" title="Senarai rujukan APA 7 bagi semua sitasi dalam ASAL dan RAM seksyen ini">Rujukan</button></span>`; }
+  function tukarModel(v) { if (!MODEL_RAMAL.some(m => m[0] === v)) return; batal(); simpanTet({ model: v }); toast('Model ramalan ayat: ' + namaPendek(v) + (v === 'tetapan' ? ' (' + namaPendek((Z.tk && Z.tk.model) || '') + ')' : '')); }
   function butang(a) { if (a === 'kini') { batal(); cuba(true); } else if (a === 'tetapan') { batal(); bukaTetapan(); } else if (a === 'rujukan') { batal(); senaraiRujukan(); } }
   /* Dipanggil oleh renderEditor selepas editor baharu dipasang: tutup semua sisa ramalan dan kira serlahan sitasi. */
   function pasang() { batal(); tutupPopup(); serlah(); }
   function tutup() { batal(); tutupPopup(); }
 
-  return { input, kekunci, tekan, klik, kabur, pilihan, pasang, tutup, butang, barHtml, serlah, bukaTetapan, senaraiRujukan,
+  return { input, kekunci, tekan, klik, kabur, pilihan, pasang, tutup, butang, barHtml, serlah, bukaTetapan, senaraiRujukan, tukarModel,
     /* untuk ujian */ _: { cariSitasi, pustaka, urusPenulis, ayatTerakhir, sahkan, bersihAyat, apaHtml, nisbahBukti, bahasaInggeris, tet, guna, state: Z } };
 }
