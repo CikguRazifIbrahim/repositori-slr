@@ -18,6 +18,10 @@
    Sonnet 5.5 masuk 2, keluar 10; Opus 5.5 masuk 4, keluar 20; Fable 5.2 masuk 8, keluar 40. */
 import { PIAWAI_RINGKAS } from './bahasa-data.js';
 
+/* Keadaan yang dikongsi oleh kedua-dua tika (Tulisan dan Artikel): kiraan kegagalan berturut-turut, tetapan API yang dicache dan
+   masa makluman kunci API, supaya menghidupkan semula Auto atau membetulkan kunci berkuat kuasa pada kedua-dua menu. */
+const BERSAMA = { gagal: 0, tk: null, tkMasa: 0, kunciDimaklum: 0 };
+
 export function initRamal(R, H) {
   const { esc, toast } = R;
   const LS = 'rslr_ramal', LS_GUNA = 'rslr_ramal_guna';
@@ -33,7 +37,7 @@ export function initRamal(R, H) {
   const HAD_PENUH = 36000, BIL_HAMPIR = 45;
   const PREFIX = H.prefix || 'tul';
   const NAMA_SERLAH = 'sitasi-' + PREFIX;
-  const Z = { timer: null, ctl: null, seq: 0, hantu: null, kad: null, calon: [], i: 0, julat: null, awalan: '', sisip: false, cache: new Map(), gagal: 0, tk: null, tkMasa: 0, pop: null, tSerlah: null, hadDimaklum: '', pustaka: null };
+  const Z = { timer: null, seq: 0, hantu: null, kad: null, calon: [], i: 0, julat: null, awalan: '', sisip: false, cache: new Map(), pop: null, popDariKad: false, tSerlah: null, hadDimaklum: '', pustaka: null };
 
   /* ---------------- tetapan dan penggunaan (per peranti) ---------------- */
   function tet() {
@@ -43,17 +47,21 @@ export function initRamal(R, H) {
     t.bil = Math.max(1, Math.min(3, parseInt(t.bil, 10) || LALAI.bil)); t.had = Math.max(10, Math.min(5000, parseInt(t.had, 10) || LALAI.had));
     t.on = !!t.on; t.popup = t.popup !== false; return t;
   }
-  function simpanTet(p) { R.lsSet(LS, Object.assign(tet(), p)); kemasButang(); }
+  function simpanTet(p) { if (p && p.on === true) BERSAMA.gagal = 0; R.lsSet(LS, Object.assign(tet(), p)); kemasButang(); }
   const hariIni = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   function guna() { const g = R.lsGet(LS_GUNA, null); return g && g.tarikh === hariIni() ? g : { tarikh: hariIni(), n: 0, terima: 0, masuk: 0, keluar: 0, cacheBaca: 0, cacheTulis: 0, usd: 0 }; }
   function kosUsd(u, model) { const h = HARGA[model]; if (!h || !u) return 0; return ((u.masuk || 0) * h[0] + (u.keluar || 0) * h[1] + (u.cacheBaca || 0) * h[2] + (u.cacheTulis || 0) * h[3]) / 1e6; }
-  function catatGuna(u, model) { const g = guna(); g.n++; if (u) { g.masuk += u.masuk || 0; g.keluar += u.keluar || 0; g.cacheBaca += u.cacheBaca || 0; g.cacheTulis += u.cacheTulis || 0; g.usd += kosUsd(u, model); } R.lsSet(LS_GUNA, g); }
+  function catatHantar() { const g = guna(); g.n++; R.lsSet(LS_GUNA, g); }
+  function catatGuna(u, model) { const g = guna(); if (u) { g.masuk += u.masuk || 0; g.keluar += u.keluar || 0; g.cacheBaca += u.cacheBaca || 0; g.cacheTulis += u.cacheTulis || 0; g.usd += kosUsd(u, model); } R.lsSet(LS_GUNA, g); }
   function catatTerima() { const g = guna(); g.terima++; R.lsSet(LS_GUNA, g); }
   const angka = n => Number(n || 0).toLocaleString('en-US');
+  const h0 = h => (h ? h[0] : 0), h1 = h => (h ? h[1] : 0);
   const usd = v => 'US$' + (v < 0.01 ? Number(v || 0).toFixed(4) : Number(v || 0).toFixed(3));
+  /* Tetapan API dicache 30 saat (getMeta ialah panggilan Firestore), tetapi dibaca semula serta-merta jika kunci masih kosong, dan
+     dibuang selepas ralat 401 atau 403, supaya kunci yang baru disimpan atau dibetulkan dalam Tetapan terus digunakan. */
   async function kunci(model) {
-    if (!Z.tk || Date.now() - Z.tkMasa > 60000) { Z.tk = await R.Isi.tetapan(); Z.tkMasa = Date.now(); }
-    return Object.assign({}, Z.tk, { model: model === 'tetapan' ? Z.tk.model : model });
+    if (!BERSAMA.tk || !BERSAMA.tk.key || Date.now() - BERSAMA.tkMasa > 30000) { BERSAMA.tk = await R.Isi.tetapan(); BERSAMA.tkMasa = Date.now(); }
+    return Object.assign({}, BERSAMA.tk, { model: model === 'tetapan' ? BERSAMA.tk.model : model });
   }
 
   /* ---------------- teks dan token ---------------- */
@@ -76,19 +84,28 @@ export function initRamal(R, H) {
   const rekod = id => (R.Banding && R.Banding.rekod ? R.Banding.rekod(id) : Object.assign({}, R.S.docs.get(id) || {}, (R.S.pending || {})[id] || {}));
   const satuBaris = s => String(s || '').replace(/\s+/g, ' ').trim();
   function potong(s, n) { s = satuBaris(s); if (s.length <= n) return s; const p = s.slice(0, n); const i = p.lastIndexOf(' '); return (i > n * 0.6 ? p.slice(0, i) : p) + '…'; }
-  /* Penulis ringkas rekod ("Zhang et al.", "Ahmad dan Ismail", "Lee") kepada bentuk sitasi. */
+  /* Penulis rekod kepada bentuk sitasi. Bentuk ringkas ("Zhang et al.", "Ahmad dan Ismail", "Lee") ialah yang diminta oleh borang, tetapi
+     bentuk penuh APA ("Zhang, L., & Li, M.") dan pengarang organisasi ("Kementerian Sains, Teknologi dan Inovasi") juga dikenali: inisial
+     tidak dikira sebagai pengarang, dan nama organisasi dikekalkan sebagai satu pengarang (APA 7). */
+  const ORG = /^(?:kementerian|bahagian|jabatan|institut|institute|universiti|university|majlis|ministry|department|organi[sz]ation|united|unit|pusat|centre|center|lembaga|suruhanjaya|persatuan|association|council|commission|office|agensi|agency|world|national|dewan|akademi|academy|yayasan|foundation|perbadanan|corporation|sekretariat|secretariat|pertubuhan|unesco|oecd|unicef|kpm|moe)\b/i;
+  const INISIAL = /^(?:\p{Lu}\.?[\s.‐-]*){1,4}$/u;
   function urusPenulis(s) {
-    let t = satuBaris(String(s || '').replace(/\(\s*(?:19|20)\d{2}[a-z]?\s*\)/g, ' ')).replace(/[.,;:\s]+$/, '');
+    const t = satuBaris(String(s || '').replace(/\(\s*(?:(?:19|20)\d{2}[a-z]?|t\.\s?t\.|n\.\s?d\.)\s*\)/gi, ' ')).replace(/[.,;:\s]+$/, '');
     if (!t) return null;
     const etal = /\bet\s*al\b\.?/i.test(t) || /\bdan\s+rakan(?:-rakan)?\b/i.test(t);
-    if (etal) { const a = t.split(/\s*,?\s*\bet\s*al\b|\s+dan\s+rakan/i)[0].replace(/[,;\s]+$/, '').trim(); return a ? { nama: [a], etal: true } : null; }
-    const bahagian = t.split(/\s*(?:;|&|,\s*(?:dan|and)\s+|,|\s+dan\s+|\s+and\s+)\s*/i).map(x => x.trim()).filter(Boolean);
-    if (!bahagian.length) return null; if (bahagian.length >= 3) return { nama: [bahagian[0]], etal: true };
-    return { nama: bahagian, etal: false };
+    if (!etal && (ORG.test(t) || /^\p{Lu}{2,}$/u.test(t))) return { nama: [t], etal: false, org: true };
+    if (etal) { const a = t.split(/\s*,?\s*\bet\s*al\b|\s+dan\s+rakan/i)[0]; const p = a.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean).filter((x, i) => i === 0 || !INISIAL.test(x)); return p.length ? { nama: [p[0]], etal: true, org: false } : null; }
+    const bahagian = t.split(/\s*(?:;|&|,\s*(?:dan|and)\s+|,|\s+dan\s+|\s+and\s+)\s*/i).map(x => x.trim()).filter(Boolean).filter((x, i) => i === 0 || !INISIAL.test(x));
+    if (!bahagian.length) return null; if (bahagian.length >= 3) return { nama: [bahagian[0]], etal: true, org: false };
+    return { nama: bahagian, etal: false, org: false };
   }
-  const tahunDari = s => { const m = /((?:19|20)\d{2})([a-z])?/.exec(String(s || '')); return m ? m[1] + (m[2] || '') : ''; };
-  const kurungan = e => (e.pen.etal ? e.pen.nama[0] + ' et al.' : e.pen.nama.length === 2 ? e.pen.nama[0] + ' & ' + e.pen.nama[1] : e.pen.nama[0]) + ', ' + e.tahun;
+  /* Tahun rekod: 2023, 2023a, atau t.t. dan n.d. (tiada tarikh, APA 7) */
+  function tahunDari(s) { const v = String(s || ''); const m = /((?:19|20)\d{2})([a-z])?/.exec(v); if (m) return m[1] + (m[2] || ''); const u = /\b(t\.\s?t|n\.\s?d)\b\.?/i.exec(v); return u ? (/^n/i.test(u[1]) ? 'n.d.' : 't.t.') : ''; }
+  const namaKurungan = e => (e.pen.etal ? e.pen.nama[0] + ' et al.' : e.pen.nama.length === 2 ? e.pen.nama[0] + ' & ' + e.pen.nama[1] : e.pen.nama[0]);
+  const kurungan = e => namaKurungan(e) + ', ' + e.tahun;
   const naratif = (e, en) => (e.pen.etal ? e.pen.nama[0] + ' et al.' : e.pen.nama.length === 2 ? e.pen.nama[0] + (en ? ' and ' : ' dan ') + e.pen.nama[1] : e.pen.nama[0]) + ' (' + e.tahun + ')';
+  /* Bahagian nama Melayu yang lazim dikongsi ramai pengarang: tidak dikira sebagai padanan separa. */
+  const GENERIK = new Set(['mohd', 'muhammad', 'mohamad', 'mohammad', 'mohamed', 'muhamad', 'mohammed', 'md', 'abdul', 'abd', 'ab', 'nur', 'nurul', 'noor', 'nor', 'siti', 'wan', 'nik', 'che', 'syed', 'sharifah', 'tengku', 'tunku', 'raja', 'haji', 'hj', 'hajah', 'dato', 'datuk', 'dr', 'ahmad']);
   function pustaka() {
     const docs = R.S.docs; let maks = 0; docs.forEach(d => { const t = (d && (d.dikemaskini || d.masa)) || 0; if (t > maks) maks = t; });
     const tanda = docs.size + ':' + maks + ':' + Object.keys(R.S.pending || {}).length;
@@ -112,7 +129,9 @@ export function initRamal(R, H) {
       MEDAN.forEach(([k, lbl, n]) => { if (satuBaris(r[k])) baris.push(lbl + ': ' + potong(r[k], n)); });
       e.ringkas = baris.filter(Boolean).join(' | '); e.token = Math.ceil(e.ringkas.length / 3.6);
     });
-    Z.pustaka = { tanda, senarai, peta: new Map(senarai.map(e => [e.id, e])), kod: new Map(senarai.map(e => [e.kod, e])), df, N: senarai.length, avgdl: senarai.length ? jumlahLen / senarai.length : 1, tiada, token: senarai.reduce((a, e) => a + e.token, 0) };
+    /* token nama keluarga pengarang individu: ayat model yang menyebut nama ini ditolak (sitasi hanya dibina oleh sistem) */
+    const namaOrang = new Set(senarai.filter(e => !e.pen.org).flatMap(e => e.tokPertama.concat(e.tokKedua)).filter(t => t.length >= 3 && !GENERIK.has(t)));
+    Z.pustaka = { tanda, senarai, peta: new Map(senarai.map(e => [e.id, e])), kod: new Map(senarai.map(e => [e.kod, e])), df, N: senarai.length, avgdl: senarai.length ? jumlahLen / senarai.length : 1, tiada, token: senarai.reduce((a, e) => a + e.token, 0), namaOrang };
     return Z.pustaka;
   }
   function bm25(P, qtok, utama) {
@@ -121,57 +140,98 @@ export function initRamal(R, H) {
   }
 
   /* ---------------- sitasi dalam teks: kenal pasti dan padankan dengan rekod ---------------- */
-  const tahunSama = (a, b) => { const x = /^(\d{4})([a-z]?)$/.exec(a || ''), y = /^(\d{4})([a-z]?)$/.exec(b || ''); return !!(x && y && x[1] === y[1] && (!x[2] || !y[2] || x[2] === y[2])); };
+  const RE_ADA_TAHUN = /(?:19|20)\d{2}|t\.\s?t\.|n\.\s?d\./i;
+  const tahunKunci = v => { const s = String(v || '').toLowerCase().replace(/\s/g, ''); return /^(?:t\.t\.|n\.d\.)/.test(s) ? '0000' + s.slice(4) : s; };
+  function tahunSama(a, b) { const x = /^(\d{4})-?([a-z]?)$/.exec(tahunKunci(a)), y = /^(\d{4})-?([a-z]?)$/.exec(tahunKunci(b)); return !!(x && y && x[1] === y[1] && (!x[2] || !y[2] || x[2] === y[2])); }
+  const samaSet = (a, b) => a.size === b.size && Array.from(a).every(x => b.has(x));
+  /* Rentetan pengarang dalam sitasi: senarai nama (inisial dibuang), et al., dan kata pembuka bukan nama dibuang ("Kajian Zhang"). */
+  function huraiPengarang(s) {
+    let t = satuBaris(s).replace(/[,\s]+$/, '');
+    const etal = /\bet\s*al\b|\bdan\s+rakan/i.test(t);
+    t = t.replace(/\s*,?\s*(?:\bet\s*al\b\.?|\bdan\s+rakan(?:-rakan)?)\s*/i, ' ').trim();
+    const nama = t.split(/\s*(?:&|,\s*(?:dan|and)\s+|,|\s+dan\s+|\s+and\s+)\s*/i).map(x => x.trim()).filter(Boolean).filter((x, i) => i === 0 || !INISIAL.test(x));
+    if (nama.length) { const w = nama[0].split(/\s+/); while (w.length > 1 && BUKAN_NAMA.has(kataKunci(w[0]))) w.shift(); nama[0] = w.join(' '); }
+    return { nama, etal, semua: t };
+  }
+  /* Padanan tiga peringkat. "sah": nama pengarang pertama sama tepat (set token), bilangan pengarang sepadan (seorang, dua, et al.)
+     dan pengarang kedua sama bagi dua pengarang. "hampir": sebahagian nama sepadan (bukan bahagian nama yang lazim seperti Mohd atau
+     Abdul) atau bilangan pengarang berbeza; dipaparkan sebagai "semak", tidak diserlah dan tidak masuk senarai rujukan. */
   function padan(P, pengarang, tahun, utama) {
-    const tok = namaToken(pengarang); if (!tok.length) return [];
-    const etal = /\bet\s*al\b/i.test(pengarang); const dua = /\s(?:dan|and|&)\s/i.test(pengarang);
-    const calon = P.senarai.filter(e => tahunSama(e.tahun, tahun) && e.tokPertama.some(t => tok.includes(t)));
-    if (calon.length <= 1) return calon;
-    const skor = e => (e.tokKedua.length && e.tokKedua.some(t => tok.includes(t)) ? 3 : 0) + (e.pen.etal === etal ? 1 : 0) + (dua === (e.pen.nama.length === 2) ? 1 : 0) + (e.tokPertama.every(t => tok.includes(t)) ? 1 : 0) + (utama && utama.has(e.id) ? 0.5 : 0);
-    const maks = Math.max(...calon.map(skor)); return calon.filter(e => skor(e) === maks);
+    const c = huraiPengarang(pengarang); const kosong = { sah: [], hampir: [] }; if (!c.nama.length) return kosong;
+    const t1 = new Set(namaToken(c.nama[0])); const tSemua = new Set(namaToken(c.semua)); if (!t1.size) return kosong;
+    const kat = c.etal || c.nama.length >= 3 ? 3 : c.nama.length; const sah = [], hampir = [];
+    P.senarai.forEach(e => {
+      if (!tahunSama(e.tahun, tahun)) return;
+      if (e.pen.org) { const r = new Set(e.tokPertama); if (samaSet(r, tSemua)) sah.push(e); else if (Array.from(r).filter(x => tSemua.has(x) && !GENERIK.has(x)).length >= Math.min(2, r.size)) hampir.push(e); return; }
+      const rp = new Set(e.tokPertama);
+      if (!samaSet(rp, t1)) { if (Array.from(t1).some(x => rp.has(x) && !GENERIK.has(x))) hampir.push(e); return; }
+      const kr = e.pen.etal ? 3 : e.pen.nama.length; let ok = kr === kat;
+      if (ok && kr === 2) ok = samaSet(new Set(e.tokKedua), new Set(namaToken(c.nama[1] || '')));
+      (ok ? sah : hampir).push(e);
+    });
+    const ut = e => (utama && utama.has(e.id) ? 0 : 1); sah.sort((a, b) => ut(a) - ut(b));
+    return { sah, hampir: sah.length ? [] : hampir };
   }
   const NAMA = "\\p{Lu}[\\p{L}'’\\-]+";
-  const RE_NARATIF = new RegExp(`((?:${NAMA}\\s+){0,3}${NAMA}(?:\\s+et\\s+al\\.?|\\s+dan\\s+rakan(?:-rakan)?|\\s+(?:dan|and|&)\\s+(?:${NAMA}\\s+){0,2}${NAMA}|(?:,\\s+${NAMA})+,?\\s+(?:dan|and|&)\\s+${NAMA})?)\\s*\\(\\s*((?:19|20)\\d{2}[a-z]?)(?=[\\s,;)])`, 'gu');
+  const TAHUN = '(?:(?:19|20)\\d{2}[a-z]?|t\\.\\s?t\\.|n\\.\\s?d\\.)';
+  const RE_NARATIF = new RegExp(`((?:${NAMA}\\s+){0,3}${NAMA}(?:\\s+et\\s+al\\.?|\\s+dan\\s+rakan(?:-rakan)?|\\s+(?:dan|and|&)\\s+(?:${NAMA}\\s+){0,2}${NAMA}|(?:,\\s+${NAMA})+,?\\s+(?:dan|and|&)\\s+${NAMA})?)\\s*\\(\\s*(${TAHUN})(?=[\\s,;)])`, 'gu');
   const RE_KURUNG = /\(([^()]{3,500})\)/g;
-  const RE_TAHUN = /(?:^|[^\d])((?:19|20)\d{2}[a-z]?)(?!\d)/g;
+  const RE_TAHUN = new RegExp(`(?:^|[^\\p{L}\\d])(${TAHUN})(?![\\d\\p{L}])`, 'gu');
   const RE_AWALAN = /^\s*(?:(?:contohnya|misalnya|cth\.?|lihat\s+juga|lihat|rujuk|e\.g\.|see\s+also|see|cf\.|i\.e\.)\s*,?\s*)+/i;
-  /* Pulangkan setiap sitasi dalam satu rentetan teks: { mula, akhir, pengarang, tahun, rekod: [entri pustaka] } */
+  /* sitasi sekunder (APA 7, Seksyen 8.6): "(Bass, 1985, seperti yang dipetik dalam Hallinger, 2020)", "(Bass, 1985 dalam Hallinger, 2020)",
+     "(Bass, 1985, as cited in Hallinger, 2020)". Tanpa bendera i: \p{Lu} dengan i dan u turut sepadan huruf kecil. */
+  const RE_SEKUNDER = /,?\s*(?:[Ss]eperti\s+(?:yang\s+)?dipetik\s+dalam|[Dd]ipetik\s+dalam|(?:[Aa]s\s+)?[Cc]ited\s+in|[Dd]alam)\s+(?=\p{Lu})/u;
+  const RE_HALAMAN = /\b(?:m\.s\.|ms\.|hlm\.|p\.|pp\.|para\.)/i;
+  /* kurungan yang bukan sitasi: bulan, label jadual dan rajah, akta, pelan dan wawasan */
+  const BUKAN_SITASI = new Set(['januari', 'februari', 'mac', 'april', 'mei', 'jun', 'julai', 'ogos', 'september', 'oktober', 'november', 'disember', 'january', 'february', 'march', 'may', 'june', 'july', 'august', 'october', 'december', 'jan', 'feb', 'apr', 'sept', 'okt', 'nov', 'dis', 'jadual', 'rajah', 'bab', 'akta', 'seksyen', 'table', 'figure', 'chapter', 'section', 'act', 'wawasan', 'pelan', 'rmk', 'fasa', 'gelombang', 'tahap', 'versi', 'edisi', 'version', 'edition']);
+  function bentukSitasi(pengarang, kurung, komaSebelumTahun) {
+    if (/\d/.test(pengarang) || patah(pengarang) > 6) return false;
+    const w = pengarang.split(/[\s,&]+/).map(kataKunci).filter(Boolean); if (!w.length || w.some(x => BUKAN_SITASI.has(x))) return false;
+    return !kurung || komaSebelumTahun;
+  }
+  function tahunDalam(t) { RE_TAHUN.lastIndex = 0; const out = []; let m; while ((m = RE_TAHUN.exec(t))) out.push({ i: m.index + m[0].length - m[1].length, v: m[1] }); return out; }
+  function tolak(out, item) { if (!out.some(o => o.mula === item.mula && o.akhir === item.akhir)) out.push(item); }
+  function pecahSekunder(bhg) { const mc = RE_SEKUNDER.exec(bhg); return mc ? [[bhg.slice(0, mc.index), 0], [bhg.slice(mc.index + mc[0].length), mc.index + mc[0].length]] : [[bhg, 0]]; }
+  /* Satu sitasi "Pengarang, Tahun[, Tahun][, m.s. 5]" bermula pada kedudukan off dalam teks blok. Calon yang tidak sepadan dengan
+     mana-mana rekod hanya disimpan jika berbentuk sitasi (koma sebelum tahun, tiada angka atau bulan pada nama, bukan julat tahun). */
+  function huraiBahagian(t, off, out, P, utama) {
+    const tahunList = tahunDalam(t); if (!tahunList.length) return; const pertama = tahunList[0];
+    const kepala = t.slice(0, pertama.i); const aw = RE_AWALAN.exec(kepala); const mulaNama = aw ? aw[0].length : (kepala.length - kepala.trimStart().length);
+    const pengarang = kepala.slice(mulaNama).replace(/[,\s]+$/, '');
+    if (!/\p{Lu}[\p{L}'’\-]+/u.test(pengarang) || patah(pengarang) > 12) return;
+    const p = padan(P, pengarang, pertama.v, utama);
+    if (!p.sah.length && !p.hampir.length) { const julat = /^\s*[-–]\s*\d/.test(t.slice(pertama.i + pertama.v.length)); if (julat || !bentukSitasi(pengarang, true, /,\s*$/.test(kepala))) return; }
+    const halaman = RE_HALAMAN.exec(t); const hadT = halaman ? halaman.index : t.length;
+    tahunList.filter(y => y.i < hadT).forEach((y, k) => {
+      const pk = k === 0 ? p : padan(P, pengarang, y.v, utama);
+      tolak(out, { mula: off + (k === 0 ? mulaNama : y.i), akhir: off + y.i + y.v.length, pengarang, tahun: y.v, rekod: pk.sah, hampir: pk.hampir, naratif: false });
+    });
+  }
+  /* Pulangkan setiap sitasi dalam satu rentetan teks: { mula, akhir, pengarang, tahun, rekod (padanan sah), hampir (padanan separa) } */
   function cariSitasi(teks, utama) {
     teks = String(teks || ''); const out = []; const julatKurung = []; let m; const P = pustaka();
     RE_KURUNG.lastIndex = 0;
     while ((m = RE_KURUNG.exec(teks))) {
-      const isi = m[1]; const asas = m.index + 1; if (!/(?:19|20)\d{2}/.test(isi)) continue; julatKurung.push([m.index, m.index + m[0].length]);
-      let pos = 0;
-      isi.split(';').forEach(bhg => {
-        const off0 = asas + pos; pos += bhg.length + 1;
-        /* "A, 2018, seperti yang dipetik dalam B, 2021" dan "as cited in": dua sitasi dalam satu bahagian */
-        const pecah = []; const rx = /,?\s*(?:seperti\s+yang\s+dipetik\s+dalam|seperti\s+dipetik\s+dalam|dipetik\s+dalam|as\s+cited\s+in)\s+/i; const mc = rx.exec(bhg);
-        if (mc) { pecah.push([bhg.slice(0, mc.index), 0]); pecah.push([bhg.slice(mc.index + mc[0].length), mc.index + mc[0].length]); } else pecah.push([bhg, 0]);
-        pecah.forEach(([t, ro]) => {
-          RE_TAHUN.lastIndex = 0; const tahunList = []; let mt; while ((mt = RE_TAHUN.exec(t))) tahunList.push({ i: mt.index + mt[0].length - mt[1].length, v: mt[1] });
-          if (!tahunList.length) return; const pertama = tahunList[0];
-          const kepala = t.slice(0, pertama.i); const aw = RE_AWALAN.exec(kepala); const mulaNama = aw ? aw[0].length : (kepala.length - kepala.trimStart().length);
-          const pengarang = kepala.slice(mulaNama).replace(/[,\s]+$/, '');
-          if (!/\p{Lu}[\p{L}'’\-]+/u.test(pengarang) || patah(pengarang) > 12) return;
-          /* tahun tambahan pengarang yang sama ("Zhang, 2020, 2021"), sebelum penanda muka surat */
-          const halaman = /\b(?:m\.s\.|ms\.|hlm\.|p\.|pp\.|para\.)/i.exec(t); const hadT = halaman ? halaman.index : t.length;
-          tahunList.filter(y => y.i < hadT).forEach((y, k) => {
-            const mula = off0 + ro + (k === 0 ? mulaNama : y.i), akhir = off0 + ro + y.i + y.v.length;
-            out.push({ mula, akhir, pengarang, tahun: y.v, rekod: padan(P, pengarang, y.v, utama), naratif: false });
-          });
-        });
-      });
+      const isi = m[1]; const asas = m.index + 1; if (!RE_ADA_TAHUN.test(isi)) continue; julatKurung.push([m.index, m.index + m[0].length]);
+      let pos = 0; isi.split(';').forEach(bhg => { const off0 = asas + pos; pos += bhg.length + 1; pecahSekunder(bhg).forEach(([t, ro]) => huraiBahagian(t, off0 + ro, out, P, utama)); });
     }
     RE_NARATIF.lastIndex = 0;
     while ((m = RE_NARATIF.exec(teks))) {
       const buka = m.index + m[0].lastIndexOf('('); if (julatKurung.some(([a, b]) => buka > a && buka < b)) continue;
-      const tutup = teks.indexOf(')', m.index + m[0].length); const akhir = tutup >= 0 && tutup - (m.index + m[0].length) < 40 ? tutup + 1 : m.index + m[0].length;
-      const rekodP = padan(P, m[1], m[2], utama); let mula = m.index;
-      /* buang perkataan pembuka yang bukan nama (contohnya "Kajian Zhang et al. (2023)") */
-      if (rekodP.length) { const tokSah = new Set(rekodP.flatMap(e => e.tokPertama)); const re = /\S+/g; let w; while ((w = re.exec(m[1]))) { if (tokSah.has(kataKunci(w[0]))) { mula = m.index + w.index; break; } } }
-      else { const re = /\S+/g; let w; while ((w = re.exec(m[1]))) { if (!BUKAN_NAMA.has(kataKunci(w[0]))) { mula = m.index + w.index; break; } } }
+      const hujungTahun = m.index + m[0].length; const tutup = teks.indexOf(')', hujungTahun); const adaTutup = tutup >= 0 && tutup - hujungTahun < 160;
+      const dalamKurung = adaTutup ? teks.slice(hujungTahun, tutup) : '';
+      const p = padan(P, m[1], m[2], utama);
+      if (!p.sah.length && !p.hampir.length && !bentukSitasi(huraiPengarang(m[1]).nama.join(' '), false)) continue;
+      let mula = m.index; const tokSah = new Set((p.sah.length ? p.sah : p.hampir).flatMap(e => e.tokPertama));
+      const re = /\S+/g; let w; while ((w = re.exec(m[1]))) { const k = kataKunci(w[0]); if (tokSah.size ? tokSah.has(k) : !BUKAN_NAMA.has(k)) { mula = m.index + w.index; break; } }
+      /* tahun tambahan ("Hallinger (2011, 2020)") dan sumber sekunder ("Bass (1985, dalam Hallinger, 2020)") dalam kurungan yang sama */
+      const sek = RE_SEKUNDER.exec(dalamKurung); const bhgUtama = sek ? dalamKurung.slice(0, sek.index) : dalamKurung;
+      const halaman = RE_HALAMAN.exec(bhgUtama); const tambahan = tahunDalam(halaman ? bhgUtama.slice(0, halaman.index) : bhgUtama);
+      const akhir = sek || tambahan.length ? hujungTahun : (adaTutup ? tutup + 1 : hujungTahun);
       if (out.some(o => mula < o.akhir && akhir > o.mula)) continue;
-      out.push({ mula, akhir, pengarang: m[1], tahun: m[2], rekod: rekodP, naratif: true });
+      out.push({ mula, akhir, pengarang: m[1], tahun: m[2], rekod: p.sah, hampir: p.hampir, naratif: true });
+      tambahan.forEach(y => { const pk = padan(P, m[1], y.v, utama); tolak(out, { mula: hujungTahun + y.i, akhir: hujungTahun + y.i + y.v.length, pengarang: m[1], tahun: y.v, rekod: pk.sah, hampir: pk.hampir, naratif: true }); });
+      if (sek) huraiBahagian(dalamKurung.slice(sek.index + sek[0].length), hujungTahun + sek.index + sek[0].length, out, P, utama);
     }
     return out.sort((a, b) => a.mula - b.mula);
   }
@@ -201,7 +261,7 @@ export function initRamal(R, H) {
   const BOLEH_SERLAH = typeof CSS !== 'undefined' && CSS.highlights && typeof window.Highlight === 'function';
   function serlah() {
     if (!BOLEH_SERLAH) return; const julat = []; const ut = utamaSet();
-    ['asal', 'ram'].forEach(m => { const ed = H.editor(m); if (!ed || !ed.isConnected) return; blokTeks(ed).forEach(b => { if (!/(?:19|20)\d{2}/.test(b.teks)) return; cariSitasi(b.teks, ut).forEach(s => { if (!s.rekod.length) return; const r = julatDari(b, s.mula, s.akhir); if (r) julat.push(r); }); }); });
+    ['asal', 'ram'].forEach(m => { const ed = H.editor(m); if (!ed || !ed.isConnected) return; blokTeks(ed).forEach(b => { if (!RE_ADA_TAHUN.test(b.teks)) return; cariSitasi(b.teks, ut).forEach(s => { if (!s.rekod.length) return; const r = julatDari(b, s.mula, s.akhir); if (r) julat.push(r); }); }); });
     try { if (julat.length) CSS.highlights.set(NAMA_SERLAH, new window.Highlight(...julat)); else CSS.highlights.delete(NAMA_SERLAH); } catch (e) {}
   }
   function jadualSerlah() { clearTimeout(Z.tSerlah); Z.tSerlah = setTimeout(serlah, 350); }
@@ -210,7 +270,8 @@ export function initRamal(R, H) {
   /* Condongkan nama jurnal dan jilid (APA 7) jika bentuk "Tajuk. Jurnal, 12(3), 45-67." dapat dikenal pasti; jika tidak, teks biasa. */
   function apaHtml(ruj) {
     const s = String(ruj || ''); const pautan = t => esc(t).replace(/(https?:\/\/[^\s<]+[^\s<.,;)])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
-    const m = /^(.*?\(\s*(?:19|20)\d{2}[a-z]?[^)]*\)\.\s+.+?[.?!]\s+)([^.,()][^,()]{1,160}?),\s*(\d+)(\s*\([^)]*\))?,\s*([A-Za-z]?\d+[\d–—-]*[A-Za-z]?\d*)(.*)$/su.exec(s);
+    const m = /^(.*?\(\s*(?:(?:19|20)\d{2}[a-z]?|t\.\s?t\.|n\.\s?d\.)[^)]*\)\.\s+.+?[.?!]\s+)([^.,()\s](?:(?![.?!]\s)[^,()]){1,160}?),\s*(\d+)(\s*\([^)]*\))?,\s*([A-Za-z]?\d+[\d–—-]*[A-Za-z]?\d*)(.*)$/su.exec(s);
+    if (m && /^(?:In|Dalam)\s/.test(m[2])) return pautan(s);
     if (!m) return pautan(s);
     return pautan(m[1]) + '<i>' + esc(m[2]) + ', ' + esc(m[3]) + '</i>' + esc(m[4] || '') + ', ' + esc(m[5]) + pautan(m[6]);
   }
@@ -223,46 +284,59 @@ export function initRamal(R, H) {
     try { if (html && window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([teks], { type: 'text/plain' }) })]); else await navigator.clipboard.writeText(teks); return true; }
     catch (e) { try { await navigator.clipboard.writeText(teks); return true; } catch (er) { return false; } }
   }
-  function tutupPopup() { if (Z.pop) { Z.pop.remove(); Z.pop = null; document.removeEventListener('mousedown', luarPopup, true); document.removeEventListener('keydown', escPopup, true); window.removeEventListener('scroll', tutupPopup, true); window.removeEventListener('resize', tutupPopup); } }
-  function luarPopup(e) { if (Z.pop && !Z.pop.contains(e.target)) tutupPopup(); }
-  function escPopup(e) { if (e.key === 'Escape' && Z.pop) { e.preventDefault(); e.stopPropagation(); tutupPopup(); } }
+  /* pulih: popup ditutup dengan Esc, butang tutup, tatal atau ubah saiz. Jika popup dibuka daripada kad atau bayang ramalan, kursor
+     dikembalikan ke RAM supaya Tab masih menerima cadangan; klik di luar popup dan kad pula membatalkan ramalan. */
+  function tutupPopup(pulih) {
+    if (!Z.pop) return; const dariKad = Z.popDariKad; Z.pop.remove(); Z.pop = null; Z.popDariKad = false;
+    document.removeEventListener('mousedown', luarPopup, true); document.removeEventListener('keydown', escPopup, true); window.removeEventListener('scroll', tutupPopupPulih, true); window.removeEventListener('resize', tutupPopupPulih);
+    if (dariKad && pulih === true && Z.hantu && Z.hantu.isConnected) { const ed = H.editor('ram'); if (ed && document.activeElement !== ed) { try { ed.focus({ preventScroll: true }); } catch (e) { ed.focus(); } } if (Z.julat && ed && ed.contains(Z.julat.startContainer)) { const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(Z.julat); } }
+  }
+  const tutupPopupPulih = () => tutupPopup(true);
+  function luarPopup(e) {
+    if (!Z.pop || Z.pop.contains(e.target)) return; const dariKad = Z.popDariKad;
+    if (dariKad && ((Z.kad && Z.kad.contains(e.target)) || (Z.hantu && Z.hantu.contains(e.target)))) { tutupPopup(true); return; }
+    tutupPopup(false); if (dariKad) batal();
+  }
+  function escPopup(e) { if (e.key === 'Escape' && Z.pop) { e.preventDefault(); e.stopPropagation(); tutupPopup(true); } }
   function letak(el, x, y, atas) {
     const w = el.offsetWidth, h = el.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
     let left = Math.max(8, Math.min(x - 16, vw - w - 8)); let top = y + 14; if (top + h > vh - 8) top = Math.max(8, (atas != null ? atas : y) - h - 10);
     el.style.left = left + 'px'; el.style.top = top + 'px';
   }
-  function bukaPopup(s, x, y) {
-    tutupPopup(); const pop = document.createElement('div'); pop.className = 'rm-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Rujukan APA 7');
-    const papar = esc((s.naratif ? satuBaris(s.pengarang) + ' (' + s.tahun + ')' : satuBaris(s.pengarang) + ', ' + s.tahun));
-    const kad = s.rekod.map(e => { const a = apaTeks(e); return `<div class="rm-ruj"><p class="rm-apa">${apaHtml(a.teks)}</p>${a.bina ? '<p class="rm-nota">Medan Rujukan APA 7 rekod ini masih kosong; rujukan di atas dibina daripada medan Penulis, Tahun, Tajuk dan DOI dan perlu dilengkapkan (nama jurnal, jilid, isu, halaman).</p>' : ''}<div class="rm-acts"><button class="btn btn-sm btn-primary" data-rm="salin" data-id="${esc(e.id)}">Salin APA 7</button><button class="btn btn-sm" data-rm="buka" data-id="${esc(e.id)}">Buka rekod</button>${e.doi ? `<a class="btn btn-sm" href="${esc(/^https?:/i.test(e.doi) ? e.doi : 'https://doi.org/' + e.doi.replace(/^doi:\s*/i, ''))}" target="_blank" rel="noopener">DOI</a>` : ''}</div></div>`; }).join('');
-    pop.innerHTML = `<div class="rm-pop-h"><b>Rujukan APA 7</b><span>${papar}</span><button class="rm-x" data-rm="tutup" aria-label="Tutup">&times;</button></div>${s.rekod.length > 1 ? '<p class="rm-nota">Lebih daripada satu rekod sepadan dengan nama dan tahun ini. Pilih rujukan yang betul; jika perlu, tambah huruf a dan b pada tahun (APA 7).</p>' : ''}${kad || `<p class="rm-nota">Sitasi "${papar}" tidak sepadan dengan mana-mana rekod dalam repositori. Semak ejaan nama pengarang dan tahun, atau tambah artikel itu ke repositori dahulu supaya rujukannya boleh dijana.</p>`}<div class="rm-pop-f"><button class="btn btn-sm" data-rm="senarai">Senarai rujukan seksyen ini</button></div>`;
+  function bukaPopup(s, x, y, dariKad) {
+    tutupPopup(); Z.popDariKad = !!dariKad; const pop = document.createElement('div'); pop.className = 'rm-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Rujukan APA 7');
+    const papar = esc(s.label || (s.naratif ? satuBaris(s.pengarang) + ' (' + s.tahun + ')' : satuBaris(s.pengarang) + ', ' + s.tahun));
+    const kadRuj = e => { const a = apaTeks(e); return `<div class="rm-ruj"><p class="rm-apa">${apaHtml(a.teks)}</p>${a.bina ? '<p class="rm-nota">Medan Rujukan APA 7 rekod ini masih kosong; rujukan di atas dibina daripada medan Penulis, Tahun, Tajuk dan DOI dan perlu dilengkapkan (nama jurnal, jilid, isu, halaman).</p>' : ''}<div class="rm-acts"><button class="btn btn-sm btn-primary" data-rm="salin" data-id="${esc(e.id)}">Salin APA 7</button><button class="btn btn-sm" data-rm="buka" data-id="${esc(e.id)}">Buka rekod</button>${e.doi ? `<a class="btn btn-sm" href="${esc(/^https?:/i.test(e.doi) ? e.doi : 'https://doi.org/' + e.doi.replace(/^doi:\s*/i, ''))}" target="_blank" rel="noopener">DOI</a>` : ''}</div></div>`; };
+    const kad = s.rekod.map(kadRuj).join(''); const hampir = !s.rekod.length && s.hampir && s.hampir.length ? s.hampir : [];
+    pop.innerHTML = `<div class="rm-pop-h"><b>Rujukan APA 7</b><span>${papar}</span><button class="rm-x" data-rm="tutup" aria-label="Tutup">&times;</button></div>${s.rekod.length > 1 ? '<p class="rm-nota">Lebih daripada satu rekod sepadan dengan nama dan tahun ini. Pilih rujukan yang betul; jika perlu, tambah huruf a dan b pada tahun (APA 7).</p>' : ''}${kad || (hampir.length ? `<p class="rm-nota rm-semak-n">Tiada rekod yang sepadan tepat dengan sitasi "${papar}". Rekod di bawah hampir sepadan (nama pengarang, bilangan pengarang atau tahun berbeza); semak sebelum menggunakan rujukannya.</p>${hampir.map(kadRuj).join('')}` : '') || `<p class="rm-nota">Sitasi "${papar}" tidak sepadan dengan mana-mana rekod dalam repositori. Semak ejaan nama pengarang dan tahun, atau tambah artikel itu ke repositori dahulu supaya rujukannya boleh dijana.</p>`}<div class="rm-pop-f"><button class="btn btn-sm" data-rm="senarai">Senarai rujukan seksyen ini</button></div>`;
     document.body.appendChild(pop); Z.pop = pop; letak(pop, x, y);
     pop.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
     pop.addEventListener('click', async e => {
       const b = e.target.closest('[data-rm]'); if (!b) return; const a = b.dataset.rm; const P = pustaka(); const ent = b.dataset.id ? P.peta.get(b.dataset.id) : null;
-      if (a === 'tutup') tutupPopup();
+      if (a === 'tutup') tutupPopup(true);
       else if (a === 'salin' && ent) { const t = apaTeks(ent); const ok = await salin(t.teks, `<p style="margin-left:0.5in;text-indent:-0.5in">${apaHtml(t.teks)}</p>`); toast(ok ? 'Rujukan APA 7 disalin' : 'Papan keratan tidak tersedia', !ok); }
-      else if (a === 'buka' && ent) { tutupPopup(); try { H.flush && H.flush(); } catch (er) {} R.openRecord(ent.id); }
+      else if (a === 'buka' && ent) { tutupPopup(); batal(); try { H.flush && H.flush(); } catch (er) {} R.openRecord(ent.id); }
       else if (a === 'senarai') { tutupPopup(); senaraiRujukan(); }
     });
-    document.addEventListener('mousedown', luarPopup, true); document.addEventListener('keydown', escPopup, true); window.addEventListener('scroll', tutupPopup, true); window.addEventListener('resize', tutupPopup);
+    document.addEventListener('mousedown', luarPopup, true); document.addEventListener('keydown', escPopup, true); window.addEventListener('scroll', tutupPopupPulih, true); window.addEventListener('resize', tutupPopupPulih);
   }
   function klik(e, mana) {
     if (e.target && e.target.closest && e.target.closest('[data-ramal]')) return;
     if (!tet().popup) return; const sl = window.getSelection(); if (!sl || !sl.rangeCount || !sl.isCollapsed) return;
     const rg = sl.getRangeAt(0); const ed = H.editor(mana); if (!ed || !ed.contains(rg.startContainer)) return;
-    const bl = blokOf(rg.startContainer, ed); const b = blokTeks(ed, bl === ed ? null : bl).find(x => x.el === bl); if (!b || !/(?:19|20)\d{2}/.test(b.teks)) return;
+    const bl = blokOf(rg.startContainer, ed); const b = blokTeks(ed, bl === ed ? null : bl).find(x => x.el === bl); if (!b || !RE_ADA_TAHUN.test(b.teks)) return;
     const off = offsetDalam(b, rg.startContainer, rg.startOffset); if (off < 0) return;
     const s = cariSitasi(b.teks, utamaSet()).find(x => off > x.mula && off < x.akhir);
     if (s) bukaPopup(s, e.clientX, e.clientY);
   }
   /* Senarai rujukan seksyen semasa: semua sitasi dalam ASAL dan RAM yang sepadan dengan rekod, disusun mengikut abjad (APA 7). */
   async function senaraiRujukan() {
-    const ut = utamaSet(); const ids = new Map(); const luar = new Map(); const kabur = new Map();
-    ['asal', 'ram'].forEach(m => blokTeks(H.editor(m)).forEach(b => cariSitasi(b.teks, ut).forEach(s => { if (s.rekod.length === 1) ids.set(s.rekod[0].id, s.rekod[0]); else if (s.rekod.length > 1) kabur.set(satuBaris(s.pengarang) + ', ' + s.tahun, s.rekod); else luar.set(satuBaris(s.pengarang) + ', ' + s.tahun, 1); })));
+    batal(); tutupPopup();
+    const ut = utamaSet(); const ids = new Map(); const luar = new Map(); const kabur = new Map(); const semak = new Map();
+    ['asal', 'ram'].forEach(m => blokTeks(H.editor(m)).forEach(b => { if (!RE_ADA_TAHUN.test(b.teks)) return; cariSitasi(b.teks, ut).forEach(s => { const k = satuBaris(s.pengarang) + ', ' + s.tahun; if (s.rekod.length === 1) ids.set(s.rekod[0].id, s.rekod[0]); else if (s.rekod.length > 1) kabur.set(k, s.rekod); else if (s.hampir && s.hampir.length) semak.set(k, s.hampir); else luar.set(k, 1); }); }));
     const susun = Array.from(ids.values()).sort((a, b) => bersih(apaTeks(a).teks).localeCompare(bersih(apaTeks(b).teks)) || a.tahun.localeCompare(b.tahun));
     const tk = susun.map(e => apaTeks(e).teks); const html = susun.map(e => `<p class="rm-senarai-i">${apaHtml(apaTeks(e).teks)}</p>`).join('');
-    const ok = await R.richModal('Rujukan seksyen ini (APA 7)', `${susun.length ? `<div class="rm-senarai">${html}</div>` : '<p>Tiada sitasi dalam ASAL atau RAM seksyen ini yang sepadan dengan rekod repositori.</p>'}${kabur.size ? `<p class="help"><b>Sitasi yang sepadan dengan lebih daripada satu rekod</b> (klik sitasi untuk memilih): ${esc(Array.from(kabur.keys()).join('; '))}.</p>` : ''}${luar.size ? `<p class="help"><b>Sitasi tanpa rekod repositori</b> (rujukannya perlu ditulis sendiri): ${esc(Array.from(luar.keys()).join('; '))}.</p>` : ''}<p class="help">Disusun mengikut abjad nama pengarang pertama (APA 7). Rujukan diambil daripada medan Rujukan APA 7 setiap rekod; nama jurnal dan jilid dicondongkan apabila bentuknya dapat dikenal pasti.</p>`, susun.length ? 'Salin semua' : 'Tutup', susun.length ? 'Tutup' : null);
+    const ok = await R.richModal('Rujukan seksyen ini (APA 7)', `${susun.length ? `<div class="rm-senarai">${html}</div>` : '<p>Tiada sitasi dalam ASAL atau RAM seksyen ini yang sepadan dengan rekod repositori.</p>'}${kabur.size ? `<p class="help"><b>Sitasi yang sepadan dengan lebih daripada satu rekod</b> (klik sitasi untuk memilih): ${esc(Array.from(kabur.keys()).join('; '))}.</p>` : ''}${semak.size ? `<p class="help"><b>Sitasi yang hampir sepadan dengan rekod</b> (nama pengarang, bilangan pengarang atau tahun berbeza; semak dan betulkan sitasi atau rekod): ${esc(Array.from(semak.entries()).map(([k, r]) => k + ' (rekod: ' + r.map(e => naratif(e, false)).join(' atau ') + ')').join('; '))}.</p>` : ''}${luar.size ? `<p class="help"><b>Sitasi tanpa rekod repositori</b> (rujukannya perlu ditulis sendiri): ${esc(Array.from(luar.keys()).join('; '))}.</p>` : ''}<p class="help">Disusun mengikut abjad nama pengarang pertama (APA 7). Rujukan diambil daripada medan Rujukan APA 7 setiap rekod; nama jurnal dan jilid dicondongkan apabila bentuknya dapat dikenal pasti.</p>`, susun.length ? 'Salin semua' : 'Tutup', susun.length ? 'Tutup' : null);
     if (ok && susun.length) { const jadi = await salin(tk.join('\n\n'), susun.map(e => `<p style="margin-left:0.5in;text-indent:-0.5in">${apaHtml(apaTeks(e).teks)}</p>`).join('')); toast(jadi ? susun.length + ' rujukan disalin (APA 7)' : 'Papan keratan tidak tersedia', !jadi); }
   }
 
@@ -293,9 +367,10 @@ export function initRamal(R, H) {
   function teksSelepas(bl, rg) { const r = document.createRange(); r.setStart(rg.endContainer, rg.endOffset); r.setEnd(bl, bl.childNodes.length); const tmp = document.createElement('div'); tmp.appendChild(r.cloneContents()); tmp.querySelectorAll('[data-ramal]').forEach(x => x.remove()); return tmp.textContent; }
   function teksSebelumBlok(bl, rg) { const r = document.createRange(); r.setStart(bl, 0); r.setEnd(rg.startContainer, rg.startOffset); const tmp = document.createElement('div'); tmp.appendChild(r.cloneContents()); tmp.querySelectorAll('[data-ramal]').forEach(x => x.remove()); return tmp.textContent; }
 
+  /* Membatalkan ramalan yang dipaparkan atau dijadualkan. Permintaan yang sudah dihantar tidak diputuskan: API tetap memprosesnya,
+     maka jawapannya direkod (kos) dan dicache, tetapi tidak dipaparkan kerana nombor jujukan sudah berubah. */
   function batal() {
     clearTimeout(Z.timer); Z.timer = null; Z.seq++;
-    if (Z.ctl) { try { Z.ctl.abort(); } catch (e) {} Z.ctl = null; }
     buangHantu(); tutupKad();
   }
   function buangHantu() {
@@ -324,10 +399,10 @@ export function initRamal(R, H) {
     const k = document.createElement('div'); k.className = 'rm-kad'; k.setAttribute('role', 'status');
     if (mesej) k.innerHTML = `<div class="rm-kad-b">${mesej}</div><div class="rm-kad-a"><button class="btn btn-sm" data-rk="tutup">Tutup</button><button class="btn btn-sm" data-rk="tetapan" title="Tetapan ramalan">Tetapan</button></div>`;
     else {
-      const nama = c.ids.map(id => P.peta.get(id)).filter(Boolean).map(e => naratif(e, c.en)).join('; ');
+      const bukti = (c.bukti || []).map(b => { const e = P.peta.get(b.id); return e ? `<div class="rm-kad-b">Disokong oleh <b>${esc(naratif(e, c.en))}</b>, medan ${esc(b.medan)}: <q>${esc(potong(b.petikan, 220))}</q>${b.lemah ? ' <span class="rm-semak">semak</span>' : ''}</div>` : ''; }).join('');
       k.innerHTML = `<div class="rm-kad-h"><b>Ramalan ayat</b>${Z.calon.length > 1 ? `<span>${Z.i + 1}/${Z.calon.length}</span>` : ''}${c.fungsi ? `<span class="rm-fn">${esc(c.fungsi)}</span>` : ''}${c.model ? `<span class="rm-mdl" title="Model yang menjana cadangan ini">${esc(namaPendek(c.model))}</span>` : ''}</div>
-        <div class="rm-kad-b">Disokong oleh <b>${esc(nama)}</b>${c.bukti ? `, medan ${esc(c.medan || 'rekod')}: <q>${esc(potong(c.bukti, 220))}</q>` : ''}</div>
-        ${c.lemah ? '<div class="rm-amaran">Petikan bukti tidak sepadan sepenuhnya dengan teks rekod. Semak rekod sebelum menggunakan ayat ini.</div>' : ''}
+        ${bukti}
+        ${c.lemah ? '<div class="rm-amaran">Petikan bukti hanya sepadan sebahagian dengan teks rekod (ditanda semak). Semak rekod sebelum menggunakan ayat ini.</div>' : ''}
         <div class="rm-kad-a"><button class="btn btn-sm btn-primary" data-rk="terima">Terima <kbd>Tab</kbd></button>${Z.calon.length > 1 ? '<button class="btn btn-sm" data-rk="lain">Lain <kbd>Alt+]</kbd></button>' : ''}<button class="btn btn-sm" data-rk="tolak">Tolak <kbd>Esc</kbd></button><button class="btn btn-sm" data-rk="rujukan">Rujukan</button><button class="btn btn-sm" data-rk="tetapan" title="Tetapan ramalan">Tetapan</button></div>`;
     }
     document.body.appendChild(k); Z.kad = k; letakKad();
@@ -336,6 +411,7 @@ export function initRamal(R, H) {
       const b = e.target.closest('[data-rk]'); if (!b) return; const a = b.dataset.rk;
       if (a === 'terima') terima(); else if (a === 'lain') kitar(1); else if (a === 'tolak' || a === 'tutup') batal(); else if (a === 'tetapan') { batal(); bukaTetapan(); }
       else if (a === 'rujukan') { const c2 = Z.calon[Z.i]; if (c2) { const r = b.getBoundingClientRect(); bukaPopupIds(c2.ids, r.left, r.bottom); } }
+      else if (a === 'tutup') batal();
     });
     window.addEventListener('scroll', letakKad, true); window.addEventListener('resize', letakKad);
     if (mesej) setTimeout(() => { if (Z.kad === k && !Z.hantu) tutupKad(); }, 4500);
@@ -347,7 +423,7 @@ export function initRamal(R, H) {
     if (!rect || (!rect.width && !rect.height && !rect.top)) { const ed = H.editor('ram'); if (ed) rect = ed.getBoundingClientRect(); }
     if (!rect) return; const atas = Z.hantu && Z.hantu.isConnected ? (Z.hantu.getClientRects()[0] || rect).top : rect.top; letak(Z.kad, rect.left + 16, rect.bottom - 6, atas);
   }
-  function bukaPopupIds(ids, x, y) { const P = pustaka(); const rek = ids.map(id => P.peta.get(id)).filter(Boolean); if (!rek.length) return; const e0 = rek[0]; bukaPopup({ pengarang: rek.map(e => kurungan(e).replace(/, [^,]+$/, '')).join('; '), tahun: e0.tahun, rekod: rek, naratif: false }, x, y); }
+  function bukaPopupIds(ids, x, y) { const P = pustaka(); const rek = ids.map(id => P.peta.get(id)).filter(Boolean); if (!rek.length) return; bukaPopup({ label: sitasiKurungan(rek, H.tesis).teks.slice(1, -1), rekod: rek, hampir: [] }, x, y, true); }
   function kitar(arah) { if (Z.calon.length < 2) return; Z.i = (Z.i + arah + Z.calon.length) % Z.calon.length; paparHantu(); }
   function terima() {
     const c = Z.calon[Z.i]; const ed = H.editor('ram'); if (!c || !ed || !Z.hantu) return;
@@ -363,22 +439,68 @@ export function initRamal(R, H) {
     t = t.replace(/\s*[—–]\s*/g, ', ').replace(/\s+([,.;:?!])/g, '$1').replace(/\s{2,}/g, ' ').trim();
     if (!t) return ''; if (!/[.?!]$/.test(t)) t += '.'; return t.charAt(0).toUpperCase() + t.slice(1);
   }
-  const tokenBukti = s => bersih(s).split(/[^a-z0-9]+/).filter(w => w.length >= 2);
-  function nisbahBukti(bukti, e) { const tb = tokenBukti(bukti); if (tb.length < 3) return 0; const set = new Set(tokenBukti(e.teksPenuh)); return tb.filter(w => set.has(w)).length / tb.length; }
   function serupa(a, b) { const x = new Set(token(a)), y = token(b); if (!x.size || !y.length) return 0; return y.filter(w => x.has(w)).length / Math.max(x.size, y.length); }
+  /* ---- semakan bukti: setiap sumber yang disitasi mesti mempunyai petikannya sendiri yang ditemui dalam SATU medan rekod itu sebagai
+     satu atau dua jujukan perkataan berturutan (bukan sekadar set perkataan), tanpa kata nafi dalam rekod yang hilang daripada petikan.
+     Kad cadangan memaparkan teks rekod yang sepadan, bukan petikan yang ditulis model. */
+  const MEDAN_BUKTI = [['tajuk', 'Tajuk'], ['objektif', 'Objektif'], ['konstruk', 'Konstruk'], ['definisi', 'Definisi'], ['teori', 'Teori'], ['dapatan', 'Dapatan'], ['cabaran', 'Cabaran'], ['implikasi', 'Implikasi'], ['batasan', 'Batasan'], ['jurang', 'Jurang'], ['bandingan', 'Bandingan'], ['alasanRelevansi', 'Relevansi'], ['sampel', 'Sampel']];
+  const NEGASI = new Set(['tidak', 'tak', 'bukan', 'tiada', 'tanpa', 'belum', 'not', 'no', 'never', 'neither', 'nor', 'non', 'without', 'lack', 'lacks', 'lacked', 'insignificant']);
+  function tokenKedudukan(s) { const out = []; const re = /[\p{L}\p{N}]+(?:[.,]\d+)*/gu; let m; while ((m = re.exec(s))) out.push({ w: bersih(m[0]).replace(/,(?=\d)/g, '.'), i: m.index, j: m.index + m[0].length }); return out; }
+  function medanRekod(e) { return e._medan || (e._medan = MEDAN_BUKTI.map(([k, lbl]) => { const s = satuBaris(e.r[k]); return { lbl, s, tok: tokenKedudukan(s) }; }).filter(x => x.tok.length)); }
+  function runTerpanjang(q, qa, qb, f) {
+    let best = { n: 0, qa: 0, fa: 0 }; let prev = new Uint16Array(f.length + 1);
+    for (let i = qa; i < qb; i++) { const cur = new Uint16Array(f.length + 1); for (let j = 1; j <= f.length; j++) if (q[i] === f[j - 1].w) { cur[j] = prev[j - 1] + 1; if (cur[j] > best.n) best = { n: cur[j], qa: i + 1 - cur[j], fa: j - cur[j] }; } prev = cur; }
+    return best;
+  }
+  function padanBukti(petikan, e) {
+    const q = tokenKedudukan(satuBaris(petikan)).map(x => x.w); if (q.length < 5) return null; const qset = new Set(q); let terbaik = null;
+    medanRekod(e).forEach(m => {
+      const f = m.tok; const r1 = runTerpanjang(q, 0, q.length, f); if (r1.n < 4) return;
+      let n = r1.n, fa = r1.fa, fb = r1.fa + r1.n;
+      const kiri = runTerpanjang(q, 0, r1.qa, f), kanan = runTerpanjang(q, r1.qa + r1.n, q.length, f); const dua = [];
+      if (kiri.n >= 2 && kiri.fa + kiri.n <= fa && fa - (kiri.fa + kiri.n) <= 8) dua.push(kiri);
+      if (kanan.n >= 2 && kanan.fa >= fb && kanan.fa - fb <= 8) dua.push(kanan);
+      const r2 = dua.sort((a, b) => b.n - a.n)[0]; if (r2) { n += r2.n; fa = Math.min(fa, r2.fa); fb = Math.max(fb, r2.fa + r2.n); }
+      for (let j = Math.max(0, fa - 2); j < fb; j++) if (NEGASI.has(f[j].w) && !qset.has(f[j].w)) return;
+      const nisbah = n / q.length; if (!terbaik || nisbah > terbaik.nisbah) terbaik = { nisbah, medan: m.lbl, petikan: m.s.slice(f[fa].i, f[fb - 1].j) };
+    });
+    return terbaik;
+  }
+  /* Angka dalam ayat (peratus, pekali, nilai p, saiz sampel, tahun) mesti tertulis dalam rekod yang disitasi. */
+  const angkaDari = s => (String(s || '').match(/(?<![\d.,])(?:\d+(?:[.,]\d+)*|[.,]\d+)/g) || []).map(x => String(parseFloat(x.replace(/,(?=\d{3}(?!\d))/g, '').replace(',', '.'))));
+  function angkaSah(ayat, rek) { const a = angkaDari(String(ayat).replace(/\bke-\d+/gi, '')); if (!a.length) return true; const ada = new Set(rek.flatMap(e => e._angka || (e._angka = angkaDari(e.teksPenuh + ' ' + e.tahun)))); return a.every(x => ada.has(x)); }
+  /* Nama pengarang yang ditulis model (dengan atau tanpa tahun) ditolak: sitasi hanya dibina oleh sistem. */
+  const RE_ATRIBUSI = /(?:^|[\s,])(?:[Mm]enurut|[Kk]ajian\s+oleh|[Dd]inyatakan\s+oleh|[Dd]ihujahkan\s+oleh|[Dd]itegaskan\s+oleh|[Dd]ikemukakan\s+oleh|[Aa]ccording\s+to|[Aa]s\s+(?:noted|argued|reported|suggested)\s+by)\s+\p{Lu}/u;
+  function adaNamaPengarang(ayat, P) {
+    if (RE_ATRIBUSI.test(ayat)) return true;
+    return ayat.split(/\s+/).some(k => { const w = k.replace(/^[("'“‘]+|[)"'”’.,;:!?]+$/g, ''); return /^\p{Lu}/u.test(w) && P.namaOrang.has(kataKunci(w)); });
+  }
+  /* Sitasi dalam kurungan yang dibina sistem: pengarang yang sama digabung ("Nonaka & Takeuchi, 1995, 2019"); susunan APA 7 (abjad,
+     kemudian seorang sebelum dua sebelum et al., kemudian tahun) bagi artikel, atau tahun terkini dahulu (garis panduan UPSI) bagi tesis. */
+  const katPengarang = e => (e.pen.etal ? 3 : e.pen.nama.length);
+  function sitasiKurungan(rek, tesis) {
+    const kump = new Map(); rek.forEach(e => { const k = e.pen.nama.map(bersih).join('|') + (e.pen.etal ? '|etal' : ''); if (!kump.has(k)) kump.set(k, []); kump.get(k).push(e); });
+    const ut = (a, b) => tahunKunci(a.tahun).localeCompare(tahunKunci(b.tahun));
+    const g = Array.from(kump.values()).map(a => a.sort(ut));
+    const banding = (A, B) => { const a = A[0], b = B[0]; return bersih(a.pen.nama[0]).localeCompare(bersih(b.pen.nama[0])) || katPengarang(a) - katPengarang(b) || bersih(a.pen.nama[1] || '').localeCompare(bersih(b.pen.nama[1] || '')) || ut(a, b); };
+    g.sort(tesis ? (A, B) => tahunKunci(B[B.length - 1].tahun).localeCompare(tahunKunci(A[A.length - 1].tahun)) || banding(A, B) : banding);
+    return { teks: '(' + g.map(a => namaKurungan(a[0]) + ', ' + a.map(e => e.tahun).join(', ')).join('; ') + ')', ids: g.flat().map(e => e.id) };
+  }
   function sahkan(c, dibenar, ctx) {
-    if (!c || typeof c.ayat !== 'string') return null;
-    const kod = Array.from(new Set((Array.isArray(c.sumber) ? c.sumber : []).map(k => String(k).toUpperCase().replace(/[^R\d]/g, '')))).filter(k => dibenar.has(k)).slice(0, 2);
-    const rek = kod.map(k => dibenar.get(k)); if (!rek.length) return null;
-    if (/\bet\s+al\b/i.test(c.ayat)) return null;
-    const ayat = bersihAyat(c.ayat); if (patah(ayat) < 6 || patah(ayat) > 60) return null;
+    if (!c || typeof c.ayat !== 'string') return null; const P = pustaka();
+    const normKod = k => String(k || '').toUpperCase().replace(/[^R\d]/g, '');
+    const kod = Array.from(new Set((Array.isArray(c.sumber) ? c.sumber : []).map(normKod))).filter(k => dibenar.has(k)).slice(0, 2); if (!kod.length) return null;
+    const mentah = satuBaris(c.ayat);
+    if (/\bet\s+al\b/i.test(mentah) || cariSitasi(mentah).length || adaNamaPengarang(mentah, P)) return null;
+    const ayat = bersihAyat(mentah); if (patah(ayat) < 6 || patah(ayat) > 60) return null;
     if (ctx.ayat.some(a => serupa(a, ayat) > 0.8)) return null;
-    const nisbah = Math.max(...rek.map(e => nisbahBukti(c.bukti, e)));
-    if (nisbah < 0.34) return null;
-    /* susunan beberapa sumber dalam satu kurungan: tesis mengikut garis panduan UPSI (tahun terkini dahulu), artikel mengikut APA 7 (abjad) */
-    const susun = rek.slice().sort((a, b) => H.tesis ? (b.tahun.localeCompare(a.tahun) || bersih(a.pen.nama[0]).localeCompare(bersih(b.pen.nama[0]))) : (bersih(a.pen.nama[0]).localeCompare(bersih(b.pen.nama[0])) || a.tahun.localeCompare(b.tahun)));
-    const sit = '(' + susun.map(kurungan).join('; ') + ')';
-    return { ayat: ayat.replace(/([.?!])$/, ' ' + sit + '$1'), sit, ids: susun.map(e => e.id), bukti: satuBaris(c.bukti), medan: satuBaris(c.medan).slice(0, 40), fungsi: satuBaris(c.fungsi).toLowerCase().slice(0, 30), lemah: nisbah < 0.75, en: ctx.en };
+    const senaraiBukti = (Array.isArray(c.bukti) ? c.bukti : typeof c.bukti === 'string' ? [{ kod: kod[0], petikan: c.bukti }] : []).filter(b => b && typeof b.petikan === 'string');
+    const lulus = [];
+    kod.forEach(k => { const e = dibenar.get(k); const urut = senaraiBukti.filter(b => normKod(b.kod) === k).concat(senaraiBukti.filter(b => normKod(b.kod) !== k)); let t = null; urut.forEach(b => { const r = padanBukti(b.petikan, e); if (r && (!t || r.nisbah > t.nisbah)) t = r; }); if (t && t.nisbah >= 0.6) lulus.push({ e, b: t }); });
+    if (!lulus.length) return null;
+    const rek = lulus.map(x => x.e); if (!angkaSah(ayat, rek)) return null;
+    const st = sitasiKurungan(rek, H.tesis);
+    return { ayat: ayat.replace(/([.?!])$/, ' ' + st.teks + '$1'), sit: st.teks, ids: st.ids, bukti: st.ids.map(id => { const x = lulus.find(z => z.e.id === id); return { id, medan: x.b.medan, petikan: x.b.petikan, lemah: x.b.nisbah < 0.8 }; }), fungsi: satuBaris(c.fungsi).toLowerCase().slice(0, 30), lemah: lulus.some(x => x.b.nisbah < 0.8), en: ctx.en };
   }
   const ARAHAN = `Anda pembantu penulisan akademik bagi Prof Dr, calon PhD yang menulis tesis dan artikel jurnal berindeks Scopus dan WoS. Tugas anda: meramal AYAT SETERUSNYA yang menyambung idea Prof Dr secara logik supaya aliran penulisannya tidak terputus. Setiap ayat yang dicadangkan MESTI bersandarkan rekod dalam PUSTAKA REPOSITORI. Jangan gunakan pengetahuan luar, dan jangan mereka dapatan, angka, nama atau tahun.
 
@@ -386,8 +508,9 @@ PERATURAN:
 1. Satu cadangan ialah SATU ayat lengkap (lazimnya 18 hingga 35 patah perkataan) yang menyambung ayat terakhir Prof Dr dengan fungsi yang paling wajar: menghuraikan, memberi bukti empirikal, membandingkan, menunjukkan percanggahan, merumus implikasi atau menonjolkan jurang.
 2. Isi ayat mesti disokong secara langsung oleh medan rekod dalam "sumber". Jangan melampaui apa yang dinyatakan rekod: hubungan atau korelasi tidak boleh ditulis sebagai sebab-akibat, dan konteks kajian (negara, peringkat, sampel) dikekalkan apabila dakwaan bergantung padanya.
 3. "sumber": satu atau dua kod rekod (contohnya ["R4"]) daripada PUSTAKA sahaja. Gunakan dua kod hanya jika kedua-dua rekod menyokong dakwaan yang sama.
-4. JANGAN tulis sitasi, nama pengarang, tahun, "et al." atau kurungan dalam "ayat". Sistem membina sitasi APA 7 sendiri daripada rekod dan meletakkannya sebelum noktah.
-5. "bukti": salin TEPAT satu frasa (8 hingga 25 patah perkataan) daripada medan rekod sumber yang menyokong ayat, tanpa mengubah satu perkataan pun. "medan": nama medan petikan itu (contohnya Dapatan, Implikasi, Definisi, Cabaran).
+4. JANGAN tulis sitasi, nama pengarang (termasuk dalam bentuk "Menurut ..." atau "Kajian oleh ..."), tahun, "et al." atau kurungan dalam "ayat". Sistem membina sitasi APA 7 sendiri daripada rekod dan meletakkannya sebelum noktah. Ayat yang menyebut nama pengarang ditolak.
+5. "bukti": satu item bagi SETIAP kod dalam "sumber", iaitu {"kod": kod rekod itu, "petikan": salin TEPAT satu frasa berturutan (8 hingga 25 patah perkataan) daripada SATU medan rekod itu yang menyokong ayat}. Jangan ubah, tambah atau buang satu perkataan pun, termasuk kata nafi seperti "tidak". Sistem menyemak setiap petikan dengan teks rekod; sumber yang petikannya tidak ditemui dibuang daripada sitasi.
+5a. Angka (peratus, pekali, nilai p, saiz sampel, tahun) hanya boleh ditulis dalam "ayat" jika angka yang sama tertulis dalam rekod sumber; jika tidak, tulis tanpa angka.
 6. "fungsi": satu daripada huraian, bukti, perbandingan, percanggahan, implikasi, jurang.
 7. Parafrasa: jangan salin lebih daripada lima perkataan berturut-turut daripada rekod ke dalam "ayat"; tulis dengan struktur ayat sendiri.
 8. Jangan mengulang idea atau ayat yang sudah ada dalam TEKS SEBELUM. Mulakan ayat dengan penanda wacana yang sesuai dengan fungsinya, tetapi jangan gunakan penanda yang sama bagi setiap cadangan.
@@ -396,9 +519,13 @@ PERATURAN:
 11. Jika tiada rekod yang benar-benar menyokong ayat seterusnya yang bermakna, pulangkan "cadangan": [] (senarai kosong). Tiada cadangan lebih baik daripada cadangan yang lemah.
 
 ${PIAWAI_RINGKAS}`;
-  const SKEMA = { type: 'object', additionalProperties: false, required: ['cadangan'], properties: { cadangan: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['ayat', 'sumber', 'bukti', 'medan', 'fungsi'], properties: { ayat: { type: 'string' }, sumber: { type: 'array', items: { type: 'string' } }, bukti: { type: 'string' }, medan: { type: 'string' }, fungsi: { type: 'string' } } } } } };
+  const SKEMA = { type: 'object', additionalProperties: false, required: ['cadangan'], properties: { cadangan: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['ayat', 'sumber', 'bukti', 'fungsi'], properties: { ayat: { type: 'string' }, sumber: { type: 'array', items: { type: 'string' } }, bukti: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['kod', 'petikan'], properties: { kod: { type: 'string' }, petikan: { type: 'string' } } } }, fungsi: { type: 'string' } } } } } };
   function hashTeks(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
 
+  function gagalRamal(mesej) {
+    BERSAMA.gagal++; const henti = BERSAMA.gagal >= 3 && tet().on; if (henti) { simpanTet({ on: false }); BERSAMA.gagal = 0; }
+    toast('Ramalan ayat gagal: ' + mesej + (henti ? ' Ramalan automatik dimatikan selepas tiga kegagalan berturut-turut; hidupkan semula dalam Tetapan ramalan.' : ''), true);
+  }
   /* kursor masih di tempat yang sama dan RAM masih difokus selepas menunggu (tetapan dimuatkan secara tak segerak) */
   function kursorSama(rg) { const sl = window.getSelection(); const ed = H.editor('ram'); if (!sl || !sl.rangeCount || !sl.isCollapsed || !ed || document.activeElement !== ed) return false; const k = sl.getRangeAt(0); try { return k.compareBoundaryPoints(Range.START_TO_START, rg) === 0; } catch (e) { return false; } }
   async function cuba(paksa) {
@@ -418,12 +545,12 @@ ${PIAWAI_RINGKAS}`;
     const seq = ++Z.seq; clearTimeout(Z.timer); Z.timer = null;
     let tk; try { tk = await kunci(t.model); } catch (e) { return; }
     if (seq !== Z.seq || !kursorSama(rg)) return;
-    if (!tk.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); if (t.on) simpanTet({ on: false }); return; }
+    if (!tk.key) { if (paksa || Date.now() - BERSAMA.kunciDimaklum > 30000) { BERSAMA.kunciDimaklum = Date.now(); toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); } return; }
     const en = bahasaInggeris(konteks); const awalan = /[\s ]$/.test(sebelumBlok) || !sebelumBlok ? '' : ' ';
     const ut = utamaSet(); const ayatKonteks = konteks.split(/(?<=[.?!])\s+/).filter(Boolean);
     const kunciCache = tk.model + '|' + t.bil + '|' + hashTeks(konteks.slice(-900)) + '|' + P.tanda;
     if (!kursorSama(rg) || !pasangHantu('memuat')) return; Z.hantu.innerHTML = '<span class="tr-titik" aria-label="Sedang meramal">&#8943;</span>'; Z.hantu.title = 'Sedang meramal ayat seterusnya daripada repositori (Esc untuk batal)'; Z.awalan = awalan;
-    let calon = Z.cache.get(kunciCache);
+    let calon = Z.cache.get(kunciCache); if (paksa && calon && !calon.length) calon = null;
     if (!calon) {
       /* rekod yang dihantar: pustaka penuh (stabil, dicache) jika muat; jika tidak, rekod paling hampir mengikut carian kata */
       const q = token(akhir).map(w => [w, 2]).concat(token(konteks.slice(-700)).map(w => [w, 1]));
@@ -437,18 +564,21 @@ ${PIAWAI_RINGKAS}`;
       const system = `PUSTAKA REPOSITORI (${dihantar.length} rekod${penuh ? '' : ' paling hampir daripada ' + P.N}; satu-satunya sumber yang dibenarkan; setiap baris bermula dengan kod rekod):\n${dihantar.map(e => e.ringkas).join('\n')}`;
       const systemAwal = `${ARAHAN}\n\nPROFIL KAJIAN PROF DR (konteks sahaja, bukan sumber sitasi):\n${tk.profil || ''}`;
       const tugas = `BAHASA TEKS: ${en ? 'Bahasa Inggeris (formal academic British English)' : 'Bahasa Melayu Malaysia'}\nSASARAN: ${[kx.sasaran, kx.unit, kx.seksyen ? 'seksyen "' + kx.seksyen + '"' : ''].filter(Boolean).join(' · ') || 'RAM'}\nBILANGAN CADANGAN: sehingga ${t.bil}\n\nTEKS SEBELUM (ayat terakhir di hujung):\n"""\n${konteks}\n"""\n\nAYAT TERAKHIR PROF DR: "${akhir}"\n${sudah.size ? `SUMBER YANG SUDAH DISITASI DALAM TEKS SEBELUM: ${Array.from(sudah).join(', ')} (utamakan rekod lain jika sama kuat)\n` : ''}${hampir.length ? `REKOD PALING HAMPIR MENGIKUT CARIAN KATA (petunjuk, bukan had): ${hampir.join(', ')}\n` : ''}${utamaKod.length ? `SUMBER UTAMA ${H.tesis ? 'TULISAN' : 'ARTIKEL'} INI (utamakan jika menyokong): ${utamaKod.join(', ')}\n` : ''}\nRamalkan ayat seterusnya mengikut PERATURAN dan pulangkan JSON.`;
-      const ctl = new AbortController(); Z.ctl = ctl; let res;
-      try { res = await R.Isi.hantar(tk, { kunciMod: 'ramal:' + tk.model, systemAwal, system, content: [{ type: 'text', text: tugas }], skema: SKEMA, alat: { name: 'ramal_ayat', description: 'Pulangkan cadangan ayat seterusnya mengikut struktur ini.', input_schema: SKEMA }, hadToken: 1200, effort: 'low', signal: ctl.signal }); }
+      /* Dikira semasa dihantar (had harian dan kos termasuk permintaan yang kemudiannya dilangkaui kerana Prof Dr terus menaip).
+         Dalam mod rekod paling hampir, blok pustaka berubah setiap kali, maka ia tidak ditanda untuk cache (tiada caj tulis cache). */
+      catatHantar(); let res;
+      try { res = await R.Isi.hantar(tk, { kunciMod: 'ramal:' + tk.model, systemAwal, system, cacheSystem: penuh, content: [{ type: 'text', text: tugas }], skema: SKEMA, alat: { name: 'ramal_ayat', description: 'Pulangkan cadangan ayat seterusnya mengikut struktur ini.', input_schema: SKEMA }, hadToken: 1200, effort: 'low' }); }
       catch (e) {
-        if (Z.ctl === ctl) Z.ctl = null; if (e && e.usage) catatGuna(e.usage, tk.model);
-        if (e && e.code === 'batal') return; if (seq !== Z.seq) return; buangHantu();
-        Z.gagal++; const henti = Z.gagal >= 3 && tet().on; if (henti) simpanTet({ on: false });
-        toast('Ramalan ayat gagal: ' + R.Isi.msg(e) + (henti ? ' Ramalan automatik dimatikan selepas tiga kegagalan berturut-turut; hidupkan semula dalam Tetapan ramalan.' : ''), true); return;
+        if (e && e.usage) catatGuna(e.usage, tk.model); if (e && (e.status === 401 || e.status === 403)) BERSAMA.tk = null;
+        if (seq !== Z.seq) return; buangHantu(); gagalRamal(R.Isi.msg(e)); return;
       }
-      if (Z.ctl === ctl) Z.ctl = null; catatGuna(res.usage, tk.model); Z.gagal = 0;
-      let j = res.input; if (!j) { try { j = R.Isi.parseJson(res.text, res.stop); } catch (e) { j = { cadangan: [] }; } }
+      catatGuna(res.usage, tk.model);
+      let j = res.input; if (!j) { try { j = R.Isi.parseJson(res.text, res.stop); } catch (e) { j = null; } }
+      /* jawapan yang tidak dapat dibaca bukan "tiada sokongan": tidak dicache, dikira sebagai kegagalan dan boleh dicuba semula */
+      if (!j || !Array.isArray(j.cadangan)) { if (seq !== Z.seq) return; buangHantu(); gagalRamal(R.Isi.msg({ code: 'json', stop: res.stop })); return; }
+      BERSAMA.gagal = 0;
       const ctx = { ayat: ayatKonteks, en };
-      calon = (Array.isArray(j && j.cadangan) ? j.cadangan : []).map(c => sahkan(c, dibenar, ctx)).filter(Boolean);
+      calon = j.cadangan.map(c => sahkan(c, dibenar, ctx)).filter(Boolean);
       const unik = []; calon.forEach(c => { if (!unik.some(u => serupa(u.ayat, c.ayat) > 0.85)) unik.push(c); }); calon = unik.slice(0, t.bil); calon.forEach(c => { c.model = tk.model; });
       Z.cache.set(kunciCache, calon); if (Z.cache.size > 60) Z.cache.delete(Z.cache.keys().next().value);
     }
@@ -461,7 +591,7 @@ ${PIAWAI_RINGKAS}`;
   /* ---------------- pengendali peristiwa daripada editor ---------------- */
   function input(e, mana) {
     jadualSerlah(); if (Z.sisip) return;
-    Z.seq++; clearTimeout(Z.timer); Z.timer = null; if (Z.hantu || Z.kad || Z.ctl) batal();
+    Z.seq++; clearTimeout(Z.timer); Z.timer = null; if (Z.hantu || Z.kad) batal();
     if (mana !== 'ram' || !tet().on) return;
     /* hanya teks yang ditaip (bukan tampal, seret atau sisipan HTML) mencetuskan ramalan automatik */
     if (e && e.inputType && !/^insert(?:Text|CompositionText|ReplacementText)$/.test(e.inputType)) return;
@@ -473,8 +603,8 @@ ${PIAWAI_RINGKAS}`;
   function kekunci(e, mana) {
     if (mana === 'ram' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === '.' || e.code === 'Period')) { e.preventDefault(); batal(); cuba(true); return true; }
     const pengubah = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Fn', 'AltGraph'].includes(e.key);
-    if (!pengubah && Z.pop && e.key !== 'Escape') tutupPopup();
-    if (!Z.hantu && !Z.kad) { if (!pengubah) { clearTimeout(Z.timer); Z.timer = null; Z.seq++; if (Z.ctl) batal(); } return false; }
+    if (!pengubah && Z.pop && e.key !== 'Escape') tutupPopup(Z.popDariKad);
+    if (!Z.hantu && !Z.kad) { if (!pengubah) { clearTimeout(Z.timer); Z.timer = null; Z.seq++; } return false; }
     if (e.key === 'Tab' && !e.shiftKey && Z.calon.length && Z.hantu) { e.preventDefault(); terima(); return true; }
     /* Tab semasa ramalan masih dimuatkan: kekal dalam RAM (jangan pindah fokus) sehingga cadangan tiba */
     if (e.key === 'Tab' && !e.shiftKey && Z.hantu && !Z.calon.length) { e.preventDefault(); return true; }
@@ -486,9 +616,10 @@ ${PIAWAI_RINGKAS}`;
   function tekan(e) {
     const g = e.target && e.target.closest ? e.target.closest('[data-ramal]') : null;
     if (g) { e.preventDefault(); const s = e.target.closest('.tr-sit'); if (s) bukaPopupIds(String(s.dataset.ids || '').split(',').filter(Boolean), e.clientX, e.clientY); return; }
-    Z.seq++; if (Z.hantu || Z.kad || Z.ctl || Z.timer) batal();
+    Z.seq++; if (Z.hantu || Z.kad || Z.timer) batal();
   }
-  function kabur() { setTimeout(() => { const ed = H.editor('ram'); if (Z.hantu && ed && document.activeElement !== ed) batal(); }, 0); }
+  /* RAM hilang fokus: ramalan dan kad (termasuk kad mesej) ditutup, kecuali semasa popup rujukan yang dibuka daripada kad masih terbuka */
+  function kabur() { setTimeout(() => { if (Z.pop && Z.popDariKad) return; const ed = H.editor('ram'); if ((Z.hantu || Z.kad) && ed && document.activeElement !== ed) batal(); }, 0); }
   function pilihan() {
     if (!Z.hantu || !Z.hantu.isConnected) return; const sl = window.getSelection(); if (!sl || !sl.rangeCount) return;
     const rg = sl.getRangeAt(0); const ed = H.editor('ram'); if (!ed || !ed.contains(rg.startContainer)) return;
@@ -497,9 +628,10 @@ ${PIAWAI_RINGKAS}`;
 
   /* ---------------- tetapan (modal) dan butang bar RAM ---------------- */
   async function bukaTetapan() {
-    const t = tet(); const g = guna(); const P = pustaka(); const m = t.model === 'tetapan' ? ((Z.tk && Z.tk.model) || 'claude-opus-5-5') : t.model; const h = HARGA[m];
-    const tokTetap = Math.round((ARAHAN.length + 2400) / 3.6) + Math.min(P.token, HAD_PENUH);
-    const anggar = h ? `Anggaran setiap ramalan dengan ${esc(m.replace('claude-', ''))}: kira-kira ${usd((tokTetap * h[2] + 900 * h[0] + 500 * h[1]) / 1e6)} apabila pustaka dibaca daripada cache (ramalan dalam masa lima minit selepas ramalan sebelumnya) dan ${usd((tokTetap * h[3] + 900 * h[0] + 500 * h[1]) / 1e6)} bagi ramalan pertama selepas jeda.` : '';
+    const t = tet(); const g = guna(); const P = pustaka(); let mTet = ''; try { mTet = (await kunci('tetapan')).model || ''; } catch (e) {}
+    const m = t.model === 'tetapan' ? (mTet || 'claude-opus-5-5') : t.model; const h = HARGA[m];
+    const tokArahan = Math.round((ARAHAN.length + 2400) / 3.6); const penuh = P.token <= HAD_PENUH; const tokPustaka = penuh ? P.token : Math.round(P.token / Math.max(1, P.N) * BIL_HAMPIR); const ubah = 900 * h0(h) + 500 * h1(h);
+    const anggar = !h ? '' : penuh ? `Anggaran setiap ramalan dengan ${esc(namaPendek(m))}: kira-kira ${usd(((tokArahan + tokPustaka) * h[2] + ubah) / 1e6)} apabila pustaka dibaca daripada cache (ramalan dalam masa lima minit selepas ramalan sebelumnya) dan ${usd(((tokArahan + tokPustaka) * h[3] + ubah) / 1e6)} bagi ramalan pertama selepas jeda.` : `Anggaran setiap ramalan dengan ${esc(namaPendek(m))}: kira-kira ${usd((tokArahan * h[2] + tokPustaka * h[0] + ubah) / 1e6)}; ${BIL_HAMPIR} rekod paling hampir berubah setiap kali dan tidak dicache.`;
     const ok = await R.richModal('Ramalan ayat bersitasi', `<p>Apabila hidup, setiap kali Prof Dr menamatkan ayat dalam <b>RAM</b> dengan noktah (atau tanda soal) di hujung perenggan dan berhenti menaip seketika, sistem mencadangkan satu ayat seterusnya yang berkaitan dengan ayat itu, sebagai teks bayang berwarna kelabu. Teruskan menaip seperti biasa jika tidak mahu menggunakannya; bayang itu hilang serta-merta.</p>
       <p>Ayat itu hanya bersandarkan <b>rekod dalam repositori</b> (${angka(P.N)} rekod boleh disitasi${P.tiada ? `; ${angka(P.tiada)} rekod tiada Penulis atau Tahun dan tidak digunakan` : ''}). Model hanya menulis ayat dan menamakan kod rekod; <b>sitasi APA 7 dibina oleh sistem</b> daripada medan Penulis dan Tahun rekod, dan petikan bukti disemak dengan teks rekod sebenar. Klik sitasi dalam RAM atau ASAL untuk melihat rujukan APA 7 lengkapnya.</p>
       <label class="tul-cb"><input type="checkbox" id="rmOn"${t.on ? ' checked' : ''}> Hidupkan ramalan automatik selepas noktah dalam RAM</label>
@@ -524,12 +656,12 @@ ${PIAWAI_RINGKAS}`;
   }
   const tajukModel = 'Model untuk ramalan ayat. Sonnet 5.5: seimbang (lalai). Opus 5.5: bahasa paling halus, lebih perlahan, kira-kira dua kali kos Sonnet. Haiku 5.5: paling pantas dan paling murah. Pilihan disimpan pada peranti ini.';
   function barHtml() { const t = tet(); return `<span class="grp ramal"><button data-ramal="kini" title="Ramal satu ayat seterusnya bersitasi daripada rekod repositori pada kedudukan kursor (Ctrl+.)">Ramal ayat</button><select class="rm-model" data-ramal-model aria-label="Model ramalan ayat" title="${esc(tajukModel)}">${MODEL_RAMAL.map(([v, , p]) => `<option value="${v}"${v === t.model ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select><button data-ramal="tetapan" class="rm-tog${t.on ? ' on' : ''}" aria-pressed="${t.on}" title="Tetapan ramalan ayat automatik selepas noktah">${t.on ? 'Auto: Hidup' : 'Auto: Mati'}</button><button data-ramal="rujukan" title="Senarai rujukan APA 7 bagi semua sitasi dalam ASAL dan RAM seksyen ini">Rujukan</button></span>`; }
-  function tukarModel(v) { if (!MODEL_RAMAL.some(m => m[0] === v)) return; batal(); simpanTet({ model: v }); toast('Model ramalan ayat: ' + namaPendek(v) + (v === 'tetapan' ? ' (' + namaPendek((Z.tk && Z.tk.model) || '') + ')' : '')); }
+  async function tukarModel(v) { if (!MODEL_RAMAL.some(m => m[0] === v)) return; batal(); simpanTet({ model: v }); let nyata = ''; if (v === 'tetapan') { try { nyata = (await kunci('tetapan')).model || ''; } catch (e) {} } toast('Model ramalan ayat: ' + namaPendek(v) + (nyata ? ' (' + namaPendek(nyata) + ')' : '')); }
   function butang(a) { if (a === 'kini') { batal(); cuba(true); } else if (a === 'tetapan') { batal(); bukaTetapan(); } else if (a === 'rujukan') { batal(); senaraiRujukan(); } }
   /* Dipanggil oleh renderEditor selepas editor baharu dipasang: tutup semua sisa ramalan dan kira serlahan sitasi. */
   function pasang() { batal(); tutupPopup(); serlah(); }
   function tutup() { batal(); tutupPopup(); }
 
   return { input, kekunci, tekan, klik, kabur, pilihan, pasang, tutup, butang, barHtml, serlah, bukaTetapan, senaraiRujukan, tukarModel,
-    /* untuk ujian */ _: { cariSitasi, pustaka, urusPenulis, ayatTerakhir, sahkan, bersihAyat, apaHtml, nisbahBukti, bahasaInggeris, tet, guna, state: Z } };
+    /* untuk ujian */ _: { cariSitasi, pustaka, urusPenulis, ayatTerakhir, sahkan, bersihAyat, apaHtml, padanBukti, sitasiKurungan, bahasaInggeris, tet, guna, state: Z, bersama: BERSAMA } };
 }

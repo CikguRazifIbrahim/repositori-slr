@@ -215,7 +215,7 @@ Pulangkan JSON sekarang.`;
       if (mod === 'alat' && p.alat) { const last = content[content.length - 1]; if (last && last.type === 'text') content[content.length - 1] = { type: 'text', text: last.text + '\n\nPanggil alat ' + p.alat.name + ' untuk memulangkan jawapan; jangan balas dalam bentuk teks.' }; }
       /* v1.40.0: systemAwal ialah bahagian pertama mesej sistem yang sama bagi banyak panggilan (contohnya blok rekod CSV Pandu Tulis). Ia
          mendapat penanda cache tersendiri, maka panggilan lain yang berkongsi awalan itu membacanya daripada cache walaupun selebihnya berbeza. */
-      const sys = []; if (p.systemAwal) sys.push({ type: 'text', text: p.systemAwal, cache_control: { type: 'ephemeral' } }); sys.push({ type: 'text', text: p.system, cache_control: { type: 'ephemeral' } });
+      const sys = []; if (p.systemAwal) sys.push({ type: 'text', text: p.systemAwal, cache_control: { type: 'ephemeral' } }); sys.push(p.cacheSystem === false ? { type: 'text', text: p.system } : { type: 'text', text: p.system, cache_control: { type: 'ephemeral' } }); /* cacheSystem:false (v1.46.0) bagi blok yang berubah setiap panggilan */
       const body = { model: t.model, max_tokens: had, system: sys, messages: [{ role: 'user', content }] };
       const ef = effort && !I.tanpaEffort[t.model] && !tanpaEf ? effort : '';
       const oc = {}; if (mod === 'skema' && p.skema) oc.format = { type: 'json_schema', schema: p.skema }; if (ef) oc.effort = ef;
