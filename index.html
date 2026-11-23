@@ -810,6 +810,27 @@ body.web-open{overflow:hidden}
 .pd-kad .mt i{display:block;height:100%;background:var(--accent)}
 .pd-kad .pt{grid-column:1/-1;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 .pd-kad.tiada{opacity:.65;border-style:dashed}
+/* v1.45.0: Draf Akhir dan sub-menu reflektif */
+.pd-kad.df-kad .no{background:var(--accent-soft);color:var(--accent)} .pd-kad.df-kad.siap .no{background:var(--ok);color:#fff}
+.tul-tanda{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--bad);white-space:nowrap}
+.df-merah,.df-merah-nota{color:var(--bad)} .df-merah-nota{font-size:12.5px;margin:-4px 0 8px}
+.df-sub-r{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:8px 0} .df-sub-r.tetap{opacity:.8}
+.df-sub-c{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px} .df-sub-c ul{margin:4px 0;padding-left:18px} .df-sub-c .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.df-status{border-radius:8px;padding:8px 12px;margin:8px 0;border:1px solid} .df-status.gagal{background:var(--bad-soft);border-color:var(--bad)} .df-status.amaran{background:var(--warn-soft);border-color:var(--warn)} .df-status.ok{background:var(--ok-soft);border-color:var(--ok)}
+.df-alat{flex-wrap:wrap;gap:6px}
+.df-kump{border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin:6px 0;background:var(--surface)} .df-kump>summary{cursor:pointer} .df-kump .ring{font-size:12px;color:var(--muted);margin-left:6px}
+.df-isu{list-style:none;margin:6px 0;padding:0} .df-i{padding:6px 0;border-top:1px solid var(--line);font-size:13px;line-height:1.45} .df-i .df-t{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:0 5px;margin-right:4px}
+.df-i.kritikal .df-t{background:var(--bad-soft);color:var(--bad)} .df-i.amaran .df-t{background:var(--warn-soft);color:var(--warn)} .df-i.info .df-t{background:var(--info-soft);color:var(--info)}
+.df-acts{display:inline-flex;gap:4px;margin-left:6px;flex-wrap:wrap}
+.df-legenda{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);margin:10px 0}
+.df-draf{background:#fff;color:#111;border:1px solid var(--line);border-radius:6px;padding:28px 36px;margin-top:8px;font-family:"Times New Roman",Times,serif;font-size:16px;line-height:1.7;max-width:900px}
+.df-draf p{margin:0 0 10px;text-align:justify} .df-draf .df-judul{text-align:center;font-size:22px;margin:0 0 18px}
+.df-draf h2{font-size:18px;margin:20px 0 8px} .df-draf h3{font-size:16.5px;margin:16px 0 6px} .df-draf h4{font-size:16px;font-style:italic;margin:14px 0 6px}
+.df-draf .df-tanda{color:#b23b35}
+.df-draf .df-objek{margin:14px 0 16px} .df-draf .df-kap,.df-draf .df-kap-t{margin:0;text-align:left} .df-draf .df-objek img{max-width:100%;height:auto;display:block;margin:6px auto} .df-draf table{border-collapse:collapse;width:100%;margin:6px 0;font-size:14px} .df-draf th,.df-draf td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top} .df-draf .df-nota{font-size:13.5px}
+.df-draf .df-ruj{padding-left:36px;text-indent:-36px;text-align:left}
+sup.df-m{color:#b23b35;cursor:help} sup.df-k{color:#9a6a12;cursor:help} mark.df-x{background:#f8dcda;color:#b23b35}
+@media (max-width:700px){.df-draf{padding:16px} .df-sub-c{grid-template-columns:1fr}}
 .pd-folder{border-top:1px solid var(--line);padding-top:10px}
 .pd-fh{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
 .pd-fh h3{margin:0;font-size:16px;display:flex;gap:6px;align-items:center}

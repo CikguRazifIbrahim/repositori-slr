@@ -147,7 +147,8 @@ export function initArtikel(R, initTulisan) {
     failDocx: (ids, st) => 'Artikel_' + slug((entri(ids[0]) || {}).tajuk) + '_' + st + '.docx',
     tambahan: () => ({ jenis: '', sumber: [], soalan: [] }),
     onUnit: id => { A.id = id; R.lsSet(LS_SEMASA, id); renderPanel(); },
-    onEditor: () => { if (Pandu) Pandu.onEditor(); }, onTulis: n => { if (Pandu && n === A.id) Pandu.onTulis(); }
+    onEditor: () => { if (Pandu) Pandu.onEditor(); }, onTulis: n => { if (Pandu && n === A.id) Pandu.onTulis(); },
+    tanda: (n, id) => (Pandu && Pandu.tandaSeksyen ? Pandu.tandaSeksyen(n, id) : '')
   };
   let Pandu = null, Tajuk = null;
   const Teks = initTulisan(R, cfg);

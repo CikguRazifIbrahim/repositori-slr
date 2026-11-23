@@ -205,10 +205,11 @@ ${nA5 <= 1 ? 'Kotak akhir hanya menyebut kajian: gunakan istilah "studies" (kaji
   /* o.sunting: versi dalam halaman (kotak boleh diklik, kotak yang kira-kiranya bercanggah ditanda). Tanpa o: versi bersih untuk PNG dan manuskrip. */
   function svg(lang, o) {
     o = o || {}; const T = kotakD(); const L = D.PRISMA_LABEL[lang] || D.PRISMA_LABEL.ms; const dua = !!data().guna2; const beza = o.sunting ? new Set(semakKira().map(x => x.id)) : null;
-    const F = 12.5, LH = 16.5, PAD = 9; const cw = w => Math.floor((w - 2 * PAD) / 6.15);
+    /* v1.45.0: huruf lebih besar (13.5) supaya rajah kekal jelas apabila dikecilkan ke lebar muka surat jurnal */
+    const F = 13.5, LH = 18, PAD = 9; const cw = w => Math.floor((w - 2 * PAD) / 6.7);
     const X1 = 58, W1 = 262, XS = 356, WS = 270, X2 = 668, W2 = 168, XS2 = 858, WS2 = 172; const W = dua ? 1042 : 640;
     /* label fasa (tegak) mesti muat dalam jalurnya: baris pertama dan kotak akhir diberi tinggi minimum mengikut panjang label */
-    const pj = t => Math.ceil(String(t || '').length * 7.2) + 14;
+    const pj = t => Math.ceil(String(t || '').length * 7.8) + 14;
     const kotak = (id, x, y, w, minH) => { const teks = String(T[id] || ''); const baris = teks.trim() ? balut(teks, cw(w)) : []; const h = Math.max(minH || 0, 2 * LH + 2 * PAD - 3, baris.length * LH + 2 * PAD - 3);
       const isiS = baris.length ? baris.map((b, i) => `<text x="${x + PAD + (/^ {3}/.test(b) ? 12 : 0)}" y="${y + PAD + 10 + i * LH}" font-size="${F}">${xml(b.trim())}</text>`).join('') : (o.sunting ? `<text x="${x + PAD}" y="${y + PAD + 10}" font-size="${F}" fill="#9ca3af" font-style="italic">Klik untuk menulis</text>` : '');
       const ciri = o.sunting ? ` data-kotak="${id}" class="pr-k${beza.has(id) ? ' pr-k-beza' : ''}" tabindex="0" role="button" aria-label="${xml('Sunting kotak: ' + NAMA[id])}"` : '';
