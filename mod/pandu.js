@@ -403,12 +403,10 @@ export function initPandu(R, C) {
       ${F.semak && F.semak.data ? `<div class="pd-hasil"><div class="pd-hasil-h"><b>Semakan agen terakhir: ${esc(F.semak.data.keputusan || '')}</b><span>${esc(R.fmtTime(F.semak.masa))}${F.semak.patah ? ' · ASAL ' + angka(F.semak.patah) + ' patah ketika disemak' : ''}${uk.n !== F.semak.patah ? ' · ASAL telah berubah sejak semakan ini' : ''}</span></div>${htmlSemak(F.semak.data)}</div>` : ''}`);
     const ruang = f.p === 'kaedah' && adaPrisma() ? det('prisma', 'pd-l pd-ruang', `<span class="no ruang">P</span> Ruang PRISMA 2020 <span class="ring">${esc(Prisma.ringkas())}</span>`, '<div id="pdPrisma"></div>') : '';
     const ruangO = (f.p === 'dapatan' || f.p === 'kaedah' || f.p === 'perbincangan') && adaOutput() ? det('output', 'pd-l pd-ruang', `<span class="no ruang">O</span> Ruang Output ${kel() === 'kual' ? 'dan bahan dapatan' : 'SPSS dan AMOS'} <span class="ring">${esc(Output.ringkas())}</span>`, '<div id="pdOutput"></div>') : '';
-    /* v1.33.0: rajah aliran PRISMA diurus dalam folder Metodologi sahaja; folder Dapatan mendapat Ruang Rajah Statistik yang tidak wajib */
-    const ruangR = f.p === 'dapatan' ? det('rajah', 'pd-l pd-ruang', `<span class="no ruang">G</span> Ruang Rajah Statistik <em>(pilihan)</em> <span class="ring">${esc(Rajah.ringkas())}</span>`, `${adaPrisma() ? '<p class="help">Rajah aliran PRISMA 2020 dan angkanya diisi dalam Ruang PRISMA folder Metodologi sahaja; agen folder ini tetap menerima angka yang sama supaya teks selaras.</p>' : ''}<div id="pdRajah"></div>`) : '';
     const acF = acuan(); const LA = acF && (f.ac || f.p === 'abstrak') ? det('LA', 'pd-l pd-acuan', `<span class="no ruang">A</span> Acuan: ${f.p === 'abstrak' ? 'abstrak' : 'bahagian ini dalam'} ${esc(acF.pendek)} <span class="ring">${f.ac ? `${f.ac.per} perenggan · ${angka(f.ac.kata)} patah · ${f.ac.sit} sitasi · ${f.ac.peratus}% badan` : esc((acF.abstrak || {}).bentuk || '')}</span>`, htmlAcuanFolder(f, uk)) : '';
     const LJ = f.p === 'pendahuluan' ? det('LJ', 'pd-l pd-acuan pd-dna', `<span class="no ruang">J</span> DNA jurang: acuan pernyataan masalah ${esc(DNA.PENDEK)} <span class="ring">${esc(DNA.ringkasan(dnaCtx()))}</span>`, DNA.html(dnaCtx())) : '';
     const snTop = ($('#pdSenarai') || {}).scrollTop || 0;
-    el.innerHTML = kepala + LA + LJ + L1 + (f.p === 'kaedah' ? ruang + ruangO : '') + (f.p === 'dapatan' ? ruangO + ruangR : '') + (f.p === 'perbincangan' ? ruangO : '') + L2 + L4 + L5;
+    el.innerHTML = kepala + LA + LJ + L1 + (f.p === 'kaedah' ? ruang + ruangO : '') + (f.p === 'dapatan' ? ruangO : '') + (f.p === 'perbincangan' ? ruangO : '') + L2 + L4 + L5;
     if (snTop) { const sn = $('#pdSenarai'); if (sn) sn.scrollTop = snTop; }
     const sel = el.querySelector('[data-pdsel="peta"]'); if (sel) sel.value = sid;
     if ($('#pdPrisma')) Prisma.render($('#pdPrisma'), f); if ($('#pdOutput')) Output.render($('#pdOutput'), f); if ($('#pdRajah')) Rajah.render($('#pdRajah'), f);
@@ -479,19 +477,20 @@ export function initPandu(R, C) {
     return { per: per.map(a => a.join('\n\n')), ekor };
   }
   /* Contoh perenggan i berserta jadual yang dijana kemudian (cad.jt[i]) bagi perenggan yang menyebut jadual tetapi tidak menulisnya. */
-  const RX_SEBUT_JD = /\b(?:Jadual|Table)\s+(\d+)/i;
   function contohP(cad, i) { const c = pecahDraf(cad.jawapan).per[i] || ''; const jt = cad.jt && cad.jt[i]; return jt ? c + '\n\n' + jt : c; }
   function htmlPelan(cad, f, F) {
     const B = (cad.kr || []).filter(b => b && (String(b.idea || '').trim() || subKr(b).length)); const pd = pecahDraf(cad.jawapan); if (!B.length || !pd.per.length) return '';
     const ac = f.ac && (f.ac.peta || []).length ? f.ac : null; const ay = F.ayat && F.ayat.id === cad.id ? F.ayat.t || [] : [];
     const n = Math.max(B.length, pd.per.length);
-    const kad = Array.from({ length: n }, (_, i) => { const b = B[i] || {}; const contoh = contohP(cad, i); const adaJd = blokTeks(contoh).some(x => x.jenis === 'jadual'); const sebut = RX_SEBUT_JD.exec(contoh); const label = b.label || ((/^\[([^\]]+)\]/.exec(contoh) || [])[1]) || 'Perenggan ' + (i + 1);
+    const OB = objekPerlu(cad, f);
+    const kad = Array.from({ length: n }, (_, i) => { const b = B[i] || {}; const contoh = contohP(cad, i); const ob = OB[i] || { tiada: [], nAda: 0 }; const label = b.label || ((/^\[([^\]]+)\]/.exec(contoh) || [])[1]) || 'Perenggan ' + (i + 1); const sibuk = P.busy && P.busy.mod === 'objek';
       return `<div class="pd-pelan-p"><div class="pd-pelan-h"><span class="no">${i + 1}</span><b>Perenggan ${i + 1}: ${esc(label)}</b>${+b.kata ? `<span class="help">kira-kira ${angka(b.kata)} patah</span>` : ''}</div>
         <p class="pd-pelan-m"><b>Perenggan ${i + 1} mesti ada:</b> ${esc(b.mesti || b.idea || 'Lihat contoh di bawah.')}</p>
         ${subKr(b).length ? `<details class="pd-pelan-s"><summary>Isi sokongan dan sumber (${subKr(b).length})</summary><ol>${subKr(b).map(x => `<li>${esc(x)}</li>`).join('')}</ol></details>` : ''}
         ${contoh ? `<div class="pd-pelan-c"><span class="lbl">Contoh perenggan</span><div class="pd-teks">${htmlCadangan(contoh)}</div></div>` : ''}
+        ${ob.tiada.length ? `<p class="help">Disebut dalam contoh ini tetapi belum dihasilkan: ${ob.tiada.map(x => esc(x.label)).join(', ')}. Tekan butang Jana bagi setiap satu (panggilan kecil, artikel sumber tidak dibaca semula).</p>` : ''}
         <label class="pd-q"><span>Ayat saya bagi perenggan ${i + 1} (hasil bacaan dan sintesis Prof Dr sendiri)</span><textarea data-pdin="ayat" data-i="${i}" rows="3" placeholder="Tulis atau olah perenggan ini dengan ayat Prof Dr sendiri. Contoh di atas hanya penunjuk jalan.">${esc(ay[i] || '')}</textarea></label>
-        <div class="pd-acts"><button class="btn btn-sm" data-pd="ayatasal" data-i="${i}">Masukkan ayat saya ke ASAL</button>${!adaJd && sebut && !(P.busy && P.busy.mod === 'jadual') ? `<button class="btn btn-sm btn-primary" data-pd="janajadual" data-i="${i}" title="Contoh ini menyebut ${esc(sebut[0])} tetapi jadualnya belum ditulis. Satu panggilan kecil (tanpa membaca semula semua artikel) menulis jadual itu.">Jana ${esc(sebut[0])}</button>` : ''}${P.busy && P.busy.mod === 'jadual' && +P.busy.i === i ? '<span class="help">Agen sedang menulis jadual...</span>' : ''}${adaJd ? `<button class="btn btn-sm" data-pd="jadualasal" data-i="${i}" title="Jadual dalam contoh perenggan ini dimasukkan ke hujung ASAL sebagai jadual sebenar (boleh disunting dan kekal dalam fail Word)">Masukkan jadual ke ASAL</button>` : ''}</div></div>`; }).join('');
+        <div class="pd-acts"><button class="btn btn-sm" data-pd="ayatasal" data-i="${i}">Masukkan ayat saya ke ASAL</button>${sibuk ? '' : ob.tiada.map(x => `<button class="btn btn-sm btn-primary" data-pd="janaobjek" data-i="${i}" data-j="${x.jenis}" data-no="${esc(x.no)}" data-l="${esc(x.label)}" title="${esc(x.label)} disebut tetapi belum dihasilkan">Jana ${esc(x.label)}</button>`).join('')}${sibuk && +P.busy.i === i ? `<span class="help">Agen sedang menulis ${esc(P.busy.label || '')}...</span>` : ''}${ob.nAda ? `<button class="btn btn-sm" data-pd="objekasal" data-i="${i}" title="Jadual dan rajah dalam contoh perenggan ini dimasukkan ke hujung ASAL sebagai jadual sebenar dan imej berkapsyen; nombor disusun berturutan secara automatik">Masukkan jadual dan rajah ke ASAL (${ob.nAda})</button>` : ''}</div></div>`; }).join('');
     const fw = B.map((b, i) => `<li><b>${i + 1}.</b> ${esc(b.label || 'Perenggan ' + (i + 1))}</li>`).join('');
     return `<div class="pd-pelan"><div class="pd-pelan-fw"><b>Framework ${esc(specF(f).nama)}</b>${ac ? ` <span class="help">(mengikut fungsi perenggan dalam acuan ${esc(acuan() ? acuan().pendek : '')})</span>` : ''}<ol class="pd-pelan-fw-l">${fw}</ol></div>${kad}${pd.ekor.length ? `<div class="pd-teks pd-pelan-e">${htmlCadangan(pd.ekor.join('\n\n'))}</div>` : ''}</div>`;
   }
@@ -501,14 +500,47 @@ export function initPandu(R, C) {
     if (!t) { toast('Tulis ayat Prof Dr dalam kotak "Ayat saya" dahulu', true); return; }
     const html = perenggan(t).map(p => `<p>${esc(p)}</p>`).join(''); if (sisip(sasaranRam(f), 'asal', html)) { toast(`Ayat Prof Dr bagi perenggan ${i + 1} dimasukkan ke hujung ASAL`); kemasHidup(); }
   }
-  /* Jadual dalam contoh perenggan i dimasukkan ke hujung ASAL sebagai jadual sebenar (tajuk dan badan), bukan teks. */
-  function jadualKeAsal(k, iS) {
-    const f = folderDari(k); if (!f) return; const F = fd(k); const cad = (F.log || []).filter(x => x.mod === 'cadangan').slice(-1)[0]; if (!cad) return;
-    const contoh = contohP(cad, +iS || 0); const jd = blokTeks(contoh).filter(x => x.jenis === 'jadual'); if (!jd.length) { toast('Tiada jadual dalam contoh perenggan ini', true); return; }
-    const E = en(); const no0 = (RX_SEBUT_JD.exec(contoh) || [])[1]; const sel = (t, c) => `<${t}>${esc(String(c || '').trim()) || '<br>'}</${t}>`;
-    const html = jd.map((b, j) => { const m = /^(?:Jadual|Table)\s+(\d+)\s*[.:-]?\s*(.*)$/i.exec(b.tajuk || ''); const no = m ? m[1] : no0 ? +no0 + j : '[n]'; const tajuk = m ? m[2] : b.tajuk || '';
-      return `<p><strong>${E ? 'Table' : 'Jadual'} ${no}</strong></p>${tajuk ? `<p><em>${esc(tajuk)}</em></p>` : ''}<table><tbody><tr>${b.kepala.map(c => sel('th', c)).join('')}</tr>${b.baris.map(r => `<tr>${b.kepala.map((x, q) => sel('td', r[q])).join('')}</tr>`).join('')}</tbody></table>`; }).join('') + '<p><br></p>';
-    if (sisip(sasaranRam(f), 'asal', html)) { toast(`${jd.length} jadual dimasukkan ke hujung ASAL`); kemasHidup(); setTimeout(() => susunNombor({ senyap: true }), 50); }
+  /* v1.44.4: jadual dan rajah yang disebut dalam contoh. Sebutan pertama dalam draf folder ini (yang belum berkapsyen dalam ASAL folder lain)
+     dipadankan mengikut urutan dengan blok jadual (Table) atau rajah/carta (Figure) dalam perenggan yang sama; yang berlebihan belum dihasilkan. */
+  const RX_SEBUT_G = /\b(Tables?|Jadual|Figures?|Rajah)\s+(\d+)\b/gi;
+  const RX_NO_TAJUK = /^(?:Tables?|Jadual|Figures?|Rajah)\s+(\d+)\s*[.:-]?\s*(.*)$/i;
+  const jenisBlok = x => x.jenis === 'jadual' ? 'T' : x.jenis === 'rajah' || x.jenis === 'carta' ? 'F' : '';
+  function kapsyenLuar(f) {
+    const d = C.doc(); const out = new Set(); if (!d) return out; const dalam = new Set(julat(f));
+    Teks.senarai(A.id).forEach(id => { const sk = d.seksyen[id]; if (dalam.has(id) || !sk || sk.padam) return; const html = Teks.htmlSeksyen(sk) || ''; if (!/Table|Jadual|Figure|Rajah/i.test(html)) return; const body = new DOMParser().parseFromString('<!doctype html><html><body>' + html + '</body></html>', 'text/html').body; kapsyenBlok(Array.from(body.children)).forEach(k => { if (k.lama !== '[n]') out.add(k.jenis + k.lama); }); });
+    return out;
+  }
+  function objekPerlu(cad, f) {
+    const per = pecahDraf(cad.jawapan).per; const luar = kapsyenLuar(f); const lihat = new Set();
+    return per.map((p0, i) => { const bl = blokTeks(contohP(cad, i)); const teks = bl.filter(x => x.jenis === 'p').map(x => x.teks).join(' '); const baru = [];
+      for (const m of teks.matchAll(RX_SEBUT_G)) { const j = jenisKap(m[1]); const kk = j + m[2]; if (lihat.has(kk) || luar.has(kk)) continue; lihat.add(kk); baru.push({ jenis: j, no: m[2], label: m[1].replace(/s$/i, '').replace(/^./, c => c.toUpperCase()) + ' ' + m[2] }); }
+      const nB = { T: bl.filter(x => jenisBlok(x) === 'T').length, F: bl.filter(x => jenisBlok(x) === 'F').length };
+      const ditajuk = new Set(bl.map(x => { const m = RX_NO_TAJUK.exec(x.tajuk || ''); return m && jenisBlok(x) ? jenisBlok(x) + m[1] : ''; }).filter(Boolean));
+      const tiada = []; ['T', 'F'].forEach(j => { const sen = baru.filter(x => x.jenis === j); const tanpaTajuk = nB[j] - sen.filter(x => ditajuk.has(j + x.no)).length; let baki = Math.max(0, tanpaTajuk); sen.forEach(x => { if (ditajuk.has(j + x.no)) return; if (baki > 0) { baki--; return; } tiada.push(x); }); });
+      tiada.sort((a, b) => baru.indexOf(a) - baru.indexOf(b));
+      return { baru, tiada, nAda: nB.T + nB.F }; });
+  }
+  /* Rajah statistik (CARTA) dilukis oleh modul Rajah daripada medan sebenar artikel sumber atau baris data; keadaan panel disimpan semula selepas itu. */
+  function denganCarta(b, fn) { const lama = P.t.rajah; P.t.rajah = { medan: b.medan === 'sendiri' ? 'sendiri' : b.medan, jenis: b.carta || 'bar', tajuk: b.tajuk || '', sendiri: (b.data || []).join('\n') }; try { return fn(); } finally { P.t.rajah = lama; } }
+  /* Jadual dan rajah dalam contoh perenggan i dimasukkan ke hujung ASAL: jadual sebenar, rajah sebagai imej PNG berkapsyen; nombor disusun semula. */
+  async function objekKeAsal(k, iS) {
+    const f = folderDari(k); if (!f) return; const F = fd(k); const cad = (F.log || []).filter(x => x.mod === 'cadangan').slice(-1)[0]; if (!cad) return; const i = +iS || 0;
+    const bl = blokTeks(contohP(cad, i)).filter(x => jenisBlok(x)); if (!bl.length) { toast('Tiada jadual atau rajah dalam contoh perenggan ini', true); return; }
+    const ob = (objekPerlu(cad, f)[i] || { baru: [] }).baru; const E = en(); const sid = sasaranRam(f); const giliran = { T: 0, F: 0 }; const sel = (t, c) => `<${t}>${esc(String(c || '').trim()) || '<br>'}</${t}>`; let html = '';
+    for (const b of bl) { const j = jenisBlok(b); const m = RX_NO_TAJUK.exec(b.tajuk || ''); const sen = ob.filter(x => x.jenis === j); const no = m ? m[1] : (sen[giliran[j]] || {}).no || '[n]'; giliran[j]++; const tajuk = m ? m[2] : b.tajuk || ''; const nama = j === 'T' ? (E ? 'Table' : 'Jadual') : (E ? 'Figure' : 'Rajah');
+      if (j === 'T') { html += `<p><strong>${nama} ${no}</strong></p>${tajuk ? `<p><em>${esc(tajuk)}</em></p>` : ''}<table><tbody><tr>${b.kepala.map(c => sel('th', c)).join('')}</tr>${b.baris.map(r => `<tr>${b.kepala.map((x, q) => sel('td', r[q])).join('')}</tr>`).join('')}</tbody></table>`; continue; }
+      try { const blob = b.jenis === 'rajah' ? await svgKePng(svgRajah(b.spec), 2) : await denganCarta(b, () => Rajah.png(2)); const im = await Teks.simpanImej(blob, { n: A.id, id: sid, nama: tajuk });
+        html += `<p><img data-imej="${im.id}" src="${im.dataUrl}" alt="${esc(tajuk)}"></p><p><em>${nama} ${no}. ${esc(tajuk || (b.jenis === 'carta' ? denganCarta(b, () => Rajah.kapsyen()) : ''))}</em></p>`; }
+      catch (e) { html += `<p><strong>[${nama} ${no}: ${esc(tajuk)}]</strong></p>`; }
+    }
+    if (sisip(sid, 'asal', html + '<p><br></p>')) { toast(`${bl.length} jadual atau rajah dimasukkan ke hujung ASAL; nombor disusun berturutan`); kemasHidup(); setTimeout(() => susunNombor({ senyap: true }), 50); }
+  }
+  /* Nombor jadual dan rajah yang sudah digunakan dalam ASAL seksyen sebelum folder ini (susunan artikel), supaya agen menyambung nombor. */
+  function nomborFolder(f) {
+    const d = C.doc(); const j0 = julat(f)[0]; if (!d || !j0) return 'Nombor jadual dan rajah berturutan mengikut kali pertama disebut.'; const ids = Teks.senarai(A.id); const kira = { T: 0, F: 0 };
+    for (const id of ids) { if (id === j0) break; const sk = d.seksyen[id]; if (!sk || sk.padam) continue; const html = Teks.htmlSeksyen(sk) || ''; if (!/Table|Jadual|Figure|Rajah/i.test(html)) continue; kapsyenBlok(Array.from(new DOMParser().parseFromString('<!doctype html><html><body>' + html + '</body></html>', 'text/html').body.children)).forEach(k => kira[k.jenis]++); }
+    const E = en(); const tN = E ? 'Table' : 'Jadual', fN = E ? 'Figure' : 'Rajah';
+    return `Nombor jadual dan rajah berturutan mengikut kali pertama disebut dalam keseluruhan artikel: folder sebelum ini sudah menggunakan ${kira.T ? `${tN} 1 hingga ${kira.T}` : `tiada ${tN.toLowerCase()}`} dan ${kira.F ? `${fN} 1 hingga ${kira.F}` : `tiada ${fN.toLowerCase()}`}, maka jadual baharu folder ini bermula ${tN} ${kira.T + 1} dan rajah baharu bermula ${fN} ${kira.F + 1}. Rujukan kepada jadual atau rajah folder lain menggunakan nombornya dan tidak ditulis semula.`;
   }
   /* v1.44.3: penomboran Jadual dan Rajah berterusan merentas artikel mengikut susunan bacaan (susunan seksyen). Kapsyen dikenal pasti
      melalui objeknya (jadual: kapsyen dalam dua blok sebelumnya; rajah: kapsyen dalam dua blok selepas atau sebelum imej), atau perenggan
@@ -551,25 +583,32 @@ export function initPandu(R, C) {
     kemasHidup();
   }
   function batalNombor() { const b = P.sandaranNombor; if (!b) return; Teks.flushEditor(); Object.keys(b).forEach(id => Teks.tulisSeksyen(A.id, id, { html: b[id] }, { senyap: true, segera: true })); P.sandaranNombor = null; if (Teks.state.bab === A.id) Teks.renderEditor(); Teks.renderSenarai(); toast('Penomboran asal dipulihkan'); }
-  /* Jana jadual yang disebut dalam contoh perenggan i: panggilan kecil dengan teras kajian, kerangka perenggan dan contoh itu sahaja. */
-  async function janaJadual(k, iS) {
+  /* Jana satu jadual atau rajah yang disebut dalam contoh perenggan i: panggilan kecil dengan teras kajian, kerangka dan contoh folder sahaja.
+     Rajah statistik ditulis sebagai CARTA dan dilukis sistem daripada medan sebenar artikel sumber, maka angka tidak direka. */
+  async function janaObjek(k, iS, jenis, no, lbl) {
     if (P.busy) return; const f = folderDari(k); if (!f) return; const F = fd(k); const cad = (F.log || []).filter(x => x.mod === 'cadangan').slice(-1)[0]; if (!cad) return; const i = +iS || 0;
     const t = await R.Isi.tetapan(); if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
-    const contoh = contohP(cad, i); const sebut = RX_SEBUT_JD.exec(contoh); if (!sebut) return; const B = (cad.kr || []).filter(b => b && (String(b.idea || '').trim() || subKr(b).length)); const b = B[i] || {}; const E = en();
-    const lain = pecahDraf(cad.jawapan).per.filter((x, j) => j !== i).join('\n\n').slice(0, 6000);
-    const system = `Anda pembantu penulisan artikel jurnal berindeks Scopus dan WoS. Tulis jadual sahaja, dalam ${E ? 'English' : 'Bahasa Melayu Malaysia'} akademik. Format: baris pertama "[JADUAL: tajuk jadual]", kemudian baris jadual bertanda paip dengan baris kepala, baris pemisah "| --- | --- |" dan satu baris bagi setiap butiran, tanpa baris kosong dan tanpa teks lain sebelum atau selepas jadual. Isi sel daripada bahan yang diberi sahaja; butiran yang tiada ditanda [ISI: ...]. Sitasi Penulis (Tahun) hanya yang ada dalam bahan. Tiada em-dash.`;
-    const tugas = `${teksTeras()}\n\nFOLDER: ${specF(f).nama}\nPERENGGAN YANG MENYEBUT JADUAL:\n${contoh}\n\nPERENGGAN INI MESTI ADA: ${b.mesti || b.idea || ''}\nISI SOKONGAN: ${subKr(b).join('; ')}\n\nPERENGGAN LAIN DALAM FOLDER (konteks):\n${lain}\n\nTUGAS: Tulis ${sebut[0]} yang disebut dalam perenggan di atas, selaras dengan dakwaannya dan dengan perenggan lain (contohnya bagi kriteria kelayakan: lajur Elemen, Dimasukkan, Dikecualikan mengikut PCC atau PICO).`;
+    const E = en(); const T = jenis === 'T'; const label = lbl || (T ? (E ? 'Table' : 'Jadual') : (E ? 'Figure' : 'Rajah')) + ' ' + no; const contoh = contohP(cad, i);
+    const B = (cad.kr || []).filter(b => b && (String(b.idea || '').trim() || subKr(b).length)); const b = B[i] || {}; const lain = pecahDraf(cad.jawapan).per.filter((x, j) => j !== i).join('\n\n').slice(0, 6000);
+    const bhs = E ? 'English' : 'Bahasa Melayu Malaysia'; const medan = 'tahun (tahun terbit), negara, rekaBentuk (reka bentuk kajian), jenis (jenis artikel), tema, peringkat (peringkat pendidikan), teknik (teknik analisis), indeks, kuartil';
+    const system = T ? `Anda pembantu penulisan artikel jurnal berindeks Scopus dan WoS. Tulis jadual sahaja, dalam ${bhs} akademik. Format: baris pertama "[JADUAL: ${label}. tajuk jadual]", kemudian baris jadual bertanda paip dengan baris kepala, baris pemisah "| --- | --- |" dan satu baris bagi setiap butiran, tanpa baris kosong dan tanpa teks lain. Isi sel daripada bahan yang diberi sahaja; butiran yang tiada ditanda [ISI: ...]. Sitasi Penulis (Tahun) hanya yang ada dalam bahan. Tiada em-dash.`
+      : `Anda pembantu penulisan artikel jurnal berindeks Scopus dan WoS. Tulis SATU rajah sahaja dalam ${bhs} akademik, tanpa teks lain, dalam salah satu daripada dua bentuk.
+(1) Rajah statistik (taburan atau kekerapan kajian): satu baris "CARTA: medan=<kod>; jenis=<bar|barh|pai|garis>; tajuk=${label}. <tajuk rajah>". Kod medan ialah salah satu daripada: ${medan}; sistem mengira angka daripada medan sebenar artikel sumber. Jika taburan itu tiada dalam senarai medan, guna medan=sendiri dan tulis baris data "label, nilai" di bawahnya, satu bagi setiap kategori, dengan angka yang tertulis dalam perenggan sahaja; jangan reka angka.
+(2) Rajah konsep atau aliran: baris "[RAJAH: ${label}. tajuk rajah]", kemudian satu baris bagi setiap anak panah, contohnya "A[Konsep A] --> B[Konsep B]" atau "A -->|label| B"; paling banyak 12 nod; tambah "arah: TB" bagi aliran menegak.
+Tiada em-dash.`;
+    const tugas = `${teksTeras()}\n\nFOLDER: ${specF(f).nama}\nPERENGGAN YANG MENYEBUT ${label.toUpperCase()}:\n${contoh}\n\nPERENGGAN INI MESTI ADA: ${b.mesti || b.idea || ''}\nISI SOKONGAN: ${subKr(b).join('; ')}\n\nPERENGGAN LAIN DALAM FOLDER (konteks):\n${lain}\n\nTUGAS: Tulis ${label} yang disebut dalam perenggan di atas, selaras dengan dakwaannya${T ? ' (contohnya bagi kriteria kelayakan: lajur Elemen, Dimasukkan, Dikecualikan mengikut PCC atau PICO; bagi ciri kajian: satu baris bagi setiap kajian)' : ''}.`;
     const anggaran = anggarToken(system) + anggarToken(tugas);
-    const ok = await R.confirmBox(`Jana ${sebut[0]}?`, `Satu panggilan kecil (anggaran ${angka(anggaran)} token masuk; model ${t.model.replace('claude-', '')}). Artikel sumber tidak dibaca semula. Jadual dipaparkan di bawah contoh perenggan dan boleh dimasukkan ke ASAL.`, 'Jana jadual', false);
-    if (!ok) return; P.busy = { k, mod: 'jadual', i }; render();
+    const ok = await R.confirmBox(`Jana ${label}?`, `Satu panggilan kecil (anggaran ${angka(anggaran)} token masuk; model ${t.model.replace('claude-', '')}). Artikel sumber tidak dibaca semula.${T ? '' : ' Rajah statistik dilukis sistem daripada medan sebenar artikel sumber.'} Hasilnya dipaparkan di bawah contoh perenggan dan boleh dimasukkan ke ASAL.`, 'Jana', false);
+    if (!ok) return; P.busy = { k, mod: 'objek', i, label }; render();
     try {
-      const res = await R.Isi.hantar(t, { kunciMod: 'pandu-jadual:' + t.model, system, content: [{ type: 'text', text: tugas }], hadToken: 2000 });
-      let md = String(res.text || '').trim().replace(/^```[a-z]*\n?|```$/g, '').trim(); const m = md.search(/^\[(?:JADUAL|TABLE)\s*:/im); if (m > 0) md = md.slice(m);
-      if (!/^\[(?:JADUAL|TABLE)\s*:/i.test(md)) { const tj = md.search(/^\|/m); if (tj < 0) throw new Error('Agen tidak memulangkan jadual'); md = `[JADUAL: ${sebut[0]}]\n` + md.slice(tj); }
-      if (!blokTeks(md).some(x => x.jenis === 'jadual')) throw new Error('Format jadual tidak dikenali');
-      cad.jt = Object.assign({}, cad.jt || {}, { [i]: md }); const tk = kiraTokenRes(res); cad.token = cad.token ? { masuk: (cad.token.masuk || 0) + (tk.masuk || 0), keluar: (cad.token.keluar || 0) + (tk.keluar || 0) } : tk; simpanF(k, true);
-      toast(`${sebut[0]} siap. Semak isinya, kemudian tekan Masukkan jadual ke ASAL.`);
-    } catch (e) { toast('Jadual tidak dapat dijana: ' + ((e && (e.message || e.code)) || e), true); }
+      const res = await R.Isi.hantar(t, { kunciMod: 'pandu-objek:' + t.model, system, content: [{ type: 'text', text: tugas }], hadToken: 2000 });
+      let md = String(res.text || '').trim().replace(/^```[a-z]*\n?|```$/g, '').trim(); const m = md.search(/^(\[(?:JADUAL|TABLE|RAJAH|FIGURE)\s*:|CARTA\s*:)/im); if (m > 0) md = md.slice(m);
+      if (T && !/^\[(?:JADUAL|TABLE)\s*:/i.test(md)) { const tj = md.search(/^\|/m); if (tj < 0) throw new Error('Agen tidak memulangkan jadual'); md = `[JADUAL: ${label}]\n` + md.slice(tj); }
+      const bl = blokTeks(md).filter(x => jenisBlok(x) === jenis); if (!bl.length) throw new Error('Format ' + (T ? 'jadual' : 'rajah') + ' tidak dikenali');
+      if (bl[0].jenis === 'carta' && bl[0].medan === 'sendiri' && !bl[0].data.length) throw new Error('Data rajah tiada dalam perenggan; isi data sendiri atau tulis semula perenggan');
+      cad.jt = Object.assign({}, cad.jt || {}, { [i]: (cad.jt && cad.jt[i] ? cad.jt[i] + '\n\n' : '') + md }); const tk = kiraTokenRes(res); cad.token = cad.token ? { masuk: (cad.token.masuk || 0) + (tk.masuk || 0), keluar: (cad.token.keluar || 0) + (tk.keluar || 0) } : tk; simpanF(k, true);
+      toast(`${label} siap. Semak isinya, kemudian tekan Masukkan jadual dan rajah ke ASAL.`);
+    } catch (e) { toast(`${label} tidak dapat dijana: ` + ((e && (e.message || e.code)) || e), true); }
     finally { P.busy = null; render(); }
   }
   /* Paparan kerangka perenggan (baca sahaja): satu baris bagi satu mainframe, dengan idea utama dan subframenya. */
@@ -679,8 +718,9 @@ export function initPandu(R, C) {
   function htmlCadangan(t, o) {
     o = o || {}; let nR = 0; const e = en();
     return blokTeks(t).map(b => {
-      if (b.jenis === 'jadual') { const kep = b.tajuk ? `<p><strong>${e ? 'Table' : 'Jadual'} [n]</strong></p><p><em>${esc(b.tajuk)}</em></p>` : ''; const badan = `<tr>${b.kepala.map(c => `<th>${tebal(c)}</th>`).join('')}</tr>${b.baris.map(r => `<tr>${r.map(c => `<td>${tebal(c)}</td>`).join('')}</tr>`).join('')}`; return o.ram ? `${kep}<table><tbody>${badan}</tbody></table>` : `${kep}<div class="pd-jadual-wrap"><table class="pd-jadual pd-jadual-agen"><tbody>${badan}</tbody></table></div>`; }
-      if (b.jenis === 'rajah') { const i = nR++; const kap = `<p><em>${e ? 'Figure' : 'Rajah'} [n]. ${esc(b.tajuk)}</em></p>`;
+      if (b.jenis === 'carta') { const m = RX_NO_TAJUK.exec(b.tajuk || ''); const kap = `<p><em>${e ? 'Figure' : 'Rajah'} ${m ? m[1] : '[n]'}. ${esc(m ? m[2] : b.tajuk || '')}</em></p>`; return o.ram ? `<p><strong>[${e ? 'Figure' : 'Rajah'}: ${esc(b.tajuk || '')}]</strong></p>${kap}` : `<div class="pd-rajah-agen">${denganCarta(b, () => Rajah.svg())}</div>${kap}`; }
+      if (b.jenis === 'jadual') { const mT = RX_NO_TAJUK.exec(b.tajuk || ''); const kep = b.tajuk ? `<p><strong>${e ? 'Table' : 'Jadual'} ${mT ? mT[1] : '[n]'}</strong></p><p><em>${esc(mT ? mT[2] : b.tajuk)}</em></p>` : ''; const badan = `<tr>${b.kepala.map(c => `<th>${tebal(c)}</th>`).join('')}</tr>${b.baris.map(r => `<tr>${r.map(c => `<td>${tebal(c)}</td>`).join('')}</tr>`).join('')}`; return o.ram ? `${kep}<table><tbody>${badan}</tbody></table>` : `${kep}<div class="pd-jadual-wrap"><table class="pd-jadual pd-jadual-agen"><tbody>${badan}</tbody></table></div>`; }
+      if (b.jenis === 'rajah') { const i = nR++; const mF = RX_NO_TAJUK.exec(b.tajuk || ''); const kap = `<p><em>${e ? 'Figure' : 'Rajah'} ${mF ? mF[1] : '[n]'}. ${esc(mF ? mF[2] : b.tajuk)}</em></p>`;
         if (!o.ram) return `<div class="pd-rajah-agen">${svgRajah(b.spec)}</div>${kap}`; const im = (o.imej || [])[i];
         return im ? `<p><img data-imej="${im.id}" src="${im.dataUrl}" alt="${esc(b.tajuk)}"></p>${kap}` : `<p><strong>[${e ? 'Figure' : 'Rajah'}: ${esc(b.tajuk)}]</strong> ${esc(b.spec.tepi.map(x => `${namaNod(b.spec, x.a)} -> ${namaNod(b.spec, x.b)}${x.l ? ' (' + x.l + ')' : ''}`).join('; '))}</p>`; }
       return htmlPerenggan(b.teks);
@@ -1338,6 +1378,7 @@ CARA BERCAKAP DENGAN PROF DR DAN CARA MEMBUAT KEPUTUSAN
 FORMAT JADUAL DAN RAJAH (dalam teks jawapan dan teks cadangan)
 - Apabila perbandingan merentas kajian, kriteria, ciri atau langkah lebih jelas dalam jadual, tulis jadual, bukan ayat yang berjela. Format: satu baris "[JADUAL: tajuk jadual]", kemudian baris-baris jadual bertanda paip, contohnya "| Kajian | Negara | Reka bentuk |", baris pemisah "| --- | --- | --- |", dan satu baris bagi setiap rekod. Jangan letak baris kosong di dalam jadual. Sel ditulis ringkas; sitasi Penulis (Tahun) di dalam sel dibenarkan.
 - Apabila hubungan antara konsep atau aliran langkah lebih jelas dalam rajah, tulis rajah. Format: satu baris "[RAJAH: tajuk rajah]", kemudian satu baris bagi setiap anak panah, contohnya "A[Kepimpinan digital] --> B[Pengurusan pengetahuan]", atau dengan label, "A -->|kesan langsung| C". Setiap nod mempunyai kod pendek, dan labelnya ditulis dalam kurungan siku pada kali pertama disebut. Paling banyak 12 nod. Tambah baris "arah: TB" jika aliran lebih sesuai dari atas ke bawah.
+- Rajah statistik (taburan kajian mengikut tahun, negara, reka bentuk, jenis, tema, peringkat pendidikan, teknik analisis, indeks atau kuartil) ditulis sebagai satu baris "CARTA: medan=<tahun|negara|rekaBentuk|jenis|tema|peringkat|teknik|indeks|kuartil>; jenis=<bar|barh|pai|garis>; tajuk=Figure n. <tajuk>"; sistem melukisnya daripada medan sebenar artikel sumber, maka jangan tulis angkanya sendiri.
 - Jangan gunakan tanda Markdown dalam jawapan: tiada **, tiada # dan tiada senarai berbutir bertanda sempang. Tajuk kecil ditulis sebagai baris pendek yang diakhiri titik bertindih, dan perkara yang perlu disenaraikan ditulis sebagai jadual atau ayat.
 - Sistem menukar kedua-duanya kepada jadual dan rajah sebenar. Tajuk dan isi ditulis dalam bahasa manuskrip bagi teks cadangan, dan dalam Bahasa Melayu bagi jawapan kepada Prof Dr. Isi jadual dan rajah tertakluk kepada peraturan sifar fabrikasi yang sama: setiap sel dan setiap hubungan mesti datang daripada bahan yang diberi.
 
@@ -1497,7 +1538,7 @@ MESTI ADA: dua hingga tiga ayat dalam Bahasa Melayu mudah kepada Prof Dr tentang
 SUBFRAME 1.1: satu ayat isi sokongan dalam Bahasa Melayu mudah. Sumber: Penulis (Tahun) dan bukti ringkas daripada rekodnya.
 SUBFRAME 1.2: satu ayat isi sokongan. Sumber: Penulis (Tahun); Penulis (Tahun).
 ${tandaSub}${adaCsv ? '; rekod CSV ditanda "(rekod CSV)" selepas sitasinya' : ''}. Bilangan mainframe sepadan dengan sasaran panjang folder, pada kira-kira 120 hingga 180 patah perkataan bagi satu perenggan.
-Selepas subframe terakhir, tinggalkan satu baris kosong dan tulis baris "DRAF:". Di bawahnya tulis draf penuh: SATU perenggan bagi setiap mainframe mengikut urutannya, didahului label mainframenya dalam kurungan siku pada baris yang sama (contohnya [${E ? 'Research gap' : 'Jurang kajian'}]), dengan satu baris kosong di antara perenggan dan tanpa tajuk lain. Setiap subframe dikembangkan menjadi satu hingga dua ayat penuh; jangan tinggalkan mana-mana mainframe atau subframe, dan jangan tambah perenggan di luar kerangka. Jadual atau rajah dibenarkan mengikut FORMAT JADUAL DAN RAJAH apabila ia menggantikan huraian yang panjang. WAJIB: setiap jadual yang disebut dalam draf (contohnya Jadual 1 atau Table 1) MESTI ditulis sepenuhnya mengikut FORMAT JADUAL DAN RAJAH terus selepas perenggan pertama yang menyebutnya, tanpa baris kosong di antara perenggan itu dan baris [JADUAL: ...]; jangan sebut jadual yang tidak anda tulis. Isi sel daripada bahan yang diberi; yang tiada ditanda [ISI: ...].
+Selepas subframe terakhir, tinggalkan satu baris kosong dan tulis baris "DRAF:". Di bawahnya tulis draf penuh: SATU perenggan bagi setiap mainframe mengikut urutannya, didahului label mainframenya dalam kurungan siku pada baris yang sama (contohnya [${E ? 'Research gap' : 'Jurang kajian'}]), dengan satu baris kosong di antara perenggan dan tanpa tajuk lain. Setiap subframe dikembangkan menjadi satu hingga dua ayat penuh; jangan tinggalkan mana-mana mainframe atau subframe, dan jangan tambah perenggan di luar kerangka. Jadual atau rajah dibenarkan mengikut FORMAT JADUAL DAN RAJAH apabila ia menggantikan huraian yang panjang. WAJIB: setiap jadual atau rajah BAHARU yang disebut dalam draf MESTI ditulis sepenuhnya mengikut FORMAT JADUAL DAN RAJAH terus selepas perenggan pertama yang menyebutnya, tanpa baris kosong di antara perenggan itu dan bloknya; tajuk blok dimulakan dengan labelnya, contohnya "[JADUAL: Table 2. Characteristics of the included studies]". Jangan sebut jadual atau rajah baharu yang tidak anda tulis. ${nomborFolder(f)} Isi sel daripada bahan yang diberi; yang tiada ditanda [ISI: ...].
 Selepas perenggan terakhir tulis dua perenggan pendek. Pertama, "${sumberTajuk}:" (Penulis (Tahun) yang disitasi). Kedua, "PENDIRIAN AGEN:" dalam Bahasa Melayu mudah: satu hingga tiga keputusan yang anda buat sendiri bagi contoh ini (contohnya hujah teras, susunan atau pilihan sumber) dan sebab setiap satu, satu ayat bagi satu keputusan. JANGAN tulis soalan, pilihan atau senarai keputusan untuk Prof Dr: setiap fakta yang belum diketahui ditanda [ISI: perkara] atau [PERLU SUMBER: perkara] di tempatnya dalam draf, dan draf diteruskan mengikut pilihan yang paling munasabah.${adaCsv ? `\nREKOD CSV: gunakan rekod CSV yang relevan ${peranCsv() === 'korpus' ? 'sebagai bukti utama bagi tema, pola, percanggahan dan jurang ulasan' : 'sebagai sokongan tambahan bagi dakwaan tentang pola dan jurang'}, disitasi sebagai Penulis (Tahun) dan terhad kepada apa yang dinyatakan dalam abstraknya; ${peranCsv() === 'korpus' ? 'rekod CSV ialah korpus ulasan, maka ia bukti utama bagi tema dan dapatan' : 'dakwaan teras tetap disandarkan kepada artikel repositori'}. Dalam "PENDIRIAN AGEN:" nyatakan dalam satu ayat cara rekod CSV digunakan dalam cadangan ini, dan dalam "${sumberTajuk}:" tandakan setiap rekod CSV dengan "(rekod CSV)".` : ''}${String(F.arahan || '').trim() ? `\nARAHAN KHUSUS PROF DR (didahulukan jika bercanggah dengan arahan di atas, kecuali peraturan sifar fabrikasi): ${F.arahan.trim()}` : ''}${dnaAktif(f) ? '\n' + DNA.arahanKerangka() + '\n' + DNA.arahanCadangan(E) : ''}`;
   }
   async function agen(k, mod) {
@@ -1775,8 +1816,8 @@ ${PIAWAI_RINGKAS}`;
       else if (a === 'snjenis') { SN.jenis = ['repo', 'csv', 'pilih'].includes(b.dataset.j) ? b.dataset.j : 'semua'; SN.had = 60; P.terbuka.add('L1'); renderFolder(); }
       else if (a === 'refleksiagen') agenRefleksi();
       else if (a === 'ayatasal') ayatKeAsal(k, b.dataset.i);
-      else if (a === 'jadualasal') jadualKeAsal(k, b.dataset.i);
-      else if (a === 'janajadual') janaJadual(k, b.dataset.i);
+      else if (a === 'objekasal') objekKeAsal(k, b.dataset.i);
+      else if (a === 'janaobjek') janaObjek(k, b.dataset.i, b.dataset.j, b.dataset.no, b.dataset.l);
       else if (a === 'nombor') susunNombor();
       else if (a === 'temabina') binaPeta();
       else if (a === 'temakad') janaKad();
@@ -1861,5 +1902,5 @@ ${PIAWAI_RINGKAS}`;
 
   function onEditor() { kemasBar(); }
   function onTulis() { kemasHidup(); }
-  return { rancangNombor, susunNombor, batalNombor, janaJadual, jadualKeAsal, contohP, htmlPelan, pecahDraf, soalanRefleksi, agenRefleksi, htmlRefleksi, teksRefleksi, ayatKeAsal, binaPeta, janaKad, htmlTema, temaData, kadSedia, temaSah, blokCsvTema, keTulisan, arahanKadTema, htmlTemaRam, arasCsv, render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, bahagiKeputusan, pecahKp, htmlCadangan, muatNaikCsv, csvData, csvAktif, blokCsv, csvPeta, statCsv, htmlStatCsv, hadAbstrak, pulihCsvLama, blokSumber, konteksFolder, teksKerangka, pecahCadangan, tugasCadangan, teras, teksTeras, kesanTeras, semakRq, tetapTeras, renderTeras, agenTeras, w5, nW5, W5_KOD, indeks, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
+  return { objekPerlu, objekKeAsal, janaObjek, rancangNombor, susunNombor, batalNombor, contohP, htmlPelan, pecahDraf, soalanRefleksi, agenRefleksi, htmlRefleksi, teksRefleksi, ayatKeAsal, binaPeta, janaKad, htmlTema, temaData, kadSedia, temaSah, blokCsvTema, keTulisan, arahanKadTema, htmlTemaRam, arasCsv, render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, bahagiKeputusan, pecahKp, htmlCadangan, muatNaikCsv, csvData, csvAktif, blokCsv, csvPeta, statCsv, htmlStatCsv, hadAbstrak, pulihCsvLama, blokSumber, konteksFolder, teksKerangka, pecahCadangan, tugasCadangan, teras, teksTeras, kesanTeras, semakRq, tetapTeras, renderTeras, agenTeras, w5, nW5, W5_KOD, indeks, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
 }

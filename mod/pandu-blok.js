@@ -14,6 +14,8 @@
    sebagai rajah sebenar (SVG; PNG apabila dimasukkan ke dalam manuskrip). Tiada pustaka luar. Isi jadual dan rajah datang daripada agen
    dan tertakluk kepada peraturan sifar fabrikasi yang sama seperti teksnya. */
 const RX_JADUAL = /^\[(?:JADUAL|TABLE)\s*:\s*(.+?)\]\s*$/i;
+/* CARTA: rajah statistik yang dibina sistem daripada medan sebenar artikel sumber (medan=tahun|negara|...) atau data baris "label, nilai" (medan=sendiri). */
+const RX_CARTA = /^CARTA\s*:\s*(.+)$/i;
 const RX_RAJAH = /^\[(?:RAJAH|FIGURE|DIAGRAM)\s*:\s*(.+?)\]\s*$/i;
 const barisPaip = b => /^\s*\|.*\|\s*$/.test(b);
 const pemisah = b => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(b);
@@ -31,6 +33,8 @@ export function blokTeks(teks) {
     const b = L[i]; let m;
     if ((m = RX_JADUAL.exec(b.trim()))) { const r = ambilJadual(i + 1, m[1].trim()); if (r) { tutup(); out.push(r.blok); i = r.akhir; continue; } }
     else if (barisPaip(b) && i + 1 < L.length && barisPaip(L[i + 1])) { const r = ambilJadual(i, ''); if (r) { tutup(); out.push(r.blok); i = r.akhir; continue; } }
+    else if ((m = RX_CARTA.exec(b.trim()))) { const at = {}; m[1].split(';').forEach(x => { const q = /^\s*(\w+)\s*=\s*(.*)$/.exec(x); if (q) at[q[1].toLowerCase()] = q[2].trim(); }); let j = i + 1; const data = []; while (j < L.length && /^\s*[^|].*?[,;\t]\s*-?\d+(?:\.\d+)?\s*$/.test(L[j])) { data.push(L[j].trim()); j++; }
+      tutup(); out.push({ jenis: 'carta', tajuk: at.tajuk || '', medan: at.medan || 'sendiri', carta: /^(bar|barh|pai|garis)$/.test(at.jenis || '') ? at.jenis : 'bar', data }); i = j; continue; }
     else if ((m = RX_RAJAH.exec(b.trim()))) { let j = i + 1; while (j < L.length && !L[j].trim()) j++; const rs = []; while (j < L.length && L[j].trim() && barisRajah(L[j])) { rs.push(L[j].trim()); j++; }
       const spec = uraiRajah(rs); if (spec.nod.length >= 2 && spec.tepi.length >= 1) { tutup(); out.push({ jenis: 'rajah', tajuk: m[1].trim(), spec }); i = j; continue; } }
     if (!b.trim()) tutup(); else per.push(b);
