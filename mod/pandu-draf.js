@@ -314,10 +314,15 @@ export function initDraf(X) {
     S.forEach(x => { x.per = []; x.blok.forEach((e, bi) => { if (x.ob.guna.has(bi) || e.tagName === 'TABLE' || adaImej(e)) return; const t = teksE(e); if (!t) return;
       if (RX_EKOR_AGEN.test(t)) { tambah('kritikal', 'isi', `Sisa keluaran agen ("${t.slice(0, 50)}...") dalam ${x.tajuk}; dibuang dalam draf.`, { sid: x.id, betul: 'agen' }); x.ob.guna.add(bi); return; }
       x.per.push({ bi, e, t }); }); });
+    /* sub-menu tanpa isi (contohnya sub-menu templat yang belum ditulis) tidak dimasukkan ke dalam draf; nombor tajuk dikira semula tanpanya */
+    const adaLetak = new Set(objek.map(o => o.letak && o.letak.x && o.letak.x.id).filter(Boolean));
+    S.forEach(x => { x.kosong = !x.abs && !x.ruj && x.aras > 1 && !x.per.length && !x.ob.objek.filter(o => !o.pendua && !(o.rumah && o.rumah !== x)).length && !adaLetak.has(x.id); });
+    { const c2 = [0, 0, 0]; let prev2 = 0; S.forEach(x => { if (x.abs || x.ruj) { x.no = ''; return; } if (x.kosong) { x.no = ''; return; } let a = x.aras; if (a > prev2 + 1) a = prev2 + 1; c2[a - 1]++; for (let k = a; k < 3; k++) c2[k] = 0; x.no = c2.slice(0, a).join('.'); prev2 = a; }); }
     const adaSubIsi = x => { const i = S.indexOf(x); for (let j = i + 1; j < S.length && S[j].aras > 1; j++) if (S[j].per.length || S[j].ob.objek.length) return true; return false; };
     S.forEach(x => {
       if (x.ruj) return; const peranan = x.p; const kata = x.per.reduce((s, p) => s + patah(p.t), 0); x.kata = kata;
-      if (!kata && !x.ob.objek.length && !(x.aras === 1 && adaSubIsi(x))) tambah('kritikal', 'struktur', `${x.aras > 1 ? 'Sub-menu' : 'Seksyen'} "${x.tajuk || 'Tanpa tajuk'}" kosong.`, { sid: x.id, betul: x.aras > 1 ? 'submenu' : null });
+      if (x.kosong) tambah('amaran', 'struktur', `Sub-menu "${x.tajuk || 'Tanpa tajuk'}" tiada isi; tajuknya tidak dimasukkan ke dalam draf. Tulis isinya, atau tekan "Susun sub-menu mengikut isi" untuk membuang sub-menu kosong daripada senarai seksyen.`, { sid: x.id, betul: 'submenu' });
+      else if (!kata && !x.ob.objek.length && !(x.aras === 1 && adaSubIsi(x))) tambah('kritikal', 'struktur', `Seksyen "${x.tajuk || 'Tanpa tajuk'}" kosong.`, { sid: x.id });
       if (!x.abs && x.aras === 1 && x.f && X.sidFolder(x.f) === x.id) { const betulT = x.f.t[E ? 1 : 0]; const D = X.D; const p0 = D.perananTajuk(x.tajuk); if (p0 && x.f.t.indexOf(x.tajuk.replace(/^\s*[\d.]+\s*/, '').trim()) < 0 && bahasaTajuk(x.tajuk) !== (E ? 'en' : 'ms')) tambah('kritikal', 'bahasa', `Tajuk "${x.tajuk}" bukan dalam ${X.namaBahasa()}; sepatutnya "${betulT}".`, { sid: x.id, betul: 'tajuk', nilai: betulT }); }
       else if (x.abs && bahasaTajuk(x.tajuk) && bahasaTajuk(x.tajuk) !== (E ? 'en' : 'ms')) tambah('kritikal', 'bahasa', `Tajuk "${x.tajuk}" bukan dalam ${X.namaBahasa()}; sepatutnya "${E ? 'Abstract' : 'Abstrak'}".`, { sid: x.id, betul: 'tajuk', nilai: E ? 'Abstract' : 'Abstrak' });
       x.per.forEach((p, pi) => {
@@ -392,7 +397,7 @@ export function initDraf(X) {
     const petaNo = sb => sb.o ? String(sb.o.baru) : null; let out = '';
     const d = dokumen(); out += `<h1 class="df-judul">${esc(d.tajuk || '')}</h1>`;
     M.S.forEach(x => {
-      if (x.ruj) return; const no = D0.nomborTajuk !== false && x.no ? x.no + (x.aras === 1 ? '.' : '') + ' ' : ''; const tg = x.abs ? 'h2' : 'h' + Math.min(4, x.aras + 1);
+      if (x.ruj || x.kosong) return; const no = D0.nomborTajuk !== false && x.no ? x.no + (x.aras === 1 ? '.' : '') + ' ' : ''; const tg = x.abs ? 'h2' : 'h' + Math.min(4, x.aras + 1);
       out += `<${tg} class="df-h${x.aras}${tanda && P.t.tandaSub && P.t.tandaSub[x.id] ? ' df-tanda' : ''}"${tanda && P.t.tandaSub && P.t.tandaSub[x.id] ? ` title="${esc(P.t.tandaSub[x.id])}"` : ''}>${esc(no + x.tajuk.replace(/^\s*[\d.]+\s+/, ''))}</${tg}>`;
       if (tanda && P.t.tandaSub && P.t.tandaSub[x.id]) out += `<p class="df-merah-nota">&#9679; ${esc(P.t.tandaSub[x.id])}</p>`;
       const awal = letak.get(x.id + ':-1') || []; awal.forEach(ob => { out += htmlObj(ob); });
