@@ -20,6 +20,7 @@ import { initRajah } from './rajah.js';
 import { PIAWAI_RINGKAS, ISTILAH } from './bahasa-data.js';
 import { blokTeks, svgRajah, svgKePng, adaBlok } from './pandu-blok.js';
 import * as Csv from './pandu-csv.js';
+import { initDraf } from './pandu-draf.js';
 import * as Tema from './pandu-tema.js';
 
 export function initPandu(R, C) {
@@ -288,7 +289,7 @@ export function initPandu(R, C) {
       <div class="pd-f pd-ac"><span class="lbl">Acuan artikel contoh</span><div><select data-pdsel="acuan" title="Artikel contoh yang strukturnya dijadikan acuan folder, sasaran dan bimbingan agen">${ACUAN[kel()] ? `<option value="bina">Terbina: ${esc(ACUAN[kel()].pendek)}</option>` : ''}${sendiri && sendiri.acuan ? `<option value="sendiri">Bedahan sendiri: ${esc(sendiri.acuan.pendek || 'artikel pilihan')}</option>` : ''}<option value="tiada">Tanpa acuan (struktur umum)</option></select> ${ac ? '<button class="btn btn-sm" data-pd="acuanlihat">Lihat acuan</button> ' : ''}<button class="btn btn-sm btn-ai" data-pd="bedah" title="Agen membaca teks penuh satu artikel dalam repositori dan membedahnya menjadi acuan (satu panggilan API)"${P.busy ? ' disabled' : ''}>${P.busy && P.busy.mod === 'bedah' ? 'Agen sedang membedah' : 'Bedah artikel contoh sendiri'}</button></div></div>
       ${htmlPilihLiteratur()}
       <div class="pd-f pd-pv"><span class="lbl">Pemboleh ubah atau konstruk utama</span><div class="pd-pv-senarai">${pv.length ? pv.map(v => `<span class="tag ai" title="${esc(v.alias ? 'Padanan lain: ' + v.alias : 'Tiada padanan lain')}"><span>${esc(v.nama)}</span></span>`).join('') : '<span class="pd-kosong">Belum ditetapkan</span>'}<button class="btn btn-sm${pv.length ? '' : ' btn-primary'}" data-pd="pemboleh">${pv.length ? 'Ubah' : 'Tetapkan'}</button></div></div>
-      <div class="pd-f pd-alat"><span class="lbl">Alat</span><div><button class="btn btn-sm" data-pd="gaya" title="Istilah dan frasa yang dilarang, had umur rujukan, had pangkalan data dan arahan gaya kepada agen">Peraturan gaya</button> <button class="btn btn-sm" data-pd="cara">Cara guna</button> <button class="btn btn-sm" data-pd="nombor" title="Nombor Jadual/Table dan Rajah/Figure disusun berturutan merentas semua folder mengikut susunan artikel; rujukan dalam teks turut dikemas kini. Boleh dibatalkan.">Susun nombor Jadual dan Rajah</button></div></div>
+      <div class="pd-f pd-alat"><span class="lbl">Alat</span><div><button class="btn btn-sm" data-pd="gaya" title="Istilah dan frasa yang dilarang, had umur rujukan, had pangkalan data dan arahan gaya kepada agen">Peraturan gaya</button> <button class="btn btn-sm" data-pd="cara">Cara guna</button> <button class="btn btn-sm" data-pd="nombor" title="Nombor Jadual/Table dan Rajah/Figure disusun berturutan merentas semua folder mengikut susunan artikel; rujukan dalam teks turut dikemas kini. Boleh dibatalkan.">Susun nombor Jadual dan Rajah</button> <button class="btn btn-sm" data-pd="dfsub" title="Setiap folder dibaca perenggan demi perenggan; sub-menu dibina mengikut isi sebenar (konstruk, langkah kaedah, tema, implikasi dan batasan). Pratonton dahulu; boleh dibatalkan.">Susun sub-menu mengikut isi</button> <button class="btn btn-sm btn-primary" data-pd="buka" data-k="drafakhir" title="Himpun semua folder menjadi satu manuskrip dan semak kesediaan hantaran">Draf Akhir</button></div></div>
     </div>${ac ? det('acuanInduk', 'pd-hasil pd-acuan-induk', `Acuan artikel ini: <b>${esc(ac.pendek)}</b>, ${esc(ac.jurnal || '')} · badan ${angka(ac.ukuran.badan)} patah perkataan dalam ${ac.bahagian.length} bahagian`, htmlAcuanInduk(ac)) : ''}${htmlRefleksi()}${P.t.sedia ? htmlKemajuan(tl) : ''}</div>`;
   }
   /* Pemilih folder Kajian Literatur: hanya ditawarkan apabila struktur asas belum mempunyainya. */
@@ -343,7 +344,7 @@ export function initPandu(R, C) {
   }
   function htmlRel(tl) {
     return `<div class="pd-rel" role="tablist">${tl.map((f, i) => { const uk = (P.cache.uk || {})[f.k] || (f.p === 'rujukan' ? { n: patah(teksFolder(f)), sedia: 0 } : ukur(f)); const [st, lb] = statusFolder(f, uk); const ss = sasaran(f); const tiada = !sidFolder(f);
-      return `<button class="pd-kad ${st}${P.buka === f.k ? ' on' : ''}${tiada ? ' tiada' : ''}" data-pd="buka" data-k="${esc(f.k)}" role="tab" aria-selected="${P.buka === f.k}"><span class="no">${i + 1}</span><span class="nm">${esc(tajukF(f))}</span><span class="st">${tiada ? 'Seksyen tiada' : lb}${f.p === 'abstrak' ? ' · paling akhir' : ''}</span>${f.p === 'rujukan' ? '<span class="pt">dijana daripada sitasi</span>' : `<span class="mt"><i style="width:${Math.max(2, uk.sedia || 0)}%"></i></span><span class="pt">${angka(uk.n)}${ss ? ' / ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) : ''} patah</span>`}</button>`; }).join('')}</div>`;
+      return `<button class="pd-kad ${st}${P.buka === f.k ? ' on' : ''}${tiada ? ' tiada' : ''}" data-pd="buka" data-k="${esc(f.k)}" role="tab" aria-selected="${P.buka === f.k}"><span class="no">${i + 1}</span><span class="nm">${esc(tajukF(f))}</span><span class="st">${tiada ? 'Seksyen tiada' : lb}${f.p === 'abstrak' ? ' · paling akhir' : ''}</span>${f.p === 'rujukan' ? '<span class="pt">dijana daripada sitasi</span>' : `<span class="mt"><i style="width:${Math.max(2, uk.sedia || 0)}%"></i></span><span class="pt">${angka(uk.n)}${ss ? ' / ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) : ''} patah</span>`}</button>`; }).join('')}${Draf.htmlKad()}</div>`;
   }
   function langkahLalai(f) {
     if (!f) return []; if (f.p === 'rujukan') return ['ruj']; const sp = specF(f); const F = fd(f.k); const out = []; const n = patah(teksFolder(f)); const ss = sasaran(f);
@@ -356,7 +357,7 @@ export function initPandu(R, C) {
     const d = C.doc(); const medan = sp.medan || []; return C.sumberAda(d).map(id => { const r = Bd().rekod(id); const rel = { 'Tinggi': 3, 'Sederhana-Tinggi': 2, 'Sederhana': 1 }[r.relevansi] || 0; const isi = medan.length ? medan.filter(k => !R.Isi.nilaiKosong(r[k])).length / medan.length : 0; const sebab = []; if (rel >= 2) sebab.push('relevansi ' + r.relevansi); if (isi >= 0.8 && medan.length) sebab.push('medan berkaitan lengkap'); if (r.status === 'Selesai') sebab.push('selesai dibaca'); return { id, skor: rel * 2 + isi * 3 + (r.status === 'Selesai' ? 1 : 0), sebab }; }).sort((a, b) => b.skor - a.skor);
   }
   function renderFolder() {
-    const el = $('#pdFolder'); if (!el) return; const tl = tulis(); const f = tl.find(x => x.k === P.buka);
+    const el = $('#pdFolder'); if (!el) return; if (P.buka === Draf.KUNCI) { Draf.render(el); return; } const tl = tulis(); const f = tl.find(x => x.k === P.buka);
     if (!f) { el.innerHTML = '<div class="help">Pilih satu folder di atas untuk mula. Urutan yang disyorkan ialah dari kiri ke kanan; Abstrak paling akhir. Senarai artikel sumber dan rekod CSV berada dalam Langkah 1 (Artikel panduan) setiap folder: di situlah artikel ditambah daripada repositori, dibuang, dan fail CSV dimuat naik.</div>'; return; }
     const sp = specF(f); const sid = sidFolder(f); const i = tl.indexOf(f); const d = C.doc();
     if (!sid) { el.innerHTML = `<div class="pd-fh"><h3>Folder ${i + 1}: ${esc(tajukF(f))}</h3></div><div class="pd-notis">Seksyen bagi folder ini tiada (mungkin dipadam). <button class="btn btn-sm btn-primary" data-pd="sedia">Cipta semula</button> atau padankan dengan seksyen sedia ada: ${htmlPetaSel(f)}</div>`; return; }
@@ -562,12 +563,12 @@ export function initPandu(R, C) {
   const nomborTeks = t => parseInt(String(t).replace(/,/g, ''), 10);
   function semakAsal(f) {
     const d = C.doc(); const hasil = { tiada: [], angka: [], adaN: false }; if (!d || !f || f.p === 'rujukan') return hasil;
-    const kap = new Set(); const adaImejPrisma = adaPrismaRasmi(); hasil.ganti = [];
+    const kap = new Set(); const adaImejPrisma = adaPrismaRasmi(); hasil.ganti = []; hasil.pendua = [];
     Teks.senarai(A.id).forEach(id => { const sk = d.seksyen[id]; if (!sk || sk.padam) return; const html = Teks.htmlSeksyen(sk) || '';
       if (!/Table|Jadual|Figure|Rajah/i.test(html)) return; kapsyenBlok(Array.from(badanHtml(html).children)).forEach(k => { if (k.lama === '[n]') hasil.adaN = true; else kap.add(k.jenis + k.lama); }); });
     const lihat = new Set(); const CP = ['kaedah', 'dapatan', 'abstrak'].includes(f.p) ? cekPrisma() : []; const lihatA = new Set();
     julat(f).forEach(sid => { const sk = d.seksyen[sid]; if (!sk || sk.padam) return; const blok = Array.from(badanHtml(Teks.htmlSeksyen(sk) || '').children); const kpb = kapsyenBlok(blok); const posKap = new Set(kpb.map(k => k.pos));
-      if (adaPrisma()) kpb.forEach(k => { if (k.jenis !== 'F') return; const tk = blok[k.pos].textContent || ''; if (!RX_ALIRAN_KAP.test(tk)) return; const ip = [k.pos - 1, k.pos + 1, k.pos - 2].find(q => blok[q] && blok[q].querySelector && blok[q].querySelector('img')); if (ip == null) return; const im = blok[ip].querySelector('img'); if (RX_RASMI.test(im.getAttribute('alt') || '')) return; hasil.ganti.push({ sid, posImej: ip, posKap: k.pos, no: k.lama, kap: tk.trim().slice(0, 160) }); });
+      if (adaPrisma()) kpb.forEach(k => { if (k.jenis !== 'F') return; const tk = blok[k.pos].textContent || ''; if (!RX_ALIRAN_KAP.test(tk)) return; const ip = [k.pos - 1, k.pos + 1, k.pos - 2].find(q => blok[q] && blok[q].querySelector && blok[q].querySelector('img')); if (ip == null) return; const im = blok[ip].querySelector('img'); if (RX_RASMI.test(im.getAttribute('alt') || '')) return; (adaImejPrisma ? hasil.pendua : hasil.ganti).push({ sid, posImej: ip, posKap: k.pos, no: k.lama, kap: tk.trim().slice(0, 160) }); });
       blok.forEach((e, pos) => { if (posKap.has(pos) || e.tagName === 'TABLE') return; const t = (e.textContent || '').replace(/\s+/g, ' ');
         for (const m of t.matchAll(RX_SEBUT_G)) { const j = jenisKap(m[1]); const kk = j + m[2]; if (kap.has(kk) || lihat.has(kk)) continue; lihat.add(kk);
           const ayat = (t.slice(Math.max(0, m.index - 160), m.index + 60)).trim(); hasil.tiada.push({ sid, pos, jenis: j, no: m[2], label: m[1].replace(/s$/i, '').replace(/^./, c => c.toUpperCase()) + ' ' + m[2], ayat, prisma: j === 'F' && adaPrisma() && !adaImejPrisma && !hasil.tiada.some(y => y.prisma) && RX_PRISMA_P.test(t) }); }
@@ -576,11 +577,12 @@ export function initPandu(R, C) {
     return hasil;
   }
   function htmlSemakAsal(f) {
-    const S = semakAsal(f); if (!S.tiada.length && !S.angka.length && !S.ganti.length) return ''; const E = en(); const sibuk = P.busy && P.busy.mod === 'semakobj';
+    const S = semakAsal(f); if (!S.tiada.length && !S.angka.length && !S.ganti.length && !S.pendua.length) return ''; const E = en(); const sibuk = P.busy && P.busy.mod === 'semakobj';
     const t1 = S.tiada.length ? `<p><b>${S.tiada.length} rujukan tanpa jadual atau rajah sebenar.</b> Teks ASAL folder ini menyebutnya, tetapi tiada jadual atau rajah berkapsyen dengan nombor itu di mana-mana dalam artikel.${S.adaN ? ' Ada kapsyen bertanda [n]; tekan Susun nombor dahulu kerana ia mungkin jadual atau rajah yang dimaksudkan.' : ''}</p><ul class="pd-semak-l">${S.tiada.map((x, q) => `<li><b>${esc(x.label)}</b> <span class="help">"...${esc(x.ayat)}..."</span><div class="pd-acts">${x.prisma ? `<button class="btn btn-sm btn-primary" data-pd="semakprisma" data-q="${q}" title="Rajah aliran daripada Ruang PRISMA disisip terus selepas perenggan ini">Sisip rajah PRISMA di sini</button>` : ''}${x.prisma ? '' : sibuk ? (+P.busy.q === q ? '<span class="help">Agen sedang menulis...</span>' : '') : `<button class="btn btn-sm btn-primary" data-pd="semakjana" data-q="${q}" title="Panggilan kecil: ${esc(x.label)} ditulis daripada perenggan ini dan disisip terus selepasnya">Jana ${esc(x.label)} di sini</button>`}</div></li>`).join('')}</ul>` : '';
     const t2 = S.angka.length ? `<p><b>${S.angka.length} angka aliran berbeza daripada Ruang PRISMA.</b> Teks ini mungkin ditulis sebelum kotak PRISMA dikemas kini. Ruang PRISMA ialah satu-satunya sumber angka aliran; jika kotak PRISMA yang belum dikemas kini (contohnya kajian daripada carian berbantukan AI belum diisi dalam lajur kaedah lain), betulkan kotak dahulu, bukan teks.</p><ul class="pd-semak-l">${S.angka.map(x => `<li>${esc(x.label)}: ASAL menulis <b>${angka(x.tulis)}</b> ("${esc(x.petikan)}"), Ruang PRISMA <b>${angka(x.betul)}</b></li>`).join('')}</ul><div class="pd-acts"><button class="btn btn-sm btn-primary" data-pd="semakangka" title="Setiap angka di atas diganti dengan angka Ruang PRISMA dalam ASAL folder ini; ayat lain tidak diubah. Boleh dibatalkan.">Betulkan angka mengikut Ruang PRISMA</button><span class="help">Ayat yang bergantung pada angka lama (contohnya peratus atau baki) perlu dibaca semula.</span></div>` : '';
     const t0 = S.ganti.length ? `<p><b>${S.ganti.length} rajah aliran bukan format PRISMA 2020 rasmi.</b> Rajah ini dilukis sebagai carta aliran bebas. Gantikan dengan rajah rasmi daripada Ruang PRISMA (lajur pangkalan data dan kaedah lain, jalur Identification, Screening dan Included); nombor rajah dikekalkan.</p><ul class="pd-semak-l">${S.ganti.map((x, q) => `<li><span class="help">"${esc(x.kap)}"</span><div class="pd-acts"><button class="btn btn-sm btn-primary" data-pd="semakganti" data-q="${q}">Ganti dengan rajah PRISMA rasmi</button></div></li>`).join('')}</ul>` : '';
-    return `<div class="pd-hasil pd-semak-asal"><div class="pd-hasil-h"><b>Semakan ASAL folder ini (tanpa token)</b></div>${t0}${t1}${t2}</div>`;
+    const tP = S.pendua.length ? `<p><b>${S.pendua.length} rajah aliran pendua.</b> Rajah PRISMA 2020 rasmi sudah ada dalam artikel; carta aliran bebas ini mengulang maklumat yang sama dan mesti dibuang supaya hanya satu rajah PRISMA muncul. Nombor rajah disusun semula selepas itu.</p><ul class="pd-semak-l">${S.pendua.map((x, q) => `<li><span class="help">"${esc(x.kap)}"</span><div class="pd-acts"><button class="btn btn-sm btn-primary" data-pd="semakbuang" data-q="${q}">Buang rajah pendua ini</button></div></li>`).join('')}</ul>` : '';
+    return `<div class="pd-hasil pd-semak-asal"><div class="pd-hasil-h"><b>Semakan ASAL folder ini (tanpa token)</b></div>${tP}${t0}${t1}${t2}</div>`;
   }
   /* Sisip html terus selepas blok ke-pos dalam ASAL seksyen sid; nombor jadual dan rajah kemudian disusun semula. */
   function sisipSelepas(sid, pos, html) {
@@ -602,6 +604,13 @@ export function initPandu(R, C) {
       Teks.tulisSeksyen(A.id, x.sid, { html: body.innerHTML }, { senyap: true, segera: true }); P.sandaranNombor = sandaran; if (Teks.state.bab === A.id) Teks.renderEditor(); Teks.renderSenarai(); kemasHidup(); setTimeout(() => susunNombor({ senyap: true }), 50);
       toast('Rajah aliran diganti dengan rajah PRISMA 2020 rasmi daripada Ruang PRISMA.', false, { label: 'Batal', fn: () => batalNombor() }); }
     catch (e) { toast('Rajah PRISMA gagal diganti: ' + ((e && e.message) || e), true); }
+  }
+  /* v1.45.0: carta aliran bebas apabila rajah PRISMA 2020 rasmi sudah ada: imej dan kapsyennya dibuang, kemudian nombor disusun semula. */
+  function semakBuang(k, q) {
+    const f = folderDari(k); const x = (semakAsal(f).pendua || [])[+q]; if (!x) return; const sk = C.doc().seksyen[x.sid]; if (!sk) return; Teks.flushEditor(); const lama = Teks.htmlSeksyen(sk) || ''; const body = badanHtml(lama); const blok = Array.from(body.children);
+    [x.posImej, x.posKap].sort((p, r) => r - p).forEach(j => { if (blok[j]) blok[j].remove(); });
+    Teks.tulisSeksyen(A.id, x.sid, { html: body.innerHTML }, { senyap: true, segera: true }); if (Teks.state.bab === A.id) Teks.renderEditor(); Teks.renderSenarai(); kemasHidup(); setTimeout(() => { susunNombor({ senyap: true }); P.sandaranNombor = Object.assign({}, P.sandaranNombor || {}, { [x.sid]: lama }); render(); }, 50);
+    toast('Rajah aliran pendua dibuang; hanya rajah PRISMA 2020 rasmi dikekalkan dan nombor rajah disusun semula.', false, { label: 'Batal', fn: () => batalNombor() });
   }
   async function pelanPrisma(k) { const f = folderDari(k); if (!f) return; try { const sid = sasaranRam(f); const html = await Prisma.sisipRajahDi(sid); if (!sisipSelepasRujukan(f, html)) { sisip(sid, 'asal', html); setTimeout(() => susunNombor({ senyap: true }), 50); } toast('Rajah PRISMA 2020 rasmi disisip ke ASAL; nombor disusun berturutan.'); kemasHidup(); } catch (e) { toast('Rajah PRISMA gagal disisip: ' + ((e && e.message) || e), true); } }
   async function semakPrisma(k, q) { const f = folderDari(k); const x = semakAsal(f).tiada[+q]; if (!x) return; try { const html = await Prisma.sisipRajahDi(x.sid); sisipSelepas(x.sid, x.pos, html); toast('Rajah aliran PRISMA disisip selepas perenggan yang merujuknya; nombor disusun berturutan.'); kemasHidup(); } catch (e) { toast('Rajah PRISMA gagal disisip: ' + ((e && e.message) || e), true); } }
@@ -1848,6 +1857,7 @@ ${PIAWAI_RINGKAS}`;
     if (pertama || !folderDari(P.buka)) bukaFolder(D.urutanTulis(fs)[0].k); else render();
   }
   async function bukaFolder(k, o) {
+    if (k === Draf.KUNCI) { P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(); render(); if (o && o.tatal) { const el = $('#pdFolder'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } return; }
     const f = folderDari(k); if (!f) return; o = o || {};
     if (f.p === 'abstrak' && P.buka !== k) { const belum = tulis().filter(x => x.p !== 'abstrak' && x.p !== 'rujukan' && patah(teksFolder(x)) < 40); if (belum.length) { const ok = await R.richModal('Abstrak ditulis paling akhir', `<p>Abstrak merumuskan manuskrip yang sudah ditulis. ${belum.length} folder belum ada ASAL:</p><ul>${belum.map(x => `<li>${esc(tajukF(x))}</li>`).join('')}</ul><p class="help">Jika abstrak ditulis sekarang, ia perlu ditulis semula apabila folder lain berubah.</p>`, 'Buka Abstrak juga', 'Kembali'); if (!ok) return; } }
     P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(langkahLalai(f)); if (o.l) { const l = o.l === 'L3' ? 'L2' : o.l; P.terbuka.add(l); if (/^L2./.test(l)) P.terbuka.add('L2'); }
@@ -1894,6 +1904,7 @@ ${PIAWAI_RINGKAS}`;
     root.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.pdid) { if (d.open) P.terbuka.add(d.dataset.pdid); else P.terbuka.delete(d.dataset.pdid); } }, true);
     root.addEventListener('click', async e => {
       const b = e.target.closest('[data-pd]'); if (!b || b.disabled) return; const a = b.dataset.pd; const k = P.buka; if (b.tagName === 'BUTTON') e.preventDefault();
+      if (a.startsWith('df') && await Draf.klik(a, b)) return;
       if (a === 'sedia') sediakan(); else if (a === 'pemboleh') modalPemboleh(); else if (a === 'gaya') modalGaya(); else if (a === 'cara') modalCara();
       else if (a === 'bedah') bedah();
       else if (a === 'acuanlihat') { if (P.terbuka.has('acuanInduk')) P.terbuka.delete('acuanInduk'); else P.terbuka.add('acuanInduk'); render(); const x = root.querySelector('[data-pdid="acuanInduk"]'); if (x && x.open) x.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
@@ -1913,6 +1924,7 @@ ${PIAWAI_RINGKAS}`;
       else if (a === 'objekasal') objekKeAsal(k, b.dataset.i);
       else if (a === 'semakprisma') semakPrisma(k, b.dataset.q);
       else if (a === 'semakganti') semakGanti(k, b.dataset.q);
+      else if (a === 'semakbuang') semakBuang(k, b.dataset.q);
       else if (a === 'pelanprisma') pelanPrisma(k);
       else if (a === 'semakangka') semakAngka(k);
       else if (a === 'semakjana') { const f0 = folderDari(k); const x = semakAsal(f0).tiada[+b.dataset.q]; if (x) { const blok = Array.from(badanHtml(Teks.htmlSeksyen(C.doc().seksyen[x.sid]) || '').children); janaObjek(k, 0, x.jenis, x.no, x.label, { sid: x.sid, pos: x.pos, q: +b.dataset.q, teks: (blok[x.pos] || {}).textContent || x.ayat }); } }
@@ -1951,6 +1963,7 @@ ${PIAWAI_RINGKAS}`;
     root.addEventListener('change', e => {
       const el = e.target;
       if (el.id === 'pdCsvFail') { const fl = el.files && el.files[0]; if (fl) muatNaikCsv(fl); return; }
+      if (el.dataset && el.dataset.pdcek && el.dataset.pdcek.startsWith('df') && Draf.ubahCek(el)) return;
       if (el.dataset && el.dataset.pdcek === 'lamaHantar') { const k = P.buka; if (!k) return; fd(k).lamaHantar = !!el.checked; simpanF(k, true); return; }
       if (el.dataset && el.dataset.pdcek === 'tanyaSemua') { const k = P.buka; if (!k) return; fd(k).tanyaSemua = !!el.checked; simpanF(k, true); return; }
       if (el.dataset && el.dataset.pdcsv === 'istilah') { simpanMetaCsv({ istilah: String(el.value || '').slice(0, 1200) }).then(() => { P.terbuka.add('L1'); P.terbuka.add('L1stat'); renderFolder(); }); return; }
@@ -1998,8 +2011,9 @@ ${PIAWAI_RINGKAS}`;
   /* ---- ruang kerja folder ---- */
   const X = { tulis: () => tulis(), sisipSelepasRujukan: (f, html) => sisipSelepasRujukan(f, html), R, C, P, D, Teks, A, esc, toast, angka, patah, bersih, sekarang, idBaru, simpanT, gaya, en, namaBahasa, kel, fd: k => fd(k), folderDari, sidFolder, julat, sasaranRam, sisip, urai, renderFolder: () => renderFolder(), render: () => render(), kemasBar: () => kemasBar(), terbuka: () => P.terbuka };
   const Prisma = initPrisma(X); const Output = initOutput(X); const Rajah = initRajah(X);
+  const Draf = initDraf(Object.assign({}, X, { folders: () => folders(), tajukF, cariSitasi, indeks, semakAsal: f => semakAsal(f), semakAngka: k => semakAngka(k), dataRujukan: f => dataRujukan(f), teras: () => teras(), barisTr, teksTeras: () => teksTeras(), csvAktif: () => csvAktif(), kiraTokenRes: r => kiraTokenRes(r), adaPrisma: () => adaPrisma() }));
 
   function onEditor() { kemasBar(); }
   function onTulis() { kemasHidup(); }
-  return { semakGanti, pelanPrisma, adaPrismaRasmi, semakAsal, htmlSemakAsal, semakAngka, semakPrisma, sisipSelepas, objekPerlu, objekKeAsal, janaObjek, rancangNombor, susunNombor, batalNombor, contohP, htmlPelan, pecahDraf, soalanRefleksi, agenRefleksi, htmlRefleksi, teksRefleksi, ayatKeAsal, binaPeta, janaKad, htmlTema, temaData, kadSedia, temaSah, blokCsvTema, keTulisan, arahanKadTema, htmlTemaRam, arasCsv, render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, bahagiKeputusan, pecahKp, htmlCadangan, muatNaikCsv, csvData, csvAktif, blokCsv, csvPeta, statCsv, htmlStatCsv, hadAbstrak, pulihCsvLama, blokSumber, konteksFolder, teksKerangka, pecahCadangan, tugasCadangan, teras, teksTeras, kesanTeras, semakRq, tetapTeras, renderTeras, agenTeras, w5, nW5, W5_KOD, indeks, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
+  return { Draf, tandaSeksyen: (n, id) => Draf.tandaSeksyen(n, id), semakGanti, pelanPrisma, adaPrismaRasmi, semakAsal, htmlSemakAsal, semakAngka, semakPrisma, sisipSelepas, objekPerlu, objekKeAsal, janaObjek, rancangNombor, susunNombor, batalNombor, contohP, htmlPelan, pecahDraf, soalanRefleksi, agenRefleksi, htmlRefleksi, teksRefleksi, ayatKeAsal, binaPeta, janaKad, htmlTema, temaData, kadSedia, temaSah, blokCsvTema, keTulisan, arahanKadTema, htmlTemaRam, arasCsv, render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, bahagiKeputusan, pecahKp, htmlCadangan, muatNaikCsv, csvData, csvAktif, blokCsv, csvPeta, statCsv, htmlStatCsv, hadAbstrak, pulihCsvLama, blokSumber, konteksFolder, teksKerangka, pecahCadangan, tugasCadangan, teras, teksTeras, kesanTeras, semakRq, tetapTeras, renderTeras, agenTeras, w5, nW5, W5_KOD, indeks, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
 }

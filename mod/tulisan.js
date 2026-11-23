@@ -407,7 +407,7 @@ export function initTulisan(R, konfig) {
   function renderSenarai() {
     const el = $(I('Senarai')); if (!el) return; if (!adaUnit()) { el.innerHTML = `<div class="help">${esc(cfg.tiadaUnitTeks)}</div>`; return; } const n = T.bab; const d = doc(n); const ids = senarai(n); const nb = nombor(n);
     const pj = d.pinjam ? `<div class="tul-pinjam">${esc(label(n))} dimuat turun sebagai Word pada ${esc(R.fmtTime(d.pinjam.masa))} (${esc(d.pinjam.fail || '')}) dan belum dimuat naik semula. Jika Prof Dr menaip dalam fail itu, muat naik dahulu sebelum menyunting di sini supaya tidak wujud dua versi. <button class="btn btn-sm" data-tulnaik="1">Muat naik Word</button> <button class="btn btn-sm" data-pinjamtutup="${n}" title="Fail Word itu tidak disunting; batalkan peringatan">Tidak disunting</button></div>` : '';
-    el.innerHTML = pj + (ids.length ? ids.map(id => { const s = d.seksyen[id]; const k = nb[id]; return `<div class="tul-item a${k.aras}${id === T.sek ? ' on' : ''}${(s.patah || 0) ? '' : ' kosong'}" data-sek="${esc(id)}" role="button" tabindex="0"><span class="tul-grip" title="Seret untuk menyusun semula" aria-hidden="true">⋮⋮</span><div class="tul-item-isi"><div class="tj"><span class="no">${esc(k.no)}</span> ${esc(s.tajuk || 'Tanpa tajuk')}</div><div class="mt">${s.patah || 0} patah${s.ram && teksDariHtml(s.ram).trim() ? ' · <span class="tag ram" title="Ada bahan mentah dalam RAM">RAM</span>' : ''}${s.patah || s.masa && !(s.sumber && s.sumber.jenis === 'templat') ? ' · ' + (s.masa ? esc(R.fmtTime(s.masa)) : 'belum disunting') : ' · belum ditulis'}${s.sumber && s.sumber.jenis !== 'templat' ? ' · ' + esc(s.sumber.jenis === 'banding' ? 'daripada Banding' : s.sumber.jenis === 'word' ? 'daripada Word' : s.sumber.jenis === 'artikel' ? 'daripada rekod' : '') : ''}</div></div><span class="tul-aras"><button class="ab" data-aras="-1" data-id="${esc(id)}" title="Promosi (naik satu aras)"${k.aras > 1 ? '' : ' disabled'}>&#8592;</button><button class="ab" data-aras="1" data-id="${esc(id)}" title="Demosi (turun satu aras, di bawah seksyen sebelumnya)"${bolehDemosi(n, id) ? '' : ' disabled'}>&#8594;</button></span></div>`; }).join('') : `<div class="help">${esc(cfg.kosongTeks(n))}</div>`);
+    el.innerHTML = pj + (ids.length ? ids.map(id => { const s = d.seksyen[id]; const k = nb[id]; return `<div class="tul-item a${k.aras}${id === T.sek ? ' on' : ''}${(s.patah || 0) ? '' : ' kosong'}" data-sek="${esc(id)}" role="button" tabindex="0"><span class="tul-grip" title="Seret untuk menyusun semula" aria-hidden="true">⋮⋮</span><div class="tul-item-isi"><div class="tj"><span class="no">${esc(k.no)}</span> ${esc(s.tajuk || 'Tanpa tajuk')}${cfg.tanda ? cfg.tanda(n, id) : ''}</div><div class="mt">${s.patah || 0} patah${s.ram && teksDariHtml(s.ram).trim() ? ' · <span class="tag ram" title="Ada bahan mentah dalam RAM">RAM</span>' : ''}${s.patah || s.masa && !(s.sumber && s.sumber.jenis === 'templat') ? ' · ' + (s.masa ? esc(R.fmtTime(s.masa)) : 'belum disunting') : ' · belum ditulis'}${s.sumber && s.sumber.jenis !== 'templat' ? ' · ' + esc(s.sumber.jenis === 'banding' ? 'daripada Banding' : s.sumber.jenis === 'word' ? 'daripada Word' : s.sumber.jenis === 'artikel' ? 'daripada rekod' : '') : ''}</div></div><span class="tul-aras"><button class="ab" data-aras="-1" data-id="${esc(id)}" title="Promosi (naik satu aras)"${k.aras > 1 ? '' : ' disabled'}>&#8592;</button><button class="ab" data-aras="1" data-id="${esc(id)}" title="Demosi (turun satu aras, di bawah seksyen sebelumnya)"${bolehDemosi(n, id) ? '' : ' disabled'}>&#8594;</button></span></div>`; }).join('') : `<div class="help">${esc(cfg.kosongTeks(n))}</div>`);
   }
   /* ---- editor teks kaya: dua pane, ASAL (teks akhir seksyen) dan RAM (kanvas sementara bahan mentah) ----
      ASAL ialah kandungan yang masuk ke Word, kiraan patah, carian dan panel Semalam; RAM ialah ruang kerja kotor bagi seksyen yang sama
@@ -712,6 +712,41 @@ export function initTulisan(R, konfig) {
     });
     return docx.Packer.toBlob(d);
   }
+  /* v1.45.0: Word daripada HTML manuskrip yang sudah dihimpun (Draf Akhir Pandu Tulis). h1 = tajuk artikel, h2 hingga h4 = tajuk seksyen
+     aras 1 hingga 3, p.df-ruj = entri rujukan (inden gantung APA 7). Rajah dengan data-imej dibaca daripada simpanan rajah; rajah data URL dibaca terus. */
+  async function docxHtml(tajuk, html) {
+    const { docx } = await bundle(); const body = nodHtml(html); const imej = {}; let u = 0;
+    for (const im of Array.from(body.querySelectorAll('img'))) {
+      let id = im.getAttribute('data-imej'); let rec = null;
+      try { if (id) { const r = await muatImej(id); if (r) rec = { url: r.url, mime: r.mime, lebar: r.lebar, tinggi: r.tinggi }; } } catch (e) {}
+      if (!rec && /^data:/.test(im.getAttribute('src') || '')) { rec = { url: im.getAttribute('src'), mime: (/^data:([^;,]+)/.exec(im.getAttribute('src')) || [])[1] || 'image/png' }; id = 'u' + (u++); im.setAttribute('data-imej', id); }
+      if (!rec || !id) continue;
+      try { const blob = dataUrlKeBlob(rec.url); const data = new Uint8Array(await blob.arrayBuffer()); let lebar = rec.lebar, tinggi = rec.tinggi; if (!lebar || !tinggi) { try { const i2 = await bacaImej(blob); lebar = i2.naturalWidth; tinggi = i2.naturalHeight; } catch (e) {} } imej[id] = { data, jenis: /jpe?g/i.test(rec.mime) ? 'jpg' : /gif/i.test(rec.mime) ? 'gif' : 'png', lebar, tinggi }; } catch (e) { console.warn('tulisan: rajah draf gagal', e); }
+    }
+    const kids = []; const HL = { H2: docx.HeadingLevel.HEADING_2, H3: docx.HeadingLevel.HEADING_3, H4: docx.HeadingLevel.HEADING_4 };
+    const jalan = node => Array.from(node.children).forEach(e => {
+      const tg = e.tagName;
+      if (tg === 'H1') { kids.push(new docx.Paragraph({ text: teksDariHtml(e.innerHTML).trim(), heading: docx.HeadingLevel.HEADING_1, alignment: docx.AlignmentType.CENTER, spacing: { after: 480 } })); return; }
+      if (HL[tg]) { kids.push(new docx.Paragraph({ text: (e.textContent || '').replace(/\s+/g, ' ').trim(), heading: HL[tg], spacing: { before: 360, after: 120 } })); return; }
+      if (tg === 'DIV') { jalan(e); return; }
+      if (tg === 'P' && e.classList.contains('df-ruj')) { kids.push(new docx.Paragraph({ children: runsDocx(docx, e, {}, imej), spacing: { line: 480, after: 0 }, indent: { left: 720, hanging: 720 } })); return; }
+      if (tg === 'P' && (e.classList.contains('df-kap') || e.classList.contains('df-kap-t'))) { kids.push(new docx.Paragraph({ children: runsDocx(docx, e, {}, imej), spacing: { line: 480, after: 0 }, keepNext: true })); return; }
+      if (tg === 'P' && e.classList.contains('df-nota')) { kids.push(new docx.Paragraph({ children: runsDocx(docx, e, { size: 20 }, imej), spacing: { line: 240, before: 60, after: 240 } })); return; }
+      kids.push(...blokNod(docx, nodHtml(e.outerHTML), imej, false));
+    });
+    jalan(body);
+    const d = new docx.Document({ creator: 'Repositori SLR', title: String(tajuk || 'Manuskrip'),
+      styles: { default: { document: { run: { font: 'Times New Roman', size: 24 } } }, paragraphStyles: [
+        { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 28, bold: true, font: 'Times New Roman' }, paragraph: { spacing: { line: 480, before: 0, after: 120 } } },
+        { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 24, bold: true, font: 'Times New Roman' }, paragraph: { spacing: { line: 480, before: 240, after: 120 } } },
+        { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 24, bold: true, font: 'Times New Roman' }, paragraph: { spacing: { line: 480, before: 240, after: 120 } } },
+        { id: 'Heading4', name: 'Heading 4', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 24, bold: true, italics: true, font: 'Times New Roman' }, paragraph: { spacing: { line: 480, before: 240, after: 120 } } }] },
+      numbering: { config: [
+        { reference: 'butir', levels: [{ level: 0, format: docx.LevelFormat.BULLET, text: '•', alignment: docx.AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+        { reference: 'nombor', levels: [{ level: 0, format: docx.LevelFormat.DECIMAL, text: '%1.', alignment: docx.AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
+      sections: [{ properties: { page: { margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 } } }, children: kids }] });
+    return docx.Packer.toBlob(d);
+  }
   function namaFail(babs) { const d = new Date(); const st = tarikhStr(d.getTime()) + '_' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0'); if (cfg.failDocx) return cfg.failDocx(babs, st); const b = babs.length === 1 ? 'Bab' + babs[0] + '_' + tajukBab(babs[0]).replace(/[^A-Za-z0-9]+/g, '_') : 'Bab' + babs[0] + '-' + babs[babs.length - 1]; return `Tesis_${b}_${st}.docx`; }
   async function muatTurun() {
     if (!adaUnit()) { toast(cfg.tiadaUnitTeks, true); return; }
@@ -936,5 +971,5 @@ export function initTulisan(R, konfig) {
     $(I('Cari')).addEventListener('input', e => { T.cari = e.target.value; renderCari(); });
   }
   return { show, muatTurun, muatNaik, muatNaikSeksyen, daripadaBanding, muatSemua, muatBab, peringatan, huraiHtml, bersihHtml, teksDariHtml, htmlDariTeks, warnaDariDocx, padanWarna, WARNA, pindah, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, simpanEditor, flushEditor, TEMPLAT, state: T, BAB,
-    doc, senarai, adaUnit, simpanAwan, simpanLokal, simpanImej, muatImej, tulisSeksyen, seksyenBaru, padamSeksyen, renderSemua, renderEditor, renderSenarai, renderBab, renderSambung, renderCari, jumlahPatah, htmlSeksyen, patah, buka, cfg };
+    doc, docxHtml, senarai, adaUnit, simpanAwan, simpanLokal, simpanImej, muatImej, tulisSeksyen, seksyenBaru, padamSeksyen, renderSemua, renderEditor, renderSenarai, renderBab, renderSambung, renderCari, jumlahPatah, htmlSeksyen, patah, buka, cfg };
 }
