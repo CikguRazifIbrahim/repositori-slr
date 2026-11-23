@@ -131,6 +131,8 @@ export function initFlip(R) {
   document.addEventListener('keydown', e => {
     if (el.hidden || F.min || !F.doc || !$('#viewer').hidden) return;
     const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+    /* v1.46.0: kekunci yang sudah digunakan (contohnya Esc menolak ramalan ayat) dan kekunci dalam editor ASAL atau RAM tidak menutup atau menyelak flipbook */
+    if (e.defaultPrevented || (t && (t.isContentEditable || (t.closest && t.closest('[contenteditable="true"]'))))) return;
     if (e.key === 'ArrowLeft') { goto(F.page - 1); e.preventDefault(); } else if (e.key === 'ArrowRight') { goto(F.page + 1); e.preventDefault(); } else if (e.key === 'Escape') close();
   });
   // swipe on touch

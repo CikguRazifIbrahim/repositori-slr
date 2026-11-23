@@ -37,7 +37,7 @@ export function initRamal(R, H) {
   const HAD_PENUH = 36000, BIL_HAMPIR = 45;
   const PREFIX = H.prefix || 'tul';
   const NAMA_SERLAH = 'sitasi-' + PREFIX;
-  const Z = { timer: null, seq: 0, hantu: null, kad: null, calon: [], i: 0, julat: null, awalan: '', sisip: false, cache: new Map(), pop: null, popDariKad: false, tSerlah: null, hadDimaklum: '', pustaka: null };
+  const Z = { terbang: new Map(), timer: null, seq: 0, hantu: null, kad: null, calon: [], i: 0, julat: null, awalan: '', sisip: false, cache: new Map(), pop: null, popDariKad: false, tSerlah: null, hadDimaklum: '', pustaka: null };
 
   /* ---------------- tetapan dan penggunaan (per peranti) ---------------- */
   function tet() {
@@ -76,7 +76,7 @@ export function initRamal(R, H) {
   }
   const kataKunci = w => bersih(w).replace(/[^a-z]/g, '');
   /* Nama yang tidak mungkin nama keluarga pengarang (kata pembuka ayat bertitik huruf besar). */
-  const BUKAN_NAMA = new Set(['menurut', 'kajian', 'dapatan', 'jadual', 'rajah', 'table', 'figure', 'lihat', 'see', 'bab', 'seksyen', 'tahun', 'pada', 'dalam', 'oleh', 'dan', 'and', 'et', 'al', 'according', 'study', 'studies', 'seterusnya', 'selain', 'namun', 'walau', 'sebaliknya', 'justeru', 'however', 'moreover', 'furthermore', 'similarly', 'likewise', 'while', 'whereas', 'begitu', 'malah', 'misalnya', 'contohnya', 'the', 'for', 'sebagai', 'seperti', 'kedua', 'sementara', 'berbeza', 'selari', 'in', 'as', 'by', 'kerana', 'bagi', 'daripada', 'kepada', 'hasil', 'laporan', 'penyelidikan', 'research', 'kerangka', 'model', 'teori', 'dapatan', 'oleh', 'itu', 'ini', 'cth', 'rujuk', 'cf', 'eg', 'ie', 'bin', 'binti', 'bt', 'van', 'von', 'der', 'de']);
+  const BUKAN_NAMA = new Set(['menurut', 'kajian', 'dapatan', 'jadual', 'rajah', 'table', 'figure', 'lihat', 'see', 'bab', 'seksyen', 'tahun', 'pada', 'dalam', 'oleh', 'dan', 'and', 'et', 'al', 'according', 'study', 'studies', 'seterusnya', 'selain', 'namun', 'walau', 'sebaliknya', 'justeru', 'however', 'moreover', 'furthermore', 'similarly', 'likewise', 'while', 'whereas', 'begitu', 'malah', 'misalnya', 'contohnya', 'the', 'for', 'sebagai', 'seperti', 'kedua', 'sementara', 'berbeza', 'selari', 'in', 'as', 'by', 'kerana', 'bagi', 'daripada', 'kepada', 'hasil', 'laporan', 'penyelidikan', 'research', 'kerangka', 'model', 'teori', 'dapatan', 'oleh', 'itu', 'ini', 'cth', 'rujuk', 'cf', 'eg', 'ie', 'bin', 'binti', 'bt', 'van', 'von', 'der', 'de', 'mengikut', 'berdasarkan', 'walaupun', 'sungguhpun', 'meskipun', 'manakala', 'bahkan', 'bagaimanapun', 'tetapi', 'selaras', 'sejajar', 'seiring', 'merujuk', 'although', 'unlike', 'despite', 'following', 'building', 'based', 'contrary', 'consistent', 'but', 'yet', 'thus', 'hence', 'therefore', 'indeed', 'notably', 'a/l', 'a/p', 'al', 'el']);
   const namaToken = s => String(s || '').split(/[\s,;&]+/).map(kataKunci).filter(w => w.length >= 2 && !BUKAN_NAMA.has(w));
 
   /* ---------------- pustaka repositori ---------------- */
@@ -87,13 +87,16 @@ export function initRamal(R, H) {
   /* Penulis rekod kepada bentuk sitasi. Bentuk ringkas ("Zhang et al.", "Ahmad dan Ismail", "Lee") ialah yang diminta oleh borang, tetapi
      bentuk penuh APA ("Zhang, L., & Li, M.") dan pengarang organisasi ("Kementerian Sains, Teknologi dan Inovasi") juga dikenali: inisial
      tidak dikira sebagai pengarang, dan nama organisasi dikekalkan sebagai satu pengarang (APA 7). */
-  const ORG = /^(?:kementerian|bahagian|jabatan|institut|institute|universiti|university|majlis|ministry|department|organi[sz]ation|united|unit|pusat|centre|center|lembaga|suruhanjaya|persatuan|association|council|commission|office|agensi|agency|world|national|dewan|akademi|academy|yayasan|foundation|perbadanan|corporation|sekretariat|secretariat|pertubuhan|unesco|oecd|unicef|kpm|moe)\b/i;
+  /* Pengarang organisasi: kata kunci organisasi di mana-mana dalam nama (bukan hanya perkataan pertama). */
+  const ORG = /\b(?:kementerian|bahagian|jabatan|institut|institute|universiti|university|majlis|ministry|department|organi[sz]ation|united\s+nations|unit|pusat|centre|center|lembaga|suruhanjaya|persatuan|association|council|commission|office|agensi|agency|dewan|akademi|academy|yayasan|foundation|perbadanan|corporation|sekretariat|secretariat|pertubuhan|society|government|kerajaan|perbendaharaan|bank|pejabat|sekolah|kolej|college|forum|consortium|konsortium|board|panel|network|rangkaian|unesco|oecd|unicef|kpm|moe|epu|iste|mqa)\b/i;
+  /* Nama tempat dan jenis organisasi tidak dianggap nama pengarang individu walaupun muncul dalam medan Penulis. */
+  const BUKAN_ORANG = new Set(['malaysia', 'malaysian', 'perak', 'sabah', 'sarawak', 'selangor', 'johor', 'kedah', 'kelantan', 'terengganu', 'pahang', 'melaka', 'negeri', 'sembilan', 'pulau', 'pinang', 'penang', 'perlis', 'putrajaya', 'labuan', 'kuala', 'lumpur', 'daerah', 'kerajaan', 'education', 'educational', 'technology', 'digital', 'national', 'international', 'asia', 'asian', 'pacific', 'europe', 'european', 'america', 'american', 'china', 'singapore', 'indonesia', 'world', 'global', 'school', 'schools', 'pendidikan', 'sekolah', 'guru', 'teacher', 'teachers', 'leadership', 'kepimpinan']);
   const INISIAL = /^(?:\p{Lu}\.?[\s.‐-]*){1,4}$/u;
   function urusPenulis(s) {
     const t = satuBaris(String(s || '').replace(/\(\s*(?:(?:19|20)\d{2}[a-z]?|t\.\s?t\.|n\.\s?d\.)\s*\)/gi, ' ')).replace(/[.,;:\s]+$/, '');
     if (!t) return null;
     const etal = /\bet\s*al\b\.?/i.test(t) || /\bdan\s+rakan(?:-rakan)?\b/i.test(t);
-    if (!etal && (ORG.test(t) || /^\p{Lu}{2,}$/u.test(t))) return { nama: [t], etal: false, org: true };
+    if (!etal && (ORG.test(t) || /^\p{Lu}{2,}$/u.test(t))) { const ak = t.split(/\s+/).filter(w => /^\p{Lu}/u.test(w) && !/^(?:dan|and|for|in|of|the|on)$/i.test(w)).map(w => w[0]).join('').toUpperCase(); return { nama: [t], etal: false, org: true, akronim: /^\p{Lu}{2,}$/u.test(t) ? t : ak }; }
     if (etal) { const a = t.split(/\s*,?\s*\bet\s*al\b|\s+dan\s+rakan/i)[0]; const p = a.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean).filter((x, i) => i === 0 || !INISIAL.test(x)); return p.length ? { nama: [p[0]], etal: true, org: false } : null; }
     const bahagian = t.split(/\s*(?:;|&|,\s*(?:dan|and)\s+|,|\s+dan\s+|\s+and\s+)\s*/i).map(x => x.trim()).filter(Boolean).filter((x, i) => i === 0 || !INISIAL.test(x));
     if (!bahagian.length) return null; if (bahagian.length >= 3) return { nama: [bahagian[0]], etal: true, org: false };
@@ -130,7 +133,7 @@ export function initRamal(R, H) {
       e.ringkas = baris.filter(Boolean).join(' | '); e.token = Math.ceil(e.ringkas.length / 3.6);
     });
     /* token nama keluarga pengarang individu: ayat model yang menyebut nama ini ditolak (sitasi hanya dibina oleh sistem) */
-    const namaOrang = new Set(senarai.filter(e => !e.pen.org).flatMap(e => e.tokPertama.concat(e.tokKedua)).filter(t => t.length >= 3 && !GENERIK.has(t)));
+    const namaOrang = new Set(senarai.filter(e => !e.pen.org).flatMap(e => e.tokPertama.concat(e.tokKedua)).filter(t => t.length >= 3 && !GENERIK.has(t) && !BUKAN_ORANG.has(t)));
     Z.pustaka = { tanda, senarai, peta: new Map(senarai.map(e => [e.id, e])), kod: new Map(senarai.map(e => [e.kod, e])), df, N: senarai.length, avgdl: senarai.length ? jumlahLen / senarai.length : 1, tiada, token: senarai.reduce((a, e) => a + e.token, 0), namaOrang };
     return Z.pustaka;
   }
@@ -148,10 +151,11 @@ export function initRamal(R, H) {
   function huraiPengarang(s) {
     let t = satuBaris(s).replace(/[,\s]+$/, '');
     const etal = /\bet\s*al\b|\bdan\s+rakan/i.test(t);
+    const singkatan = (/\[([^\]]+)\]/.exec(t) || [])[1] || ''; t = t.replace(/\s*\[[^\]]*\]\s*/g, ' ');
     t = t.replace(/\s*,?\s*(?:\bet\s*al\b\.?|\bdan\s+rakan(?:-rakan)?)\s*/i, ' ').trim();
     const nama = t.split(/\s*(?:&|,\s*(?:dan|and)\s+|,|\s+dan\s+|\s+and\s+)\s*/i).map(x => x.trim()).filter(Boolean).filter((x, i) => i === 0 || !INISIAL.test(x));
-    if (nama.length) { const w = nama[0].split(/\s+/); while (w.length > 1 && BUKAN_NAMA.has(kataKunci(w[0]))) w.shift(); nama[0] = w.join(' '); }
-    return { nama, etal, semua: t };
+    if (nama.length) { const w = nama[0].split(/\s+/); while (w.length > 1 && (BUKAN_NAMA.has(kataKunci(w[0])) || /^\p{Lu}{2,}$/u.test(w[0]) || /^\p{Lu}\p{Ll}+\p{Lu}/u.test(w[0]))) w.shift(); nama[0] = w.join(' '); }
+    return { nama, etal, semua: t, singkatan };
   }
   /* Padanan tiga peringkat. "sah": nama pengarang pertama sama tepat (set token), bilangan pengarang sepadan (seorang, dua, et al.)
      dan pengarang kedua sama bagi dua pengarang. "hampir": sebahagian nama sepadan (bukan bahagian nama yang lazim seperti Mohd atau
@@ -162,7 +166,9 @@ export function initRamal(R, H) {
     const kat = c.etal || c.nama.length >= 3 ? 3 : c.nama.length; const sah = [], hampir = [];
     P.senarai.forEach(e => {
       if (!tahunSama(e.tahun, tahun)) return;
-      if (e.pen.org) { const r = new Set(e.tokPertama); if (samaSet(r, tSemua)) sah.push(e); else if (Array.from(r).filter(x => tSemua.has(x) && !GENERIK.has(x)).length >= Math.min(2, r.size)) hampir.push(e); return; }
+      /* organisasi: nama penuh sama, atau singkatan APA 7 ("KPM", "[KPM]", "ISTE") sama dengan akronim nama organisasi rekod */
+      if (e.pen.org) { const r = new Set(e.tokPertama); const ak = String(e.pen.akronim || '').toUpperCase(); const sk = [c.singkatan, c.semua].map(x => String(x || '').trim().toUpperCase()).filter(x => /^\p{Lu}{2,}$/u.test(x)); const akTaip = c.semua.split(/\s+/).filter(w => /^\p{Lu}/u.test(w) && !/^(?:dan|and|for|in|of|the|on)$/i.test(w)).map(w => w[0]).join('').toUpperCase();
+        if (samaSet(r, tSemua) || (ak && (sk.includes(ak) || (/^\p{Lu}{2,}$/u.test(String(e.pen.nama[0])) && akTaip === ak)))) sah.push(e); else if (Array.from(r).filter(x => tSemua.has(x) && !GENERIK.has(x)).length >= Math.min(2, r.size)) hampir.push(e); return; }
       const rp = new Set(e.tokPertama);
       if (!samaSet(rp, t1)) { if (Array.from(t1).some(x => rp.has(x) && !GENERIK.has(x))) hampir.push(e); return; }
       const kr = e.pen.etal ? 3 : e.pen.nama.length; let ok = kr === kat;
@@ -172,9 +178,10 @@ export function initRamal(R, H) {
     const ut = e => (utama && utama.has(e.id) ? 0 : 1); sah.sort((a, b) => ut(a) - ut(b));
     return { sah, hampir: sah.length ? [] : hampir };
   }
-  const NAMA = "\\p{Lu}[\\p{L}'’\\-]+";
+  const NAMA = "(?:[ae]l-)?\\p{Lu}[\\p{L}'’\\-]+";
+  const SAMBUNG = "(?:bin|binti|bt\\.?|a\\/l|a\\/p|van|von|de|der)";
   const TAHUN = '(?:(?:19|20)\\d{2}[a-z]?|t\\.\\s?t\\.|n\\.\\s?d\\.)';
-  const RE_NARATIF = new RegExp(`((?:${NAMA}\\s+){0,3}${NAMA}(?:\\s+et\\s+al\\.?|\\s+dan\\s+rakan(?:-rakan)?|\\s+(?:dan|and|&)\\s+(?:${NAMA}\\s+){0,2}${NAMA}|(?:,\\s+${NAMA})+,?\\s+(?:dan|and|&)\\s+${NAMA})?)\\s*\\(\\s*(${TAHUN})(?=[\\s,;)])`, 'gu');
+  const RE_NARATIF = new RegExp(`((?:(?:${NAMA}|${SAMBUNG})\\s+){0,4}${NAMA}(?:\\s+et\\s+al\\.?|\\s+dan\\s+rakan(?:-rakan)?|\\s+(?:dan|and|&)\\s+(?:${NAMA}\\s+){0,2}${NAMA}|(?:,\\s+${NAMA})+,?\\s+(?:dan|and|&)\\s+${NAMA})?)\\s*\\(\\s*(${TAHUN})(?=[\\s,;)])`, 'gu');
   const RE_KURUNG = /\(([^()]{3,500})\)/g;
   const RE_TAHUN = new RegExp(`(?:^|[^\\p{L}\\d])(${TAHUN})(?![\\d\\p{L}])`, 'gu');
   const RE_AWALAN = /^\s*(?:(?:contohnya|misalnya|cth\.?|lihat\s+juga|lihat|rujuk|e\.g\.|see\s+also|see|cf\.|i\.e\.)\s*,?\s*)+/i;
@@ -291,7 +298,7 @@ export function initRamal(R, H) {
     document.removeEventListener('mousedown', luarPopup, true); document.removeEventListener('keydown', escPopup, true); window.removeEventListener('scroll', tutupPopupPulih, true); window.removeEventListener('resize', tutupPopupPulih);
     if (dariKad && pulih === true && Z.hantu && Z.hantu.isConnected) { const ed = H.editor('ram'); if (ed && document.activeElement !== ed) { try { ed.focus({ preventScroll: true }); } catch (e) { ed.focus(); } } if (Z.julat && ed && ed.contains(Z.julat.startContainer)) { const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(Z.julat); } }
   }
-  const tutupPopupPulih = () => tutupPopup(true);
+  const tutupPopupPulih = e => { if (e && e.type === 'scroll' && Z.pop && e.target instanceof Node && Z.pop.contains(e.target)) return; tutupPopup(true); };
   function luarPopup(e) {
     if (!Z.pop || Z.pop.contains(e.target)) return; const dariKad = Z.popDariKad;
     if (dariKad && ((Z.kad && Z.kad.contains(e.target)) || (Z.hantu && Z.hantu.contains(e.target)))) { tutupPopup(true); return; }
@@ -300,7 +307,7 @@ export function initRamal(R, H) {
   function escPopup(e) { if (e.key === 'Escape' && Z.pop) { e.preventDefault(); e.stopPropagation(); tutupPopup(true); } }
   function letak(el, x, y, atas) {
     const w = el.offsetWidth, h = el.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
-    let left = Math.max(8, Math.min(x - 16, vw - w - 8)); let top = y + 14; if (top + h > vh - 8) top = Math.max(8, (atas != null ? atas : y) - h - 10);
+    let left = Math.max(8, Math.min(x - 16, vw - w - 8)); let top = y + 14; if (top + h > vh - 8) top = Math.max(8, (atas != null ? atas : y) - h - 10); if (top + h > vh - 8) top = Math.max(8, vh - 8 - h);
     el.style.left = left + 'px'; el.style.top = top + 'px';
   }
   function bukaPopup(s, x, y, dariKad) {
@@ -311,6 +318,8 @@ export function initRamal(R, H) {
     pop.innerHTML = `<div class="rm-pop-h"><b>Rujukan APA 7</b><span>${papar}</span><button class="rm-x" data-rm="tutup" aria-label="Tutup">&times;</button></div>${s.rekod.length > 1 ? '<p class="rm-nota">Lebih daripada satu rekod sepadan dengan nama dan tahun ini. Pilih rujukan yang betul; jika perlu, tambah huruf a dan b pada tahun (APA 7).</p>' : ''}${kad || (hampir.length ? `<p class="rm-nota rm-semak-n">Tiada rekod yang sepadan tepat dengan sitasi "${papar}". Rekod di bawah hampir sepadan (nama pengarang, bilangan pengarang atau tahun berbeza); semak sebelum menggunakan rujukannya.</p>${hampir.map(kadRuj).join('')}` : '') || `<p class="rm-nota">Sitasi "${papar}" tidak sepadan dengan mana-mana rekod dalam repositori. Semak ejaan nama pengarang dan tahun, atau tambah artikel itu ke repositori dahulu supaya rujukannya boleh dijana.</p>`}<div class="rm-pop-f"><button class="btn btn-sm" data-rm="senarai">Senarai rujukan seksyen ini</button></div>`;
     document.body.appendChild(pop); Z.pop = pop; letak(pop, x, y);
     pop.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+    /* popup daripada kad: selepas klik pada teksnya (tanpa memilih teks), fokus kembali ke RAM supaya Tab masih menerima cadangan */
+    pop.addEventListener('mouseup', () => { setTimeout(() => { if (!Z.popDariKad || !Z.hantu || !Z.hantu.isConnected) return; const a = document.activeElement; if (a && a.closest && a.closest('a,button,input,select,textarea')) return; const sl = window.getSelection(); if (sl && !sl.isCollapsed) return; const ed = H.editor('ram'); if (!ed) return; try { ed.focus({ preventScroll: true }); } catch (er) { ed.focus(); } if (Z.julat && ed.contains(Z.julat.startContainer)) { sl.removeAllRanges(); sl.addRange(Z.julat); } }, 0); });
     pop.addEventListener('click', async e => {
       const b = e.target.closest('[data-rm]'); if (!b) return; const a = b.dataset.rm; const P = pustaka(); const ent = b.dataset.id ? P.peta.get(b.dataset.id) : null;
       if (a === 'tutup') tutupPopup(true);
@@ -436,7 +445,7 @@ export function initRamal(R, H) {
   function bersihAyat(s) {
     let t = satuBaris(s).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '');
     t = t.replace(/\s*\([^()]*(?:19|20)\d{2}[^()]*\)/g, '').replace(/\s*\[[^\]]*\]/g, '');
-    t = t.replace(/\s*[—–]\s*/g, ', ').replace(/\s+([,.;:?!])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+    t = t.replace(/\s*[—–]\s*/g, ', ').replace(/\s+([,;:?!]|\.(?!\d))/g, '$1').replace(/\s{2,}/g, ' ').trim();
     if (!t) return ''; if (!/[.?!]$/.test(t)) t += '.'; return t.charAt(0).toUpperCase() + t.slice(1);
   }
   function serupa(a, b) { const x = new Set(token(a)), y = token(b); if (!x.size || !y.length) return 0; return y.filter(w => x.has(w)).length / Math.max(x.size, y.length); }
@@ -444,7 +453,17 @@ export function initRamal(R, H) {
      satu atau dua jujukan perkataan berturutan (bukan sekadar set perkataan), tanpa kata nafi dalam rekod yang hilang daripada petikan.
      Kad cadangan memaparkan teks rekod yang sepadan, bukan petikan yang ditulis model. */
   const MEDAN_BUKTI = [['tajuk', 'Tajuk'], ['objektif', 'Objektif'], ['konstruk', 'Konstruk'], ['definisi', 'Definisi'], ['teori', 'Teori'], ['dapatan', 'Dapatan'], ['cabaran', 'Cabaran'], ['implikasi', 'Implikasi'], ['batasan', 'Batasan'], ['jurang', 'Jurang'], ['bandingan', 'Bandingan'], ['alasanRelevansi', 'Relevansi'], ['sampel', 'Sampel']];
-  const NEGASI = new Set(['tidak', 'tak', 'bukan', 'tiada', 'tanpa', 'belum', 'not', 'no', 'never', 'neither', 'nor', 'non', 'without', 'lack', 'lacks', 'lacked', 'insignificant']);
+  /* Kekutuban: kata nafi dibandingkan ke dua arah antara petikan dengan klausa rekod, dan antara ayat cadangan dengan klausa rekod.
+     Frasa afirmatif ("tidak dinafikan", "bukan sahaja ... malah", "not only") dibuang dahulu. "tanpa" dan "kurang" tidak dikira. */
+  const NAFI = new Set(['tidak', 'tak', 'bukan', 'tiada', 'belum', 'gagal', 'not', 'no', 'never', 'neither', 'nor', 'non', 'fail', 'fails', 'failed', 'lack', 'lacks', 'lacked', 'insignificant']);
+  /* kata kekurangan: padanannya merentas bahasa tidak boleh disemak secara mekanikal ("jarang dikaji" = "little is known"), maka
+     perbezaan hanya menandakan "semak", bukan menolak */
+  const LANGKA = new Set(['jarang', 'rarely', 'seldom', 'little', 'few', 'scarce', 'scarcity', 'kurang', 'sedikit', 'terhad', 'limited']);
+  const adaLangka = s => tokenKedudukan(String(s || '')).some(t => LANGKA.has(t.w));
+  const RE_AFIRMATIF = /\b(?:tidak\s+(?:dapat\s+|boleh\s+)?dinafikan|bukan\s+(?:sahaja|hanya|setakat)|tidak\s+(?:sahaja|hanya|kurang)|not\s+only|no\s+doubt)\b/gi;
+  const adaNafi = s => tokenKedudukan(String(s || '').replace(RE_AFIRMATIF, ' ')).some(t => NAFI.has(t.w));
+  const RE_SEMPADAN = /[.?!;:](?=\s|$)|,\s|\s(?:tetapi|namun|manakala|sebaliknya|walaupun|meskipun|sungguhpun|but|whereas|while|however|although)\s/gi;
+  function klausa(s, a, b) { let mula = 0, akhir = s.length; RE_SEMPADAN.lastIndex = 0; let m; while ((m = RE_SEMPADAN.exec(s))) { const z = m.index + m[0].length; if (z <= a) mula = z; else if (m.index >= b) { akhir = m.index; break; } } return s.slice(mula, akhir); }
   function tokenKedudukan(s) { const out = []; const re = /[\p{L}\p{N}]+(?:[.,]\d+)*/gu; let m; while ((m = re.exec(s))) out.push({ w: bersih(m[0]).replace(/,(?=\d)/g, '.'), i: m.index, j: m.index + m[0].length }); return out; }
   function medanRekod(e) { return e._medan || (e._medan = MEDAN_BUKTI.map(([k, lbl]) => { const s = satuBaris(e.r[k]); return { lbl, s, tok: tokenKedudukan(s) }; }).filter(x => x.tok.length)); }
   function runTerpanjang(q, qa, qb, f) {
@@ -453,16 +472,18 @@ export function initRamal(R, H) {
     return best;
   }
   function padanBukti(petikan, e) {
-    const q = tokenKedudukan(satuBaris(petikan)).map(x => x.w); if (q.length < 5) return null; const qset = new Set(q); let terbaik = null;
+    const teksQ = satuBaris(petikan); const qt = tokenKedudukan(teksQ); const q = qt.map(x => x.w); if (q.length < 5) return null; let terbaik = null;
     medanRekod(e).forEach(m => {
       const f = m.tok; const r1 = runTerpanjang(q, 0, q.length, f); if (r1.n < 4) return;
-      let n = r1.n, fa = r1.fa, fb = r1.fa + r1.n;
+      let n = r1.n, fa = r1.fa, fb = r1.fa + r1.n, qmin = r1.qa, qmax = r1.qa + r1.n;
       const kiri = runTerpanjang(q, 0, r1.qa, f), kanan = runTerpanjang(q, r1.qa + r1.n, q.length, f); const dua = [];
       if (kiri.n >= 2 && kiri.fa + kiri.n <= fa && fa - (kiri.fa + kiri.n) <= 8) dua.push(kiri);
       if (kanan.n >= 2 && kanan.fa >= fb && kanan.fa - fb <= 8) dua.push(kanan);
-      const r2 = dua.sort((a, b) => b.n - a.n)[0]; if (r2) { n += r2.n; fa = Math.min(fa, r2.fa); fb = Math.max(fb, r2.fa + r2.n); }
-      for (let j = Math.max(0, fa - 2); j < fb; j++) if (NEGASI.has(f[j].w) && !qset.has(f[j].w)) return;
-      const nisbah = n / q.length; if (!terbaik || nisbah > terbaik.nisbah) terbaik = { nisbah, medan: m.lbl, petikan: m.s.slice(f[fa].i, f[fb - 1].j) };
+      const r2 = dua.sort((a, b) => b.n - a.n)[0]; if (r2) { n += r2.n; fa = Math.min(fa, r2.fa); fb = Math.max(fb, r2.fa + r2.n); qmin = Math.min(qmin, r2.qa); qmax = Math.max(qmax, r2.qa + r2.n); }
+      /* klausa rekod yang memuatkan padanan, dan bahagian petikan yang dipadankan termasuk jurang antara dua jujukan */
+      const kl = klausa(m.s, f[fa].i, f[fb - 1].j);
+      if (adaNafi(teksQ.slice(qt[qmin].i, qt[qmax - 1].j)) !== adaNafi(kl)) return;
+      const nisbah = n / q.length; if (!terbaik || nisbah > terbaik.nisbah) terbaik = { nisbah, n, medan: m.lbl, petikan: m.s.slice(f[fa].i, f[fb - 1].j), klausa: kl };
     });
     return terbaik;
   }
@@ -473,7 +494,8 @@ export function initRamal(R, H) {
   const RE_ATRIBUSI = /(?:^|[\s,])(?:[Mm]enurut|[Kk]ajian\s+oleh|[Dd]inyatakan\s+oleh|[Dd]ihujahkan\s+oleh|[Dd]itegaskan\s+oleh|[Dd]ikemukakan\s+oleh|[Aa]ccording\s+to|[Aa]s\s+(?:noted|argued|reported|suggested)\s+by)\s+\p{Lu}/u;
   function adaNamaPengarang(ayat, P) {
     if (RE_ATRIBUSI.test(ayat)) return true;
-    return ayat.split(/\s+/).some(k => { const w = k.replace(/^[("'“‘]+|[)"'”’.,;:!?]+$/g, ''); return /^\p{Lu}/u.test(w) && P.namaOrang.has(kataKunci(w)); });
+    const kata = ayat.split(/\s+/); const AUX = /^(?:is|are|was|were|has|have|had|can|could|may|might|will|would|should|does|did|ialah|adalah|merupakan)$/i;
+    return kata.some((k, i) => { const w = k.replace(/^[("'“‘]+|[)"'”’.,;:!?]+$/g, ''); if (i === 0 && AUX.test(kata[1] || '')) return false; return /^\p{Lu}/u.test(w) && P.namaOrang.has(kataKunci(w)); });
   }
   /* Sitasi dalam kurungan yang dibina sistem: pengarang yang sama digabung ("Nonaka & Takeuchi, 1995, 2019"); susunan APA 7 (abjad,
      kemudian seorang sebelum dua sebelum et al., kemudian tahun) bagi artikel, atau tahun terkini dahulu (garis panduan UPSI) bagi tesis. */
@@ -495,12 +517,19 @@ export function initRamal(R, H) {
     const ayat = bersihAyat(mentah); if (patah(ayat) < 6 || patah(ayat) > 60) return null;
     if (ctx.ayat.some(a => serupa(a, ayat) > 0.8)) return null;
     const senaraiBukti = (Array.isArray(c.bukti) ? c.bukti : typeof c.bukti === 'string' ? [{ kod: kod[0], petikan: c.bukti }] : []).filter(b => b && typeof b.petikan === 'string');
-    const lulus = [];
-    kod.forEach(k => { const e = dibenar.get(k); const urut = senaraiBukti.filter(b => normKod(b.kod) === k).concat(senaraiBukti.filter(b => normKod(b.kod) !== k)); let t = null; urut.forEach(b => { const r = padanBukti(b.petikan, e); if (r && (!t || r.nisbah > t.nisbah)) t = r; }); if (t && t.nisbah >= 0.6) lulus.push({ e, b: t }); });
+    /* setiap kod hanya disemak dengan petikan yang dilabel bagi kod itu; petikan tanpa kod yang dikenali hanya sah bagi cadangan satu sumber */
+    const tanpaKod = senaraiBukti.filter(b => !dibenar.has(normKod(b.kod)));
+    const nafiAyat = adaNafi(ayat); const tokAyat = token(ayat); const lulus = [];
+    kod.forEach(k => { const e = dibenar.get(k); const urut = senaraiBukti.filter(b => normKod(b.kod) === k).concat(kod.length === 1 ? tanpaKod : []); let t = null; urut.forEach(b => { const r = padanBukti(b.petikan, e); if (r && (!t || r.nisbah > t.nisbah)) t = r; });
+      /* ayat cadangan mesti sama kekutuban dengan klausa rekod (contohnya rekod "tidak mempengaruhi" tidak boleh menyokong ayat "mempengaruhi") */
+      if (!t || t.nisbah < 0.6 || adaNafi(t.klausa) !== nafiAyat) return;
+      /* bukti lemah ditanda "semak": petikan pendek, padanan separa, medan Tajuk atau Sampel, atau isi ayat jauh daripada rekod */
+      const rekTok = new Set(token(e.teksPenuh)); const tindih = tokAyat.length ? tokAyat.filter(w => rekTok.has(w)).length / tokAyat.length : 0;
+      t.lemah = t.nisbah < 0.8 || t.n < 8 || t.medan === 'Tajuk' || t.medan === 'Sampel' || tindih < 0.2 || adaLangka(t.klausa) !== adaLangka(ayat); lulus.push({ e, b: t }); });
     if (!lulus.length) return null;
     const rek = lulus.map(x => x.e); if (!angkaSah(ayat, rek)) return null;
     const st = sitasiKurungan(rek, H.tesis);
-    return { ayat: ayat.replace(/([.?!])$/, ' ' + st.teks + '$1'), sit: st.teks, ids: st.ids, bukti: st.ids.map(id => { const x = lulus.find(z => z.e.id === id); return { id, medan: x.b.medan, petikan: x.b.petikan, lemah: x.b.nisbah < 0.8 }; }), fungsi: satuBaris(c.fungsi).toLowerCase().slice(0, 30), lemah: lulus.some(x => x.b.nisbah < 0.8), en: ctx.en };
+    return { ayat: ayat.replace(/([.?!])$/, ' ' + st.teks + '$1'), sit: st.teks, ids: st.ids, bukti: st.ids.map(id => { const x = lulus.find(z => z.e.id === id); return { id, medan: x.b.medan, petikan: x.b.petikan, lemah: x.b.lemah }; }), fungsi: satuBaris(c.fungsi).toLowerCase().slice(0, 30), lemah: lulus.some(x => x.b.lemah), en: ctx.en };
   }
   const ARAHAN = `Anda pembantu penulisan akademik bagi Prof Dr, calon PhD yang menulis tesis dan artikel jurnal berindeks Scopus dan WoS. Tugas anda: meramal AYAT SETERUSNYA yang menyambung idea Prof Dr secara logik supaya aliran penulisannya tidak terputus. Setiap ayat yang dicadangkan MESTI bersandarkan rekod dalam PUSTAKA REPOSITORI. Jangan gunakan pengetahuan luar, dan jangan mereka dapatan, angka, nama atau tahun.
 
@@ -510,6 +539,7 @@ PERATURAN:
 3. "sumber": satu atau dua kod rekod (contohnya ["R4"]) daripada PUSTAKA sahaja. Gunakan dua kod hanya jika kedua-dua rekod menyokong dakwaan yang sama.
 4. JANGAN tulis sitasi, nama pengarang (termasuk dalam bentuk "Menurut ..." atau "Kajian oleh ..."), tahun, "et al." atau kurungan dalam "ayat". Sistem membina sitasi APA 7 sendiri daripada rekod dan meletakkannya sebelum noktah. Ayat yang menyebut nama pengarang ditolak.
 5. "bukti": satu item bagi SETIAP kod dalam "sumber", iaitu {"kod": kod rekod itu, "petikan": salin TEPAT satu frasa berturutan (8 hingga 25 patah perkataan) daripada SATU medan rekod itu yang menyokong ayat}. Jangan ubah, tambah atau buang satu perkataan pun, termasuk kata nafi seperti "tidak". Sistem menyemak setiap petikan dengan teks rekod; sumber yang petikannya tidak ditemui dibuang daripada sitasi.
+5b. Kekalkan makna dan kekutuban dapatan rekod: jika rekod menyatakan sesuatu TIDAK berlaku atau TIDAK signifikan, ayat mesti menyatakan perkara yang sama. Ayat yang bercanggah dengan klausa rekod yang dipetik ditolak.
 5a. Angka (peratus, pekali, nilai p, saiz sampel, tahun) hanya boleh ditulis dalam "ayat" jika angka yang sama tertulis dalam rekod sumber; jika tidak, tulis tanpa angka.
 6. "fungsi": satu daripada huraian, bukti, perbandingan, percanggahan, implikasi, jurang.
 7. Parafrasa: jangan salin lebih daripada lima perkataan berturut-turut daripada rekod ke dalam "ayat"; tulis dengan struktur ayat sendiri.
@@ -552,6 +582,9 @@ ${PIAWAI_RINGKAS}`;
     if (!kursorSama(rg) || !pasangHantu('memuat')) return; Z.hantu.innerHTML = '<span class="tr-titik" aria-label="Sedang meramal">&#8943;</span>'; Z.hantu.title = 'Sedang meramal ayat seterusnya daripada repositori (Esc untuk batal)'; Z.awalan = awalan;
     let calon = Z.cache.get(kunciCache); if (paksa && calon && !calon.length) calon = null;
     if (!calon) {
+      /* permintaan yang sama (konteks dan model sama) yang masih dalam perjalanan dikongsi, tidak dihantar dan dicaj semula */
+      let janji = Z.terbang.get(kunciCache);
+      if (!janji) {
       /* rekod yang dihantar: pustaka penuh (stabil, dicache) jika muat; jika tidak, rekod paling hampir mengikut carian kata */
       const q = token(akhir).map(w => [w, 2]).concat(token(konteks.slice(-700)).map(w => [w, 1]));
       const kx = H.konteks ? H.konteks() : {}; token((kx.seksyen || '') + ' ' + (kx.unit || '')).forEach(w => q.push([w, 1]));
@@ -566,21 +599,29 @@ ${PIAWAI_RINGKAS}`;
       const tugas = `BAHASA TEKS: ${en ? 'Bahasa Inggeris (formal academic British English)' : 'Bahasa Melayu Malaysia'}\nSASARAN: ${[kx.sasaran, kx.unit, kx.seksyen ? 'seksyen "' + kx.seksyen + '"' : ''].filter(Boolean).join(' · ') || 'RAM'}\nBILANGAN CADANGAN: sehingga ${t.bil}\n\nTEKS SEBELUM (ayat terakhir di hujung):\n"""\n${konteks}\n"""\n\nAYAT TERAKHIR PROF DR: "${akhir}"\n${sudah.size ? `SUMBER YANG SUDAH DISITASI DALAM TEKS SEBELUM: ${Array.from(sudah).join(', ')} (utamakan rekod lain jika sama kuat)\n` : ''}${hampir.length ? `REKOD PALING HAMPIR MENGIKUT CARIAN KATA (petunjuk, bukan had): ${hampir.join(', ')}\n` : ''}${utamaKod.length ? `SUMBER UTAMA ${H.tesis ? 'TULISAN' : 'ARTIKEL'} INI (utamakan jika menyokong): ${utamaKod.join(', ')}\n` : ''}\nRamalkan ayat seterusnya mengikut PERATURAN dan pulangkan JSON.`;
       /* Dikira semasa dihantar (had harian dan kos termasuk permintaan yang kemudiannya dilangkaui kerana Prof Dr terus menaip).
          Dalam mod rekod paling hampir, blok pustaka berubah setiap kali, maka ia tidak ditanda untuk cache (tiada caj tulis cache). */
-      catatHantar(); let res;
-      try { res = await R.Isi.hantar(tk, { kunciMod: 'ramal:' + tk.model, systemAwal, system, cacheSystem: penuh, content: [{ type: 'text', text: tugas }], skema: SKEMA, alat: { name: 'ramal_ayat', description: 'Pulangkan cadangan ayat seterusnya mengikut struktur ini.', input_schema: SKEMA }, hadToken: 1200, effort: 'low' }); }
-      catch (e) {
-        if (e && e.usage) catatGuna(e.usage, tk.model); if (e && (e.status === 401 || e.status === 403)) BERSAMA.tk = null;
-        if (seq !== Z.seq) return; buangHantu(); gagalRamal(R.Isi.msg(e)); return;
+      janji = (async () => {
+        try {
+          catatHantar(); let res;
+          try { res = await R.Isi.hantar(tk, { kunciMod: 'ramal:' + tk.model, systemAwal, system, cacheSystem: penuh, content: [{ type: 'text', text: tugas }], skema: SKEMA, alat: { name: 'ramal_ayat', description: 'Pulangkan cadangan ayat seterusnya mengikut struktur ini.', input_schema: SKEMA }, hadToken: 1200, effort: 'low' }); }
+          catch (e) { if (e && e.usage) catatGuna(e.usage, tk.model); if (e && (e.status === 401 || e.status === 403)) BERSAMA.tk = null; return { ralat: R.Isi.msg(e) }; }
+          catatGuna(res.usage, tk.model);
+          let j = res.input; if (!j) { try { j = R.Isi.parseJson(res.text, res.stop); } catch (e) { j = null; } }
+          /* jawapan yang tidak dapat dibaca bukan "tiada sokongan": tidak dicache, dikira sebagai kegagalan dan boleh dicuba semula */
+          if (!j || !Array.isArray(j.cadangan)) return { ralat: R.Isi.msg({ code: 'json', stop: res.stop }) };
+          BERSAMA.gagal = 0;
+          const ctx = { ayat: ayatKonteks, en };
+          let cl = j.cadangan.map(c => sahkan(c, dibenar, ctx)).filter(Boolean);
+          const unik = []; cl.forEach(c => { if (!unik.some(u => serupa(u.ayat, c.ayat) > 0.85)) unik.push(c); }); cl = unik.slice(0, t.bil); cl.forEach(c => { c.model = tk.model; });
+          Z.cache.set(kunciCache, cl); if (Z.cache.size > 60) Z.cache.delete(Z.cache.keys().next().value);
+          return { calon: cl };
+        } catch (e) { console.warn('ramal: ralat dalaman', e); return { ralat: 'ralat dalaman semasa menyemak cadangan (' + String(e && e.message || e).slice(0, 80) + ').' }; }
+      })();
+      Z.terbang.set(kunciCache, janji); janji.finally(() => Z.terbang.delete(kunciCache));
       }
-      catatGuna(res.usage, tk.model);
-      let j = res.input; if (!j) { try { j = R.Isi.parseJson(res.text, res.stop); } catch (e) { j = null; } }
-      /* jawapan yang tidak dapat dibaca bukan "tiada sokongan": tidak dicache, dikira sebagai kegagalan dan boleh dicuba semula */
-      if (!j || !Array.isArray(j.cadangan)) { if (seq !== Z.seq) return; buangHantu(); gagalRamal(R.Isi.msg({ code: 'json', stop: res.stop })); return; }
-      BERSAMA.gagal = 0;
-      const ctx = { ayat: ayatKonteks, en };
-      calon = j.cadangan.map(c => sahkan(c, dibenar, ctx)).filter(Boolean);
-      const unik = []; calon.forEach(c => { if (!unik.some(u => serupa(u.ayat, c.ayat) > 0.85)) unik.push(c); }); calon = unik.slice(0, t.bil); calon.forEach(c => { c.model = tk.model; });
-      Z.cache.set(kunciCache, calon); if (Z.cache.size > 60) Z.cache.delete(Z.cache.keys().next().value);
+      const h = await janji;
+      /* ralat dilaporkan dan dikira sekali sahaja, oleh pemanggil yang masih semasa */
+      if (h.ralat) { if (seq !== Z.seq || h.dilapor) return; h.dilapor = true; buangHantu(); gagalRamal(h.ralat); return; }
+      calon = h.calon;
     }
     if (seq !== Z.seq) return;
     if (!calon.length) { buangHantu(); paparKad('Tiada rekod repositori yang cukup kukuh menyokong ayat seterusnya bagi konteks ini. Teruskan menulis, atau tambah artikel yang berkaitan ke repositori.'); return; }
@@ -601,15 +642,15 @@ ${PIAWAI_RINGKAS}`;
     Z.timer = setTimeout(() => { Z.timer = null; cuba(false); }, tet().jeda);
   }
   function kekunci(e, mana) {
-    if (mana === 'ram' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === '.' || e.code === 'Period')) { e.preventDefault(); batal(); cuba(true); return true; }
+    if (mana === 'ram' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === '.' || e.code === 'Period')) { e.preventDefault(); e.stopPropagation(); batal(); cuba(true); return true; }
     const pengubah = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Fn', 'AltGraph'].includes(e.key);
     if (!pengubah && Z.pop && e.key !== 'Escape') tutupPopup(Z.popDariKad);
     if (!Z.hantu && !Z.kad) { if (!pengubah) { clearTimeout(Z.timer); Z.timer = null; Z.seq++; } return false; }
-    if (e.key === 'Tab' && !e.shiftKey && Z.calon.length && Z.hantu) { e.preventDefault(); terima(); return true; }
+    if (e.key === 'Tab' && !e.shiftKey && Z.calon.length && Z.hantu) { e.preventDefault(); e.stopPropagation(); terima(); return true; }
     /* Tab semasa ramalan masih dimuatkan: kekal dalam RAM (jangan pindah fokus) sehingga cadangan tiba */
-    if (e.key === 'Tab' && !e.shiftKey && Z.hantu && !Z.calon.length) { e.preventDefault(); return true; }
-    if (e.key === 'Escape') { e.preventDefault(); batal(); return true; }
-    if (e.altKey && (e.code === 'BracketRight' || e.code === 'BracketLeft') && Z.calon.length > 1) { e.preventDefault(); kitar(e.code === 'BracketRight' ? 1 : -1); return true; }
+    if (e.key === 'Tab' && !e.shiftKey && Z.hantu && !Z.calon.length) { e.preventDefault(); e.stopPropagation(); return true; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); batal(); return true; }
+    if (e.altKey && (e.code === 'BracketRight' || e.code === 'BracketLeft') && Z.calon.length > 1) { e.preventDefault(); e.stopPropagation(); kitar(e.code === 'BracketRight' ? 1 : -1); return true; }
     if (pengubah) return false;
     batal(); return false;
   }
