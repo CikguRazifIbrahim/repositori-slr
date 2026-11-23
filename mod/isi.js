@@ -6,8 +6,8 @@ import { PIAWAI_PENUH } from './bahasa-data.js';
 export function initIsi(R) {
   const { $, $$, esc, toast, GROUPS, FIELD_BY_KEY } = R;
   const API = 'https://api.anthropic.com/v1/messages';
-  const MODEL_DEFAULT = 'claude-sonnet-5-5';
-  const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (seimbang, disyorkan)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (paling pantas dan murah)'], ['claude-opus-5-5', 'Claude Opus 5.5 (lebih teliti; kos 2 kali Sonnet 5.5)'], ['claude-fable-5-2', 'Claude Fable 5.2 (paling berkeupayaan; kos 4 kali Sonnet 5.5)']];
+  const MODEL_DEFAULT = 'claude-opus-5-5';   // v1.44.0: Opus 5.5 lalai bagi penulisan (Fable terlalu mahal; model lebih kecil kurang mutu tulisan)
+  const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (seimbang)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (paling pantas dan murah)'], ['claude-opus-5-5', 'Claude Opus 5.5 (disyorkan untuk penulisan; kos 2 kali Sonnet 5.5)'], ['claude-fable-5-2', 'Claude Fable 5.2 (paling berkeupayaan; kos 4 kali Sonnet 5.5)']];
   /* Agen Bahasa selepas isian (mod/bahasa.js): nilai pertama ialah lalai. */
   const BAHASA_AUTO = [['sentiasa', 'Sentiasa, selepas setiap isian (lalai)'], ['perlu', 'Hanya apabila pengesan menemui istilah untuk dipiawaikan (jimat token)'], ['tidak', 'Tidak; saya panggil sendiri melalui butang Piawaikan bahasa']];
   /* Kedalaman berfikir model (output_config.effort); nilai pertama ('') bermaksud lalai model, iaitu effort tidak dihantar. */
@@ -23,7 +23,10 @@ Metodologi: kuantitatif, bukan eksperimen, keratan rentas, tinjauan soal selidik
 Bab tesis: Bab 1 Pengenalan dan pernyataan masalah; Bab 2 Sorotan literatur (konsep dan teori KD, PPO, KDG; kajian lepas; kerangka konseptual); Bab 3 Metodologi; Bab 4 Dapatan; Bab 5 Perbincangan.`;
 
   /* ---- tetapan ---- */
-  async function tetapan() { let m = {}; try { m = (await R.db().getMeta()) || {}; } catch (e) {} const model = String(m.anthropicModel || MODEL_DEFAULT).trim() || MODEL_DEFAULT; I.model = model; return { key: String(m.anthropicKey || '').trim(), model, profil: String(m.profilKajian || '').trim() || PROFIL_DEFAULT, bahasaAuto: BAHASA_AUTO.some(x => x[0] === m.bahasaAuto) ? m.bahasaAuto : BAHASA_AUTO[0][0], effort: effortSah(m.effort) }; }
+  async function tetapan() { let m = {}; try { m = (await R.db().getMeta()) || {}; } catch (e) {}
+    /* v1.44.0: atas permintaan Prof Dr, model ditukar SEKALI kepada Opus 5.5; selepas itu pilihan dalam Tetapan dihormati. */
+    if (!m.modelOpus144) { m.anthropicModel = MODEL_DEFAULT; m.modelOpus144 = true; try { await R.db().setMeta({ anthropicModel: MODEL_DEFAULT, modelOpus144: true }); } catch (e) {} }
+    const model = String(m.anthropicModel || MODEL_DEFAULT).trim() || MODEL_DEFAULT; I.model = model; return { key: String(m.anthropicKey || '').trim(), model, profil: String(m.profilKajian || '').trim() || PROFIL_DEFAULT, bahasaAuto: BAHASA_AUTO.some(x => x[0] === m.bahasaAuto) ? m.bahasaAuto : BAHASA_AUTO[0][0], effort: effortSah(m.effort) }; }
 
   /* ---- teks penuh artikel ---- */
   function pageText(items) {
