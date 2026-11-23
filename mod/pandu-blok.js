@@ -90,7 +90,7 @@ export function svgRajah(spec) {
 }
 
 export function svgKePng(src, skala) {
-  return new Promise((res, rej) => { const m = /viewBox="0 0 (\d+) (\d+)"/.exec(src); if (!m) { rej(new Error('rajah tidak sah')); return; } const w = +m[1], h = +m[2]; const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml;charset=utf-8' })); const im = new Image();
+  return new Promise((res, rej) => { const m = /^<svg[^>]*?viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(src); if (!m) { rej(new Error('rajah tidak sah')); return; } const w = Math.ceil(+m[1]), h = Math.ceil(+m[2]); const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml;charset=utf-8' })); const im = new Image();
     im.onload = () => { try { const c = document.createElement('canvas'); const z = skala || 2; c.width = w * z; c.height = h * z; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); c.toBlob(b => b ? res(b) : rej(new Error('PNG gagal dijana')), 'image/png'); } catch (e) { URL.revokeObjectURL(url); rej(e); } };
     im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Rajah gagal dilukis')); }; im.src = url; });
 }

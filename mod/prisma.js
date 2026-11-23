@@ -240,7 +240,7 @@ ${nA5 <= 1 ? 'Kotak akhir hanya menyebut kajian: gunakan istilah "studies" (kaji
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Arial, Helvetica, sans-serif" fill="#111827"><defs><marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2937"/></marker></defs><rect width="${W}" height="${H}" fill="#ffffff"/>${atas}${s}<text x="${X1}" y="${H - 12}" font-size="10.5" fill="#4b5563">${xml(L.nota)}</text></svg>`;
   }
   function png(lang, skala) {
-    return new Promise((res, rej) => { const src = svg(lang); const m = /viewBox="0 0 (\d+) (\d+)"/.exec(src); const w = +m[1], h = +m[2]; const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml;charset=utf-8' })); const im = new Image();
+    return new Promise((res, rej) => { const src = svg(lang); const m = /^<svg[^>]*?viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(src); const w = Math.ceil(+m[1]), h = Math.ceil(+m[2]); const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml;charset=utf-8' })); const im = new Image();
       im.onload = () => { try { const c = document.createElement('canvas'); const z = skala || 2; c.width = w * z; c.height = h * z; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); c.toBlob(b => b ? res(b) : rej(new Error('PNG gagal dijana')), 'image/png'); } catch (e) { URL.revokeObjectURL(url); rej(e); } };
       im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Rajah gagal dilukis')); }; im.src = url; });
   }
@@ -339,12 +339,21 @@ ${nA5 <= 1 ? 'Kotak akhir hanya menyebut kajian: gunakan istilah "studies" (kaji
   window.addEventListener('scroll', () => { const b = document.getElementById('prBayang'); if (!b || b.hidden) return; if (E.ta && ELF && ELF.el.isConnected) tunjukBayang(E.id, true); else sorokBayang(); }, true);
   window.addEventListener('resize', () => { if (E.ta && ELF && ELF.el.isConnected) { letakEditor(); tunjukBayang(E.id, true); } else sorokBayang(); });
   document.addEventListener('mouseover', e => { const b = document.getElementById('prBayang'); if (!b || b.hidden || E.ta) return; const t = e.target; if (b.contains(t)) return; const g = t && t.closest ? t.closest('[data-kotak]') : null; if (!g || !ELF || !ELF.el.isConnected || !ELF.el.contains(g)) sorokBayang(); });
+  /* v1.44.5: Ruang PRISMA kini dalam folder Dapatan (Results); jadual strategi carian dan kriteria kelayakan tetap milik folder Metodologi. */
+  const folderKaedah = () => (X.tulis ? X.tulis() : []).find(g => g.p === 'kaedah') || null;
+  /* v1.44.5: html rajah PRISMA (imej berkapsyen) untuk disisip di mana-mana; sid ialah seksyen pemilik imej. */
+  async function htmlRajahPrisma(sid) {
+    const lang = bahasa(); const blob = await png(lang, 2); const kap = lang === 'en' ? 'PRISMA 2020 flow diagram of the study selection process' : 'Rajah aliran PRISMA 2020 bagi proses pemilihan kajian'; const r = await Teks.simpanImej(blob, { n: A.id, id: sid, nama: kap });
+    return `<p><img data-imej="${r.id}" src="${r.dataUrl}" alt="${esc(kap)}"></p><p><em>${lang === 'en' ? 'Figure [n].' : 'Rajah [n].'} ${esc(kap)}. ${lang === 'en' ? 'Adapted from Page et al. (2021).' : 'Diadaptasi daripada Page et al. (2021).'}</em></p>`;
+  }
+  async function sisipRajahDi(sid) { if (nilai('a1') == null && nilai('a5') == null) throw new Error('Kotak rajah PRISMA belum diisi'); return htmlRajahPrisma(sid); }
   async function sisipRajah(mana) {
     tutupEditor(true); const f = ELF && ELF.f; const sid = f && sasaranRam(f); if (!sid) { toast('Seksyen folder ini tiada', true); return; }
     if (nilai('a1') == null && nilai('a5') == null) { toast('Tulis angka dalam kotak rajah dahulu', true); return; }
     const beza = semakKira(); if (beza.length) { const ok = await R.confirmBox('Kira-kira rajah belum selaras', beza.map(x => x.teks).join(' ') + ' Sisip rajah juga?', 'Sisip juga', false); if (!ok) return; }
-    try { const lang = bahasa(); const blob = await png(lang, 2); const kap = lang === 'en' ? 'PRISMA 2020 flow diagram of the study selection process' : 'Rajah aliran PRISMA 2020 bagi proses pemilihan kajian'; const r = await Teks.simpanImej(blob, { n: A.id, id: sid, nama: kap });
-      const html = `<p><img data-imej="${r.id}" src="${r.dataUrl}" alt="${esc(kap)}"></p><p><em>${lang === 'en' ? 'Figure [n].' : 'Rajah [n].'} ${esc(kap)}. ${lang === 'en' ? 'Adapted from Page et al. (2021).' : 'Diadaptasi daripada Page et al. (2021).'}</em></p>`;
+    try { const html = await htmlRajahPrisma(sid);
+      /* ASAL: disisip terus selepas perenggan yang merujuk rajah aliran (PRISMA, Figure n dengan rekod atau kajian), jika ada; jika tiada, di hujung */
+      if (mana === 'asal' && X.sisipSelepasRujukan && X.sisipSelepasRujukan(f, html, 'prisma')) { toast('Rajah aliran PRISMA disisip selepas perenggan yang merujuknya; nombor disusun berturutan. Tambah Page et al. (2021) dalam senarai rujukan.'); X.renderFolder(); return; }
       if (sisip(sid, mana, html)) { toast(`Rajah aliran PRISMA disisip ke ${mana === 'asal' ? 'ASAL' : 'RAM'} seksyen. Tambah Page et al. (2021) dalam senarai rujukan.`); X.renderFolder(); } } catch (e) { toast('Rajah gagal disisip: ' + (e && e.message || e), true); }
   }
   /* ---- larian sebenar oleh sistem (v1.34.0). Tidak terikat kepada mana-mana pangkalan data: setiap entri dipadankan dengan
@@ -435,9 +444,9 @@ ${nA5 <= 1 ? 'Kotak akhir hanya menyebut kajian: gunakan istilah "studies" (kaji
     const b = e.target.closest('[data-pra]'); if (!b || !ELF) return; e.preventDefault(); const a = b.dataset.pra;
     if (a === 'rajahram') sisipRajah('ram'); else if (a === 'rajahasal') sisipRajah('asal');
     else if (a === 'png') { tutupEditor(true); try { const blob = await png(bahasa(), 3); const u = URL.createObjectURL(blob); const l = document.createElement('a'); l.href = u; l.download = 'Rajah_PRISMA_2020.png'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } catch (er) { toast('PNG gagal dijana: ' + (er && er.message || er), true); } }
-    else if (a === 'strategi') { const h = htmlStrategi(); const sid = sasaranRam(ELF.f); if (!h) { toast('Tiada rekod pangkalan data untuk dijadualkan', true); return; } if (sid && sisip(sid, 'ram', h)) toast('Jadual strategi carian disisip ke RAM seksyen'); }
+    else if (a === 'strategi') { const h = htmlStrategi(); const sid = sasaranRam(folderKaedah() || ELF.f); if (!h) { toast('Tiada rekod pangkalan data untuk dijadualkan', true); return; } if (sid && sisip(sid, 'ram', h)) toast('Jadual strategi carian disisip ke RAM seksyen'); }
     else if (a === 'ayat') { tutupEditor(true); const h = htmlAyat(); const sid = sasaranRam(ELF.f); if (!h) { toast('Tulis angka dalam kotak pertama dan kotak akhir rajah dahulu', true); return; } if (sid && sisip(sid, 'ram', h)) toast('Ayat aliran berangka disisip ke RAM; parafrasa sebelum dipindahkan ke ASAL'); }
-    else if (a === 'kritram') { const h = htmlKriteria(); const sid = sasaranRam(ELF.f); if (!h) { toast('Tiada baris kriteria yang direkodkan', true); return; } if (!sid) { toast('Seksyen folder ini tiada', true); return; } const sudah = jadualAda(); if (sisip(sid, 'ram', h)) toast(`Jadual kriteria kelayakan disisip ke RAM seksyen sebagai ${bahasa() === 'en' ? 'Table' : 'Jadual'} 1.${sudah ? ' Jadual kriteria yang lama masih ada dalam seksyen ini: buang yang lama.' : ''}`); }
+    else if (a === 'kritram') { const h = htmlKriteria(); const sid = sasaranRam(folderKaedah() || ELF.f); if (!h) { toast('Tiada baris kriteria yang direkodkan', true); return; } if (!sid) { toast('Seksyen folder ini tiada', true); return; } const sudah = jadualAda(); if (sisip(sid, 'ram', h)) toast(`Jadual kriteria kelayakan disisip ke RAM seksyen sebagai ${bahasa() === 'en' ? 'Table' : 'Jadual'} 1.${sudah ? ' Jadual kriteria yang lama masih ada dalam seksyen ini: buang yang lama.' : ''}`); }
     else if (a === 'csvlama') { if (!Saring.keadaan().n) { toast('Log saringan sedang dimuatkan daripada awan; cuba sebentar lagi', true); return; } Saring.csv(); }
   }
   function input(e) {
@@ -449,5 +458,5 @@ ${nA5 <= 1 ? 'Kotak akhir hanya menyebut kajian: gunakan istilah "studies" (kaji
     selepasMuat: () => { const k = ELF && ELF.el.isConnected ? ELF.el.querySelector('#prLama') : null; if (k) k.innerHTML = htmlLama(); } });
   document.addEventListener('click', e => { if (ELF && ELF.el.isConnected && ELF.el.contains(e.target)) klik(e); });
   document.addEventListener('change', e => { if (ELF && ELF.el.isConnected && ELF.el.contains(e.target) && e.target.dataset && (e.target.dataset.pr === 'guna2' || e.target.dataset.pr === 'bahasa')) input(e); });
-  return { meter, ringkas, render, teksAgen, kira, svg, png, data, htmlStrategi, htmlAyat, htmlKriteria, Saring, kotak: kotakD, nilai, jangka, semakKira, templat, bukaEditor, tutupEditor, KOTAK, NAMA };
+  return { butir, sisipRajahDi, meter, ringkas, render, teksAgen, kira, svg, png, data, htmlStrategi, htmlAyat, htmlKriteria, Saring, kotak: kotakD, nilai, jangka, semakKira, templat, bukaEditor, tutupEditor, KOTAK, NAMA };
 }
