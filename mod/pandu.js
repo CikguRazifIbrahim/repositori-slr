@@ -288,7 +288,7 @@ export function initPandu(R, C) {
       <div class="pd-f pd-ac"><span class="lbl">Acuan artikel contoh</span><div><select data-pdsel="acuan" title="Artikel contoh yang strukturnya dijadikan acuan folder, sasaran dan bimbingan agen">${ACUAN[kel()] ? `<option value="bina">Terbina: ${esc(ACUAN[kel()].pendek)}</option>` : ''}${sendiri && sendiri.acuan ? `<option value="sendiri">Bedahan sendiri: ${esc(sendiri.acuan.pendek || 'artikel pilihan')}</option>` : ''}<option value="tiada">Tanpa acuan (struktur umum)</option></select> ${ac ? '<button class="btn btn-sm" data-pd="acuanlihat">Lihat acuan</button> ' : ''}<button class="btn btn-sm btn-ai" data-pd="bedah" title="Agen membaca teks penuh satu artikel dalam repositori dan membedahnya menjadi acuan (satu panggilan API)"${P.busy ? ' disabled' : ''}>${P.busy && P.busy.mod === 'bedah' ? 'Agen sedang membedah' : 'Bedah artikel contoh sendiri'}</button></div></div>
       ${htmlPilihLiteratur()}
       <div class="pd-f pd-pv"><span class="lbl">Pemboleh ubah atau konstruk utama</span><div class="pd-pv-senarai">${pv.length ? pv.map(v => `<span class="tag ai" title="${esc(v.alias ? 'Padanan lain: ' + v.alias : 'Tiada padanan lain')}"><span>${esc(v.nama)}</span></span>`).join('') : '<span class="pd-kosong">Belum ditetapkan</span>'}<button class="btn btn-sm${pv.length ? '' : ' btn-primary'}" data-pd="pemboleh">${pv.length ? 'Ubah' : 'Tetapkan'}</button></div></div>
-      <div class="pd-f pd-alat"><span class="lbl">Alat</span><div><button class="btn btn-sm" data-pd="gaya" title="Istilah dan frasa yang dilarang, had umur rujukan, had pangkalan data dan arahan gaya kepada agen">Peraturan gaya</button> <button class="btn btn-sm" data-pd="cara">Cara guna</button></div></div>
+      <div class="pd-f pd-alat"><span class="lbl">Alat</span><div><button class="btn btn-sm" data-pd="gaya" title="Istilah dan frasa yang dilarang, had umur rujukan, had pangkalan data dan arahan gaya kepada agen">Peraturan gaya</button> <button class="btn btn-sm" data-pd="cara">Cara guna</button> <button class="btn btn-sm" data-pd="nombor" title="Nombor Jadual/Table dan Rajah/Figure disusun berturutan merentas semua folder mengikut susunan artikel; rujukan dalam teks turut dikemas kini. Boleh dibatalkan.">Susun nombor Jadual dan Rajah</button></div></div>
     </div>${ac ? det('acuanInduk', 'pd-hasil pd-acuan-induk', `Acuan artikel ini: <b>${esc(ac.pendek)}</b>, ${esc(ac.jurnal || '')} · badan ${angka(ac.ukuran.badan)} patah perkataan dalam ${ac.bahagian.length} bahagian`, htmlAcuanInduk(ac)) : ''}${htmlRefleksi()}${P.t.sedia ? htmlKemajuan(tl) : ''}</div>`;
   }
   /* Pemilih folder Kajian Literatur: hanya ditawarkan apabila struktur asas belum mempunyainya. */
@@ -508,8 +508,49 @@ export function initPandu(R, C) {
     const E = en(); const no0 = (RX_SEBUT_JD.exec(contoh) || [])[1]; const sel = (t, c) => `<${t}>${esc(String(c || '').trim()) || '<br>'}</${t}>`;
     const html = jd.map((b, j) => { const m = /^(?:Jadual|Table)\s+(\d+)\s*[.:-]?\s*(.*)$/i.exec(b.tajuk || ''); const no = m ? m[1] : no0 ? +no0 + j : '[n]'; const tajuk = m ? m[2] : b.tajuk || '';
       return `<p><strong>${E ? 'Table' : 'Jadual'} ${no}</strong></p>${tajuk ? `<p><em>${esc(tajuk)}</em></p>` : ''}<table><tbody><tr>${b.kepala.map(c => sel('th', c)).join('')}</tr>${b.baris.map(r => `<tr>${b.kepala.map((x, q) => sel('td', r[q])).join('')}</tr>`).join('')}</tbody></table>`; }).join('') + '<p><br></p>';
-    if (sisip(sasaranRam(f), 'asal', html)) { toast(`${jd.length} jadual dimasukkan ke hujung ASAL`); kemasHidup(); }
+    if (sisip(sasaranRam(f), 'asal', html)) { toast(`${jd.length} jadual dimasukkan ke hujung ASAL`); kemasHidup(); setTimeout(() => susunNombor({ senyap: true }), 50); }
   }
+  /* v1.44.3: penomboran Jadual dan Rajah berterusan merentas artikel mengikut susunan bacaan (susunan seksyen). Kapsyen dikenal pasti
+     melalui objeknya (jadual: kapsyen dalam dua blok sebelumnya; rajah: kapsyen dalam dua blok selepas atau sebelum imej), atau perenggan
+     kapsyen yang pendek atau keseluruhannya tebal/condong. Rujukan dalam prosa dipetakan kepada kapsyen dalam seksyen yang sama (yang
+     terdekat), jika tiada kepada kemunculan pertama dalam artikel; [n] dipadankan dengan kapsyen [n] yang terdekat selepasnya. */
+  const RX_KAP = /^(Tables?|Jadual|Figures?|Rajah)\s+(\d+|\[n\])(?=[\s.:,;)]|$)/i;
+  const RX_RUJ = /\b(Tables?|Jadual|Figures?|Rajah)(\s+)(\d+|\[n\])(?![\d])/gi;
+  const jenisKap = w => /^(table|jadual)/i.test(w) ? 'T' : 'F';
+  const adaImej = e => !!(e && e.nodeType === 1 && (e.tagName === 'IMG' || e.tagName === 'svg' || (e.querySelector && e.querySelector('img,svg'))));
+  function kapsyenBlok(blok) {
+    const out = new Map(); const kap = (j, jenis) => { const e = blok[j]; if (!e || e.tagName === 'TABLE' || out.has(j)) return false; const t = (e.textContent || '').replace(/\s+/g, ' ').trim(); const m = RX_KAP.exec(t); if (!m || jenisKap(m[1]) !== jenis || t.length > 300) return false; out.set(j, { jenis, lama: m[2] }); return true; };
+    blok.forEach((e, i) => { if (e.tagName === 'TABLE') { kap(i - 1, 'T') || kap(i - 2, 'T') || kap(i + 1, 'T'); } else if (adaImej(e)) { kap(i + 1, 'F') || kap(i - 1, 'F') || kap(i + 2, 'F') || kap(i - 2, 'F'); } });
+    blok.forEach((e, i) => { if (out.has(i) || e.tagName === 'TABLE') return; const t = (e.textContent || '').replace(/\s+/g, ' ').trim(); const m = RX_KAP.exec(t); if (!m) return; const gaya = e.querySelector && e.querySelector('strong,em,b,i'); if (t.length <= 14 || (gaya && gaya.textContent.replace(/\s+/g, ' ').trim() === t && t.length <= 300)) out.set(i, { jenis: jenisKap(m[1]), lama: m[2] }); });
+    return Array.from(out.entries()).sort((a, b) => a[0] - b[0]).map(([pos, k]) => Object.assign({ pos }, k));
+  }
+  function rancangNombor() {
+    const d = C.doc(); if (!d) return { sek: [], ubah: 0, n: { T: 0, F: 0 } }; const kira = { T: 0, F: 0 }; const pertama = { T: {}, F: {} };
+    const sek = Teks.senarai(A.id).filter(id => d.seksyen[id] && !d.seksyen[id].padam).map(id => { const html = Teks.htmlSeksyen(d.seksyen[id]) || ''; const body = new DOMParser().parseFromString('<!doctype html><html><body>' + html + '</body></html>', 'text/html').body; const blok = Array.from(body.children); const kap = kapsyenBlok(blok); kap.forEach(k => { k.baru = String(++kira[k.jenis]); if (k.lama !== '[n]' && !(k.lama in pertama[k.jenis])) pertama[k.jenis][k.lama] = k.baru; }); return { id, html, body, blok, kap }; });
+    let ubah = 0;
+    sek.forEach(S => {
+      const posBlok = nd => { while (nd && nd.parentNode !== S.body) nd = nd.parentNode; return nd ? S.blok.indexOf(nd) : -1; };
+      const cari = (jenis, lama, pos) => { const c = S.kap.filter(k => k.jenis === jenis && k.lama === lama); if (c.length) { const lepas = c.find(k => k.pos >= pos); return (lepas || c[c.length - 1]).baru; } return lama === '[n]' ? null : pertama[jenis][lama] || null; };
+      const w = document.createTreeWalker(S.body, NodeFilter.SHOW_TEXT); const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+      const kapDibuat = new Set();
+      nodes.forEach(nd => { const pos = posBlok(nd); const kp = S.kap.find(k => k.pos === pos);
+        const baru = nd.nodeValue.replace(RX_RUJ, (m0, w1, sp, no) => { const jenis = jenisKap(w1); let b;
+          if (kp && kp.jenis === jenis && !kapDibuat.has(pos)) { kapDibuat.add(pos); b = kp.baru; } else b = cari(jenis, no, pos);
+          return b && b !== no ? w1 + sp + b : m0; });
+        if (baru !== nd.nodeValue) { nd.nodeValue = baru; S.ubah = true; } });
+      if (S.ubah) ubah++;
+    });
+    return { sek, ubah, n: kira };
+  }
+  function susunNombor(o) {
+    o = o || {}; if (!C.doc()) return; Teks.flushEditor(); const r = rancangNombor(); const E = en();
+    if (!r.ubah) { if (!o.senyap) toast(`Penomboran sudah berturutan: ${r.n.T} ${E ? 'Table' : 'Jadual'} dan ${r.n.F} ${E ? 'Figure' : 'Rajah'}`); return; }
+    const d = C.doc(); const sandaran = {}; r.sek.filter(S => S.ubah).forEach(S => { sandaran[S.id] = S.html; Teks.tulisSeksyen(A.id, S.id, { html: S.body.innerHTML }, { senyap: true, segera: true }); });
+    P.sandaranNombor = sandaran; if (Teks.state.bab === A.id) Teks.renderEditor(); Teks.renderSenarai();
+    toast(`Penomboran disusun semula dalam ${r.ubah} seksyen: ${r.n.T} ${E ? 'Table' : 'Jadual'} dan ${r.n.F} ${E ? 'Figure' : 'Rajah'}, berturutan mengikut susunan artikel. Rujukan dalam teks turut dikemas kini.`, false, { label: 'Batal', fn: () => batalNombor() });
+    kemasHidup();
+  }
+  function batalNombor() { const b = P.sandaranNombor; if (!b) return; Teks.flushEditor(); Object.keys(b).forEach(id => Teks.tulisSeksyen(A.id, id, { html: b[id] }, { senyap: true, segera: true })); P.sandaranNombor = null; if (Teks.state.bab === A.id) Teks.renderEditor(); Teks.renderSenarai(); toast('Penomboran asal dipulihkan'); }
   /* Jana jadual yang disebut dalam contoh perenggan i: panggilan kecil dengan teras kajian, kerangka perenggan dan contoh itu sahaja. */
   async function janaJadual(k, iS) {
     if (P.busy) return; const f = folderDari(k); if (!f) return; const F = fd(k); const cad = (F.log || []).filter(x => x.mod === 'cadangan').slice(-1)[0]; if (!cad) return; const i = +iS || 0;
@@ -1736,6 +1777,7 @@ ${PIAWAI_RINGKAS}`;
       else if (a === 'ayatasal') ayatKeAsal(k, b.dataset.i);
       else if (a === 'jadualasal') jadualKeAsal(k, b.dataset.i);
       else if (a === 'janajadual') janaJadual(k, b.dataset.i);
+      else if (a === 'nombor') susunNombor();
       else if (a === 'temabina') binaPeta();
       else if (a === 'temakad') janaKad();
       else if (a === 'temaram') { const f = folderDari(k); const h = htmlTemaRam(); if (f && h && sisip(sasaranRam(f), 'ram', h)) toast('Peta Tema dan Kad Tema dimasukkan ke RAM seksyen'); }
@@ -1819,5 +1861,5 @@ ${PIAWAI_RINGKAS}`;
 
   function onEditor() { kemasBar(); }
   function onTulis() { kemasHidup(); }
-  return { janaJadual, jadualKeAsal, contohP, htmlPelan, pecahDraf, soalanRefleksi, agenRefleksi, htmlRefleksi, teksRefleksi, ayatKeAsal, binaPeta, janaKad, htmlTema, temaData, kadSedia, temaSah, blokCsvTema, keTulisan, arahanKadTema, htmlTemaRam, arasCsv, render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, bahagiKeputusan, pecahKp, htmlCadangan, muatNaikCsv, csvData, csvAktif, blokCsv, csvPeta, statCsv, htmlStatCsv, hadAbstrak, pulihCsvLama, blokSumber, konteksFolder, teksKerangka, pecahCadangan, tugasCadangan, teras, teksTeras, kesanTeras, semakRq, tetapTeras, renderTeras, agenTeras, w5, nW5, W5_KOD, indeks, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
+  return { rancangNombor, susunNombor, batalNombor, janaJadual, jadualKeAsal, contohP, htmlPelan, pecahDraf, soalanRefleksi, agenRefleksi, htmlRefleksi, teksRefleksi, ayatKeAsal, binaPeta, janaKad, htmlTema, temaData, kadSedia, temaSah, blokCsvTema, keTulisan, arahanKadTema, htmlTemaRam, arasCsv, render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, bahagiKeputusan, pecahKp, htmlCadangan, muatNaikCsv, csvData, csvAktif, blokCsv, csvPeta, statCsv, htmlStatCsv, hadAbstrak, pulihCsvLama, blokSumber, konteksFolder, teksKerangka, pecahCadangan, tugasCadangan, teras, teksTeras, kesanTeras, semakRq, tetapTeras, renderTeras, agenTeras, w5, nW5, W5_KOD, indeks, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
 }
