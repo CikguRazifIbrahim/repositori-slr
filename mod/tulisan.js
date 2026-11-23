@@ -423,6 +423,9 @@ export function initTulisan(R, konfig) {
   const Ramal = initRamal(R, {
     prefix: P, tesis: !!cfg.tesis, editor: m => editor(m), tandaKotor: m => tandaKotor(m), flush: () => flushEditor(),
     sumberUtama: () => (cfg.sumberRamal && ED.n != null ? cfg.sumberRamal(ED.n) || [] : []),
+    /* v1.46.1: teks seksyen lain dalam unit yang sama (bab atau artikel), untuk mengesan gaya sitasi manuskrip dan nombor rujukan terbesar */
+    unitKunci: () => (ED.n != null ? String(ED.n) : ''),
+    teksUnit: () => { if (ED.n == null) return ''; return Object.entries(doc(ED.n).seksyen || {}).filter(([id, sk]) => sk && !sk.padam && id !== ED.id).map(([, sk]) => (sk.teks || '') + '\n' + (sk.ram ? teksDariHtml(sk.ram) : '')).join('\n'); },
     konteks: () => { const s = ED.n != null && ED.id ? (doc(ED.n).seksyen || {})[ED.id] : null; return { sasaran: cfg.tesis ? 'Tulisan Tesis' : 'Artikel penerbitan', unit: ED.n != null ? (cfg.tesis ? label(ED.n) + ': ' + tajukBab(ED.n) : tajukBab(ED.n)) : '', seksyen: s ? tanpaNombor(s.tajuk || '') : '' }; }
   });
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
