@@ -2014,6 +2014,6 @@ ${PIAWAI_RINGKAS}`;
   const Draf = initDraf(Object.assign({}, X, { folders: () => folders(), tajukF, cariSitasi, indeks, semakAsal: f => semakAsal(f), semakAngka: k => semakAngka(k), dataRujukan: f => dataRujukan(f), teras: () => teras(), barisTr, teksTeras: () => teksTeras(), csvAktif: () => csvAktif(), kiraTokenRes: r => kiraTokenRes(r), adaPrisma: () => adaPrisma() }));
 
   function onEditor() { kemasBar(); }
-  function onTulis() { kemasHidup(); }
+  function onTulis() { kemasHidup(); Draf.onTulis(); }
   return { Draf, tandaSeksyen: (n, id) => Draf.tandaSeksyen(n, id), semakGanti, pelanPrisma, adaPrismaRasmi, semakAsal, htmlSemakAsal, semakAngka, semakPrisma, sisipSelepas, objekPerlu, objekKeAsal, janaObjek, rancangNombor, susunNombor, batalNombor, contohP, htmlPelan, pecahDraf, soalanRefleksi, agenRefleksi, htmlRefleksi, teksRefleksi, ayatKeAsal, binaPeta, janaKad, htmlTema, temaData, kadSedia, temaSah, blokCsvTema, keTulisan, arahanKadTema, htmlTemaRam, arasCsv, render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, bahagiKeputusan, pecahKp, htmlCadangan, muatNaikCsv, csvData, csvAktif, blokCsv, csvPeta, statCsv, htmlStatCsv, hadAbstrak, pulihCsvLama, blokSumber, konteksFolder, teksKerangka, pecahCadangan, tugasCadangan, teras, teksTeras, kesanTeras, semakRq, tetapTeras, renderTeras, agenTeras, w5, nW5, W5_KOD, indeks, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
 }
