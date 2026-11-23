@@ -120,10 +120,16 @@ export function initTulisan(R, konfig) {
     t.appendChild(tb); return t;
   }
   function salinBlok(src, out) {
-    let para = null;
+    let para = null; let jd = null; let jdBaris = null;
     const flush = () => { if (para) { if (para.textContent.trim() || para.querySelector('img')) out.appendChild(para); para = null; } };
+    const tutupJd = () => { if (!jd) return; const t = jadualBersih(jd); if (t) jd.replaceWith(t); else jd.remove(); jd = null; jdBaris = null; };
     Array.from(src.childNodes).forEach(c => {
       const tag = c.nodeType === 1 ? c.tagName.toLowerCase() : '';
+      /* pembalut sebaris yang mengandungi blok (Google Docs membalut keseluruhan kandungan dengan <b id="docs-internal-guid">): diturun sebagai blok supaya jadual dan perenggan kekal */
+      if (c.nodeType === 1 && !BLOK.test(tag) && !/^(script|style|template|noscript)$/.test(tag) && adaBlok(c)) { flush(); salinBlok(c, out); return; }
+      /* baris atau sel jadual tanpa <table> (pilihan sebahagian jadual): dihimpun semula menjadi jadual */
+      if (c.nodeType === 1 && /^(tr|td|th|tbody|thead|tfoot)$/.test(tag)) { flush(); if (!jd) { jd = el('table'); out.appendChild(jd); } if (/^t[dh]$/.test(tag)) { if (!jdBaris) { jdBaris = el('tr'); jd.appendChild(jdBaris); } jdBaris.appendChild(c.cloneNode(true)); } else { jdBaris = null; if (tag === 'tr') jd.appendChild(c.cloneNode(true)); else Array.from(c.children).forEach(x => { if (x.tagName === 'TR') jd.appendChild(x.cloneNode(true)); }); } return; }
+      if (jd && !(c.nodeType === 3 && !c.nodeValue.trim())) tutupJd();
       if (c.nodeType === 3 || (c.nodeType === 1 && !BLOK.test(tag))) { if (c.nodeType === 3 && !c.nodeValue.trim() && !para) return; if (tag === 'script' || tag === 'style' || tag === 'template') return; if (!para) para = el('p'); const tmp = el('span'); tmp.appendChild(c.cloneNode(true)); salinInline(tmp, para); return; }
       if (c.nodeType !== 1) return;
       flush();
@@ -138,9 +144,9 @@ export function initTulisan(R, konfig) {
       if (tag === 'hr' || tag === 'dt' || tag === 'dd' || tag === 'li' || tag === 'tr' || tag === 'td' || tag === 'th' || tag === 'tbody' || tag === 'thead' || tag === 'tfoot') { if (adaBlok(c)) salinBlok(c, out); else { const p = el('p'); salinInline(c, p); if (p.textContent.trim() || p.querySelector('img')) out.appendChild(p); } return; }
       if (adaBlok(c)) salinBlok(c, out); else { const p = el('p'); salinInline(c, p); if (p.textContent.trim() || p.querySelector('img')) out.appendChild(p); }
     });
-    flush();
+    flush(); tutupJd();
   }
-  function bersihHtml(html) { const src = new DOMParser().parseFromString('<!doctype html><html><body>' + String(html || '') + '</body></html>', 'text/html').body; const out = el('div'); salinBlok(src, out); return out.innerHTML; }
+  function bersihHtml(html) { let h = String(html || ''); if (/<t[rdh][\s>]/i.test(h) && !/<table[\s>]/i.test(h)) h = '<table>' + h + '</table>'; /* baris jadual tanpa <table> dibuang oleh penghurai HTML */ const src = new DOMParser().parseFromString('<!doctype html><html><body>' + h + '</body></html>', 'text/html').body; const out = el('div'); salinBlok(src, out); return out.innerHTML; }
   function teksDariHtml(html) {
     const dom = new DOMParser().parseFromString('<!doctype html><html><body>' + String(html || '') + '</body></html>', 'text/html').body; const blok = [];
     const dalam = node => { let t = ''; node.childNodes.forEach(c => { if (c.nodeType === 3) t += c.nodeValue; else if (c.nodeType === 1) { const tg = c.tagName.toLowerCase(); if (tg === 'br') t += '\n'; else if (tg === 'img') t += c.getAttribute('alt') ? '[Rajah: ' + c.getAttribute('alt') + ']' : '[Rajah]'; else if (tg === 'p' || tg === 'li') t += dalam(c) + '\n'; else t += dalam(c); } }); return t; };
@@ -151,7 +157,12 @@ export function initTulisan(R, konfig) {
   function htmlDariTeks(teks) {
     const esc2 = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const inline = t => esc2(t).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>');
-    return String(teks || '').replace(/\r/g, '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).map(b => { const baris = b.split('\n'); if (baris.every(l => /^\s*[-*•]\s+/.test(l))) return '<ul>' + baris.map(l => '<li>' + inline(l.replace(/^\s*[-*•]\s+/, '')) + '</li>').join('') + '</ul>'; if (baris.length > 1 && baris.every(l => /^\s*\d+[.)]\s+/.test(l))) return '<ol>' + baris.map(l => '<li>' + inline(l.replace(/^\s*\d+[.)]\s+/, '')) + '</li>').join('') + '</ol>'; return '<p>' + baris.map(inline).join('<br>') + '</p>'; }).join('');
+    const jadual = rows => { const n = Math.max(...rows.map(r => r.length)); return '<table><tbody>' + rows.map((r, i) => '<tr>' + Array.from({ length: n }, (_, j) => { const t = i === 0 ? 'th' : 'td'; const v = (r[j] || '').trim(); return `<${t}>${v ? inline(v) : '<br>'}</${t}>`; }).join('') + '</tr>').join('') + '</tbody></table>'; };
+    return String(teks || '').replace(/\r/g, '').split(/\n\s*\n/).map(b => b.replace(/^\n+|[\n ]+$/g, '')).filter(b => b.trim()).map(b => { const baris = b.split('\n');
+      /* jadual teks: baris dipisah Tab (Excel, Word, PDF) atau jadual Markdown | a | b | dengan baris pemisah |---| */
+      if (baris.length > 1 && baris.every(l => /\t/.test(l))) return jadual(baris.map(l => l.split('\t')));
+      if (baris.length > 1 && baris.every(l => /^\s*\|.*\|\s*$/.test(l))) { const rows = baris.filter(l => !/^\s*\|[\s:|-]+\|\s*$/.test(l)).map(l => l.trim().replace(/^\||\|$/g, '').split('|')); if (rows.length) return jadual(rows); }
+      baris.splice(0, baris.length, ...b.trim().split('\n')); if (baris.every(l => /^\s*[-*•]\s+/.test(l))) return '<ul>' + baris.map(l => '<li>' + inline(l.replace(/^\s*[-*•]\s+/, '')) + '</li>').join('') + '</ul>'; if (baris.length > 1 && baris.every(l => /^\s*\d+[.)]\s+/.test(l))) return '<ol>' + baris.map(l => '<li>' + inline(l.replace(/^\s*\d+[.)]\s+/, '')) + '</li>').join('') + '</ol>'; return '<p>' + baris.map(inline).join('<br>') + '</p>'; }).join('');
   }
   const htmlSeksyen = s => s && s.html != null ? s.html : htmlDariTeks(s && s.teks);
   const kiraTag = (html, tag) => (String(html || '').match(new RegExp('<' + tag + '[\\s>]', 'gi')) || []).length;
@@ -516,6 +527,8 @@ export function initTulisan(R, konfig) {
     const sl = window.getSelection(); let rg = sl && sl.rangeCount ? sl.getRangeAt(0) : null;
     if (!rg || !src.contains(rg.commonAncestorContainer)) rg = ED.julat[dari] && src.contains(ED.julat[dari].commonAncestorContainer) ? ED.julat[dari] : null;
     let html = ''; let apa = 'Teks yang dipilih'; let sebagaiBlok = false;
+    /* pilihan di dalam satu jadual: keseluruhan jadual dipindahkan sebagai blok supaya baris dan lajur tidak berkecai */
+    if (rg && !rg.collapsed) { let a = rg.commonAncestorContainer; if (a.nodeType === 3) a = a.parentNode; const tb = a.closest && a.closest('table'); if (tb && src.contains(tb)) { rg = document.createRange(); rg.selectNodeContents(tb.querySelector('td,th') || tb); rg.collapse(true); } }
     if (rg && !rg.collapsed) { const frag = rg.extractContents(); const tmp = el('div'); tmp.appendChild(frag); html = bersihHtml(tmp.innerHTML); }
     else if (rg) { let nd = rg.startContainer; if (nd.nodeType === 3) nd = nd.parentNode; const blok = blokAras(src, nd); if (blok && !blokKosong(blok)) { html = bersihHtml(blok.outerHTML); blok.remove(); sebagaiBlok = true; apa = blok.tagName === 'TABLE' ? 'Jadual' : /^[UO]L$/.test(blok.tagName) ? 'Senarai' : 'Perenggan di kursor'; } }
     if (!html.trim() && dari === 'ram' && !rg) { html = serialisasi(src); apa = 'Keseluruhan RAM'; sebagaiBlok = true; src.innerHTML = ''; }
