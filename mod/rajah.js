@@ -64,7 +64,7 @@ export function initRajah(X) {
     return s + `<line x1="${L}" y1="${T}" x2="${L}" y2="${T + tinggi}" stroke="#1f2937"/><line x1="${L}" y1="${T + tinggi}" x2="${W - Rt}" y2="${T + tinggi}" stroke="#1f2937"/><text transform="translate(16 ${T + tinggi / 2}) rotate(-90)" text-anchor="middle" fill="#4b5563">${xml(paksiY)}</text></svg>`;
   }
   function png(z) {
-    return new Promise((res, rej) => { const src = svg(); const m = /viewBox="0 0 (\d+) (\d+)"/.exec(src); const w = +m[1], h = +m[2]; const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml;charset=utf-8' })); const im = new Image();
+    return new Promise((res, rej) => { const src = svg(); const m = /^<svg[^>]*?viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(src); const w = Math.ceil(+m[1]), h = Math.ceil(+m[2]); const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml;charset=utf-8' })); const im = new Image();
       im.onload = () => { try { const c = document.createElement('canvas'); c.width = w * z; c.height = h * z; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); c.toBlob(b => b ? res(b) : rej(new Error('PNG gagal dijana')), 'image/png'); } catch (e) { URL.revokeObjectURL(url); rej(e); } };
       im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Rajah gagal dilukis')); }; im.src = url; });
   }
