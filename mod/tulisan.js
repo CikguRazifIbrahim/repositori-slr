@@ -20,7 +20,7 @@ export function initTulisan(R, konfig) {
     kunci: n => 'meta/tulisan_b' + n, lsKey: n => 'rslr_tulisan_b' + n, awalan: n => n + '.',
     templat: n => TEMPLAT[n] || [], templatAuto: true, templatNama: 'subtopik proposal', templatPendek: 'subtopik', templatKosong: 'Tiada subtopik proposal bagi bab ini',
     kosongTeks: n => `Bab ${n} belum ada seksyen. Klik "Seksyen baharu" untuk mula menulis, "Subtopik proposal" untuk memasukkan senarai subtopik, atau muat naik fail Word.`,
-    tiadaUnitTeks: 'Pilih bab dahulu.', tajukDocx: 'Tulisan Tesis', footerDocx: 'Tulisan Tesis, Repositori SLR', failDocx: null, tambahan: null, onUnit: null
+    tiadaUnitTeks: 'Pilih bab dahulu.', tajukDocx: 'Tulisan Tesis', footerDocx: 'Tulisan Tesis, Repositori SLR', failDocx: null, tambahan: null, onUnit: null, tajukDok: null
   }, konfig || {});
   const P = cfg.prefix, I = s => '#' + P + s, idp = s => P + s, IB = s => '#btn' + cfg.Prefix + s;
   const unit = () => cfg.unit(); const U = v => cfg.unitDari(v); const label = n => cfg.label(n);
@@ -218,7 +218,14 @@ export function initTulisan(R, konfig) {
   }
 
   function kosongDoc(n) { return Object.assign({ bab: n, tajuk: tajukBab(n), seksyen: {}, susunan: [], masa: 0, pinjam: null, log: {}, fail: [] }, cfg.tambahan ? cfg.tambahan(n) : {}); }
-  function doc(n) { if (!T.docs[n]) T.docs[n] = lengkapkanTeks(R.lsGet(lsKey(n), null) || kosongDoc(n)); return T.docs[n]; }
+  /* cfg.tajukDok (v1.46.1): apabila tajuk dokumen dimiliki pemanggil (Artikel: entri indeks, yang digabung mengikut masa tajuk itu sendiri),
+     salinan dalam dokumen sentiasa mengikutnya. Dahulu setiap simpanan seksyen menulis tajuk dokumen dalam memori ke awan, maka sesi lama pada
+     peranti lain mengembalikan tajuk kerja yang lama, dan Draf Akhir memaparkan tajuk yang berbeza daripada medan Tajuk artikel. */
+  function doc(n) {
+    if (!T.docs[n]) T.docs[n] = lengkapkanTeks(R.lsGet(lsKey(n), null) || kosongDoc(n)); const d = T.docs[n];
+    if (cfg.tajukDok) { const t = cfg.tajukDok(n); if (typeof t === 'string' && t !== d.tajuk) d.tajuk = t; }
+    return d;
+  }
   const adaUnit = () => T.bab != null && unit().some(([n]) => n === T.bab);
   function senarai(n) { const d = doc(n); const ids = (d.susunan || []).filter(id => d.seksyen[id] && !d.seksyen[id].padam); Object.keys(d.seksyen).forEach(id => { if (!d.seksyen[id].padam && !ids.includes(id)) ids.push(id); }); return ids; }
   function gabung(a, b) {
@@ -259,7 +266,8 @@ export function initTulisan(R, konfig) {
   async function simpanAwan(n, patch) {
     const d = doc(n); jagaSaiz(d); simpanLokal(n, d);
     if (patch && patch.seksyen) { const sek = {}; Object.keys(patch.seksyen).forEach(id => { sek[id] = persis(d.seksyen[id] || patch.seksyen[id]); }); patch = Object.assign({}, patch, { seksyen: sek }); }
-    try { await R.db().set(kunci(n), Object.assign({ bab: n, tajuk: d.tajuk, masa: d.masa }, patch), true); T.status.awan = 'ok'; return true; }
+    /* tajuk yang dimiliki pemanggil hanya ditulis apabila tampalan itu sendiri membawanya (perubahan tajuk), bukan pada setiap simpanan seksyen */
+    try { await R.db().set(kunci(n), Object.assign(cfg.tajukDok ? { bab: n, masa: d.masa } : { bab: n, tajuk: d.tajuk, masa: d.masa }, patch), true); T.status.awan = 'ok'; return true; }
     catch (e) { T.status.awan = 'gagal'; console.warn('tulisan: simpanan awan gagal', e); return false; }
   }
   function catatLog(d, id, delta) {
