@@ -7,6 +7,7 @@
    selagi bab yang dipinjam keluar belum dimuat naik semula. Log harian merekodkan patah perkataan yang ditulis bagi setiap seksyen
    supaya esoknya Prof Dr nampak apa yang sudah ditulis semalam. */
 import { initRamal } from './ramal.js';
+import { initGabung } from './gabung.js';
 
 export function initTulisan(R, konfig) {
   const { $, $$, esc, toast } = R;
@@ -20,13 +21,15 @@ export function initTulisan(R, konfig) {
     kunci: n => 'meta/tulisan_b' + n, lsKey: n => 'rslr_tulisan_b' + n, awalan: n => n + '.',
     templat: n => TEMPLAT[n] || [], templatAuto: true, templatNama: 'subtopik proposal', templatPendek: 'subtopik', templatKosong: 'Tiada subtopik proposal bagi bab ini',
     kosongTeks: n => `Bab ${n} belum ada seksyen. Klik "Seksyen baharu" untuk mula menulis, "Subtopik proposal" untuk memasukkan senarai subtopik, atau muat naik fail Word.`,
-    tiadaUnitTeks: 'Pilih bab dahulu.', tajukDocx: 'Tulisan Tesis', footerDocx: 'Tulisan Tesis, Repositori SLR', failDocx: null, tambahan: null, onUnit: null
+    tiadaUnitTeks: 'Pilih bab dahulu.', tajukDocx: 'Tulisan Tesis', footerDocx: 'Tulisan Tesis, Repositori SLR', failDocx: null, tambahan: null, onUnit: null, tajukDok: null
   }, konfig || {});
   const P = cfg.prefix, I = s => '#' + P + s, idp = s => P + s, IB = s => '#btn' + cfg.Prefix + s;
   const unit = () => cfg.unit(); const U = v => cfg.unitDari(v); const label = n => cfg.label(n);
   const SUB = cfg.sub;
   const MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  const T = { bab: cfg.unitMula, docs: {}, sek: null, timers: {}, loaded: false, bundle: null, cari: '', status: {}, mula: false };
+  const T = { bab: cfg.unitMula, docs: {}, sek: null, timers: {}, loaded: false, bundle: null, cari: '', status: {}, mula: false, draf: false };
+  const root = $(cfg.root);
+  let Gabung = null; /* tab Draf Tesis (mod/gabung.js), tesis sahaja; ditetapkan selepas fungsi editor ditakrif */
 
   /* ---- utiliti ---- */
   const hariIni = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
@@ -218,7 +221,14 @@ export function initTulisan(R, konfig) {
   }
 
   function kosongDoc(n) { return Object.assign({ bab: n, tajuk: tajukBab(n), seksyen: {}, susunan: [], masa: 0, pinjam: null, log: {}, fail: [] }, cfg.tambahan ? cfg.tambahan(n) : {}); }
-  function doc(n) { if (!T.docs[n]) T.docs[n] = lengkapkanTeks(R.lsGet(lsKey(n), null) || kosongDoc(n)); return T.docs[n]; }
+  /* cfg.tajukDok (v1.46.1): apabila tajuk dokumen dimiliki pemanggil (Artikel: entri indeks, yang digabung mengikut masa tajuk itu sendiri),
+     salinan dalam dokumen sentiasa mengikutnya. Dahulu setiap simpanan seksyen menulis tajuk dokumen dalam memori ke awan, maka sesi lama pada
+     peranti lain mengembalikan tajuk kerja yang lama, dan Draf Akhir memaparkan tajuk yang berbeza daripada medan Tajuk artikel. */
+  function doc(n) {
+    if (!T.docs[n]) T.docs[n] = lengkapkanTeks(R.lsGet(lsKey(n), null) || kosongDoc(n)); const d = T.docs[n];
+    if (cfg.tajukDok) { const t = cfg.tajukDok(n); if (typeof t === 'string' && t !== d.tajuk) d.tajuk = t; }
+    return d;
+  }
   const adaUnit = () => T.bab != null && unit().some(([n]) => n === T.bab);
   function senarai(n) { const d = doc(n); const ids = (d.susunan || []).filter(id => d.seksyen[id] && !d.seksyen[id].padam); Object.keys(d.seksyen).forEach(id => { if (!d.seksyen[id].padam && !ids.includes(id)) ids.push(id); }); return ids; }
   function gabung(a, b) {
@@ -259,7 +269,8 @@ export function initTulisan(R, konfig) {
   async function simpanAwan(n, patch) {
     const d = doc(n); jagaSaiz(d); simpanLokal(n, d);
     if (patch && patch.seksyen) { const sek = {}; Object.keys(patch.seksyen).forEach(id => { sek[id] = persis(d.seksyen[id] || patch.seksyen[id]); }); patch = Object.assign({}, patch, { seksyen: sek }); }
-    try { await R.db().set(kunci(n), Object.assign({ bab: n, tajuk: d.tajuk, masa: d.masa }, patch), true); T.status.awan = 'ok'; return true; }
+    /* tajuk yang dimiliki pemanggil hanya ditulis apabila tampalan itu sendiri membawanya (perubahan tajuk), bukan pada setiap simpanan seksyen */
+    try { await R.db().set(kunci(n), Object.assign(cfg.tajukDok ? { bab: n, masa: d.masa } : { bab: n, tajuk: d.tajuk, masa: d.masa }, patch), true); T.status.awan = 'ok'; return true; }
     catch (e) { T.status.awan = 'gagal'; console.warn('tulisan: simpanan awan gagal', e); return false; }
   }
   function catatLog(d, id, delta) {
@@ -272,6 +283,7 @@ export function initTulisan(R, konfig) {
   function tulisSeksyen(n, id, patch, opts) {
     opts = opts || {}; const d = doc(n); const s = d.seksyen[id] || { tajuk: '', teks: '', cipta: Date.now(), masa: 0, patah: 0 };
     if (patch && patch.html !== undefined && patch.teks === undefined) patch.teks = teksDariHtml(patch.html);
+    if (Gabung) Gabung.catatAsas(n, id, d.seksyen[id] || null); /* asas harian tab Draf Tesis: sebelum suntingan pertama hari ini */
     const lama = s.patah || 0; Object.assign(s, patch); s.masa = Date.now(); s.patah = s.padam ? 0 : patah(s.teks); d.seksyen[id] = s;
     if (!d.susunan.includes(id)) d.susunan.push(id);
     catatLog(d, id, s.patah - lama); d.masa = s.masa;
@@ -401,12 +413,15 @@ export function initTulisan(R, konfig) {
   }
 
   /* ---- paparan ---- */
-  function show() { if (!T.mula) { T.mula = true; (T.loaded ? Promise.resolve() : muatSemua()).then(() => { templatAuto(); renderSemua(); peringatan(); }); } renderSemua(); }
-  function renderSemua() { renderSemalam(); renderBab(); renderSenarai(); renderEditor(); renderSambung(); renderCari(); }
+  function show() { if (!T.mula) { T.mula = true; (T.loaded ? Promise.resolve() : muatSemua()).then(() => { templatAuto(); renderSemua(); peringatan(); }); if (Gabung) Gabung.muat().then(() => renderBab()).catch(() => {}); } renderSemua(); }
+  /* Tab Draf Tesis (mod/gabung.js, tesis sahaja): apabila aktif, senarai seksyen dan editor disembunyikan dan panel draf dipaparkan. */
+  function renderDraf() { if (!Gabung) return; const badan = root && root.querySelector('.tul-badan'); const panel = $(I('Draf')); if (badan) badan.hidden = !!T.draf; if (panel) { panel.hidden = !T.draf; if (T.draf) Gabung.render(); } }
+  function renderSemua() { renderSemalam(); renderBab(); renderSenarai(); renderEditor(); renderSambung(); renderCari(); renderDraf(); }
   function jumlahPatah(n) { return senarai(n).reduce((s, id) => s + (doc(n).seksyen[id].patah || 0), 0); }
   function renderBab() {
     const el = $(I('Bab')); if (!el) return;
-    el.innerHTML = unit().map(([n, t]) => { const d = doc(n); return `<button class="tul-tab${n === T.bab ? ' on' : ''}" data-bab="${esc(String(n))}"><span class="b">${esc(cfg.tab(n))}</span><span class="t">${esc(t)}</span><span class="m">${senarai(n).length} seksyen · ${jumlahPatah(n)} patah${d.pinjam ? ' · <b class="pinjam">dipinjam ke Word</b>' : ''}</span></button>`; }).join('');
+    el.classList.toggle('enam', !!Gabung);
+    el.innerHTML = unit().map(([n, t]) => { const d = doc(n); return `<button class="tul-tab${n === T.bab && !T.draf ? ' on' : ''}" data-bab="${esc(String(n))}"><span class="b">${esc(cfg.tab(n))}</span><span class="t">${esc(t)}</span><span class="m">${senarai(n).length} seksyen · ${jumlahPatah(n)} patah${d.pinjam ? ' · <b class="pinjam">dipinjam ke Word</b>' : ''}</span></button>`; }).join('') + (Gabung ? Gabung.tabHtml(!!T.draf) : '');
   }
   function renderSenarai() {
     const el = $(I('Senarai')); if (!el) return; if (!adaUnit()) { el.innerHTML = `<div class="help">${esc(cfg.tiadaUnitTeks)}</div>`; return; } const n = T.bab; const d = doc(n); const ids = senarai(n); const nb = nombor(n);
@@ -419,6 +434,14 @@ export function initTulisan(R, konfig) {
      muat naik Word peringkat seksyen masuk ke RAM; butang Pindah menggerakkan teks, jadual dan rajah antara kedua-duanya. */
   const ED = { n: null, id: null, timer: null, kotor: { asal: false, ram: false }, aktif: 'asal', julat: { asal: null, ram: null } };
   const PANE = { asal: idp('Teks'), ram: idp('Ram') };
+  /* Draf Tesis (v1.47.0, mod/gabung.js): gabungan Bab 1 hingga Bab 5, nota aktiviti hari ini dan kiraan Draf Nombor. */
+  if (cfg.tesis) Gabung = initGabung(R, {
+    unit: () => unit(), doc: n => doc(n), senarai: n => senarai(n), nombor: n => nombor(n), htmlSeksyen: s => htmlSeksyen(s), jumlahPatah: n => jumlahPatah(n),
+    hariIni: () => hariIni(), tarikhStr: ms => tarikhStr(ms), tarikhPanjang: ymd => tarikhPanjang(ymd), tajukBab: n => tajukBab(n),
+    janaDocx: (babs, o) => janaDocx(babs, o), pasangImej: r => pasangImej(r), flush: () => flushEditor(), renderBab: () => renderBab(), aktif: () => !!T.draf, SUB, MIME,
+    /* sebelum menggabung: simpan suntingan yang belum disimpan dan ambil semula kelima-lima bab dari awan (suntingan daripada peranti lain) */
+    segar: async () => { flushEditor(); try { await muatSemua(); } catch (e) { console.warn('tulisan: muat semula sebelum gabung gagal', e); } }
+  });
   /* Ramalan ayat bersitasi dalam RAM dan popup rujukan APA 7 apabila sitasi diklik (v1.46.0, mod/ramal.js). */
   const Ramal = initRamal(R, {
     prefix: P, tesis: !!cfg.tesis, editor: m => editor(m), tandaKotor: m => tandaKotor(m), flush: () => flushEditor(),
@@ -639,7 +662,7 @@ export function initTulisan(R, konfig) {
     el.hidden = false;
     el.innerHTML = `<div class="help">${hits.length} seksyen mengandungi "${esc(q)}"</div>` + hits.map(h => `<button class="tul-link" data-buka="${h.x.n}|${esc(h.x.id)}"><b>${esc((nombor(h.x.n)[h.x.id] || {}).no || label(h.x.n))} ${esc(h.x.s.tajuk || 'Tanpa tajuk')}</b> <span>${esc(h.snip).replace(/\[\[/g, '<mark>').replace(/\]\]/g, '</mark>')}</span></button>`).join('');
   }
-  function buka(n, id) { const tukar = n !== T.bab; T.bab = n; T.sek = id; if (tukar && cfg.onUnit) cfg.onUnit(n); renderSemua(); const ta = $(I('Teks')); if (ta) { ta.focus(); } }
+  function buka(n, id) { const tukar = n !== T.bab; T.draf = false; T.bab = n; T.sek = id; if (tukar && cfg.onUnit) cfg.onUnit(n); renderSemua(); const ta = $(I('Teks')); if (ta) { ta.focus(); } }
   function peringatan() {
     const p = unit().filter(([n]) => doc(n).pinjam);
     if (p.length) toast('Peringatan ' + cfg.namaMenu + ': ' + p.map(([n]) => label(n)).join(', ') + ' dimuat turun ke Word dan belum dimuat naik semula.', false, { label: 'Buka ' + cfg.namaMenu, fn: () => R.goView(cfg.view) });
@@ -702,18 +725,22 @@ export function initTulisan(R, konfig) {
     for (const id of ids) { try { const rec = await muatImej(id); if (!rec) continue; const blob = dataUrlKeBlob(rec.url); const data = new Uint8Array(await blob.arrayBuffer()); let lebar = rec.lebar, tinggi = rec.tinggi; if (!lebar || !tinggi) { try { const im = await bacaImej(blob); lebar = im.naturalWidth; tinggi = im.naturalHeight; } catch (e) {} } imej[id] = { data, jenis: /jpe?g/i.test(rec.mime) ? 'jpg' : /gif/i.test(rec.mime) ? 'gif' : 'png', lebar, tinggi }; } catch (e) { console.warn('tulisan: rajah eksport gagal', id, e); } }
     return imej;
   }
-  async function janaDocx(babs) {
-    const { docx } = await bundle(); const kids = []; const imej = await kumpulImej(babs);
+  /* opts (v1.47.0, tab Draf Tesis): depan = perenggan muka depan [{ runs: [{ t, tebal, condong, warna }], tengah, saiz, selepas, inden }],
+     footer = teks kaki halaman, tajuk = tajuk dokumen. Tanpa opts, fail bab biasa dijana seperti dahulu. */
+  async function janaDocx(babs, opts) {
+    opts = opts || {}; const { docx } = await bundle(); const kids = []; const imej = await kumpulImej(babs);
+    (opts.depan || []).forEach(b => kids.push(new docx.Paragraph({ alignment: b.tengah ? docx.AlignmentType.CENTER : docx.AlignmentType.LEFT, spacing: { line: 360, after: b.selepas == null ? 120 : b.selepas }, indent: b.inden ? { left: b.inden } : undefined, children: (b.runs || []).map(r => new docx.TextRun({ text: String(r.t || ''), bold: !!r.tebal, italics: !!r.condong, color: r.warna || undefined, size: b.saiz || 24 })) })));
+    const adaDepan = !!(opts.depan && opts.depan.length);
     babs.forEach((n, i) => {
       const d = doc(n); const ids = senarai(n);
-      if (cfg.tesis) kids.push(new docx.Paragraph({ text: `BAB ${n}`, heading: docx.HeadingLevel.HEADING_1, alignment: docx.AlignmentType.CENTER, pageBreakBefore: i > 0 }));
+      if (cfg.tesis) kids.push(new docx.Paragraph({ text: `BAB ${n}`, heading: docx.HeadingLevel.HEADING_1, alignment: docx.AlignmentType.CENTER, pageBreakBefore: i > 0 || adaDepan }));
       kids.push(new docx.Paragraph({ text: String(d.tajuk || tajukBab(n)).toUpperCase(), heading: docx.HeadingLevel.HEADING_1, alignment: docx.AlignmentType.CENTER, spacing: { after: 480 }, pageBreakBefore: !cfg.tesis && i > 0 }));
       if (!ids.length) kids.push(new docx.Paragraph({ children: [new docx.TextRun({ text: '(' + cfg.kata.charAt(0).toUpperCase() + cfg.kata.slice(1) + ' ini belum ada seksyen dalam sistem.)', italics: true })] }));
       const nb = nombor(n); const HL = [docx.HeadingLevel.HEADING_2, docx.HeadingLevel.HEADING_3, docx.HeadingLevel.HEADING_4];
       ids.forEach(id => { const s = d.seksyen[id]; const k = nb[id]; kids.push(new docx.Paragraph({ text: k.no + ' ' + (s.tajuk || 'Tanpa tajuk'), heading: HL[k.aras - 1], spacing: { before: 360, after: 120 } })); kids.push(...blokNod(docx, nodHtml(htmlSeksyen(s)), imej, false)); });
     });
     const d = new docx.Document({
-      creator: 'Repositori SLR', title: cfg.tajukDocx + ' ' + babs.map(n => cfg.tesis ? 'Bab ' + n : tajukBab(n)).join(', '),
+      creator: 'Repositori SLR', title: opts.tajuk || (cfg.tajukDocx + ' ' + babs.map(n => cfg.tesis ? 'Bab ' + n : tajukBab(n)).join(', ')),
       styles: { default: { document: { run: { font: 'Times New Roman', size: 24 } } }, paragraphStyles: [
         { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 28, bold: true, font: 'Times New Roman' }, paragraph: { spacing: { line: 480, before: 0, after: 120 } } },
         { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 24, bold: true, font: 'Times New Roman' }, paragraph: { spacing: { line: 480, before: 240, after: 120 } } },
@@ -722,7 +749,7 @@ export function initTulisan(R, konfig) {
       numbering: { config: [
         { reference: 'butir', levels: [{ level: 0, format: docx.LevelFormat.BULLET, text: '•', alignment: docx.AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
         { reference: 'nombor', levels: [{ level: 0, format: docx.LevelFormat.DECIMAL, text: '%1.', alignment: docx.AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
-      sections: [{ properties: { page: { margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, footers: { default: new docx.Footer({ children: [new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: cfg.footerDocx + ', dijana ' + R.fmtTime(Date.now()) + '. Muat naik semula fail ini ke sistem selepas disunting.', size: 16, color: '777777' })] })] }) }, children: kids }]
+      sections: [{ properties: { page: { margin: { top: 1440, bottom: 1440, left: 2160, right: 1440 } } }, footers: { default: new docx.Footer({ children: [new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: opts.footer || (cfg.footerDocx + ', dijana ' + R.fmtTime(Date.now()) + '. Muat naik semula fail ini ke sistem selepas disunting.'), size: 16, color: '777777' })] })] }) }, children: kids }]
     });
     return docx.Packer.toBlob(d);
   }
@@ -955,11 +982,12 @@ export function initTulisan(R, konfig) {
   }
 
   /* ---- peristiwa ---- */
-  const root = $(cfg.root);
   if (root) {
     root.addEventListener('click', async e => {
-      const tab = e.target.closest('[data-bab]'); if (tab) { const n = U(tab.dataset.bab); const tukar = n !== T.bab; T.bab = n; T.sek = null; if (tukar && cfg.onUnit) cfg.onUnit(n); renderSemua(); return; }
-      const it = e.target.closest('[data-sek]'); if (it) { T.sek = it.dataset.sek; renderSenarai(); renderEditor(); return; }
+      if (Gabung && e.target.closest('[data-draf]')) { flushEditor(); T.draf = true; renderSemua(); return; }
+      if (Gabung && Gabung.klik(e)) return;
+      const tab = e.target.closest('[data-bab]'); if (tab) { const n = U(tab.dataset.bab); const tukar = n !== T.bab; T.draf = false; T.bab = n; T.sek = null; if (tukar && cfg.onUnit) cfg.onUnit(n); renderSemua(); return; }
+      const it = e.target.closest('[data-sek]'); if (it) { T.sek = it.dataset.sek; if (T.draf) { T.draf = false; renderDraf(); renderBab(); } renderSenarai(); renderEditor(); return; }
       const bk = e.target.closest('[data-buka]'); if (bk) { const [n, id] = bk.dataset.buka.split('|'); buka(U(n), id); return; }
       const gb = e.target.closest('[data-gabung]'); if (gb) { const [n, id] = gb.dataset.gabung.split('|'); gabungModal(U(n), id); return; }
       const ps = e.target.closest('[data-padamsm]'); if (ps) { const [n, id] = ps.dataset.padamsm.split('|'); const sk = doc(U(n)).seksyen[id]; if (!sk) return; const okk = await R.confirmBox('Padam seksyen?', `"${sk.tajuk || 'Tanpa tajuk'}" (${sk.patah || 0} patah) akan dipadam daripada ${label(U(n))}.`, 'Padam'); if (okk) { padamSeksyen(U(n), id); renderSemua(); } return; }
@@ -984,6 +1012,6 @@ export function initTulisan(R, konfig) {
     $(I('FailSek')).addEventListener('change', e => { const f = e.target.files && e.target.files[0]; muatNaikSeksyen(f); e.target.value = ''; });
     $(I('Cari')).addEventListener('input', e => { T.cari = e.target.value; renderCari(); });
   }
-  return { ramal: Ramal, show, muatTurun, muatNaik, muatNaikSeksyen, daripadaBanding, muatSemua, muatBab, peringatan, huraiHtml, bersihHtml, teksDariHtml, htmlDariTeks, warnaDariDocx, padanWarna, WARNA, pindah, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, simpanEditor, flushEditor, TEMPLAT, state: T, BAB,
+  return { ramal: Ramal, gabung: Gabung, show, muatTurun, muatNaik, muatNaikSeksyen, daripadaBanding, muatSemua, muatBab, peringatan, huraiHtml, bersihHtml, teksDariHtml, htmlDariTeks, warnaDariDocx, padanWarna, WARNA, pindah, nombor, ubahAras, susunSemula, isiTemplat, gabungSeksyen, renderSemalam, hariAktifTerakhir, simpanEditor, flushEditor, TEMPLAT, state: T, BAB,
     doc, docxHtml, senarai, adaUnit, simpanAwan, simpanLokal, simpanImej, muatImej, tulisSeksyen, seksyenBaru, padamSeksyen, renderSemua, renderEditor, renderSenarai, renderBab, renderSambung, renderCari, jumlahPatah, htmlSeksyen, patah, buka, cfg };
 }

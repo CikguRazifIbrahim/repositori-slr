@@ -600,6 +600,56 @@ body.web-open{overflow:hidden}
 .tul-cari input{width:100%}
 .tul-cari-hasil{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;margin-top:6px;max-height:320px;overflow:auto}
 .tul-bab{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.tul-bab.enam{grid-template-columns:repeat(6,1fr)}
+/* v1.47.0 tab Draf Tesis (mod/gabung.js) */
+.tul-tab.gb-tab{border-style:dashed}
+.tul-tab.gb-tab .m{color:var(--accent);font-weight:600}
+.gb-panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.gb-head{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.gb-tajuk{flex:1 1 320px;min-width:0}
+.gb-tajuk h2{margin:0 0 2px;font-family:var(--font-display);font-size:20px}
+.gb-tajuk .sub{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.gb-kira{display:flex;flex-direction:column;align-items:center;background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:12px;padding:8px 18px;min-width:150px}
+.gb-kira .lbl{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--accent)}
+.gb-kira b{font-family:var(--font-display);font-size:34px;line-height:1.1;color:var(--accent)}
+.gb-kira .m{font-size:11.5px;color:var(--muted);text-align:center}
+.gb-acts{display:flex;flex-wrap:wrap;gap:8px}
+.gb-btn{font-size:15px;padding:9px 22px;font-weight:700}
+.gb-status{margin:10px 0 0;color:var(--muted);font-size:13px}
+.gb-nota{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;margin-top:12px;background:var(--surface-2);font-size:13.5px;line-height:1.6}
+.gb-nota h3{margin:0 0 4px;font-size:14px;font-family:var(--font-display)}
+.gb-nota p{margin:4px 0}
+.gb-senarai{margin:6px 0 4px;padding-left:18px}
+.gb-senarai ul{margin:2px 0 6px;padding-left:18px}
+.gb-tambah{color:var(--ok);font-weight:600}
+.gb-kurang{color:var(--bad);font-weight:600}
+.gb-baru{color:var(--w-biru);font-weight:600}
+.gb-sunting{color:var(--muted)}
+.gb-petik{font-size:12.5px;color:var(--muted);font-style:italic}
+.gb-petik q+q{margin-left:6px}
+.gb-legenda{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;margin-top:6px}
+.gb-sejarah{margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.gb-sejarah summary{cursor:pointer;font-size:13.5px}
+.gb-sejarah .ring{color:var(--muted);font-size:12px;margin-left:6px}
+.gb-dok-h{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;margin:16px 0 6px;font-size:12.5px;color:var(--muted)}
+.gb-dok-h b{font-size:12px;letter-spacing:.08em;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 8px;text-transform:uppercase}
+.gb-dok{border:1px solid var(--line-strong);border-radius:8px;padding:28px clamp(16px,5vw,56px);background:var(--surface);font-family:"Source Sans 3","Times New Roman",serif;font-size:16px;line-height:1.8;max-height:80vh;overflow:auto}
+.gb-muka{text-align:center;border-bottom:1px solid var(--line);margin-bottom:18px;padding-bottom:10px}
+.gb-muka h1{font-family:var(--font-display);font-size:24px;margin:0 0 4px}
+.gb-muka p{margin:2px 0;color:var(--muted)}
+.gb-bab{content-visibility:auto;contain-intrinsic-size:auto 1200px}
+.gb-bab-h{text-align:center;font-family:var(--font-display);font-size:19px;margin:34px 0 18px;line-height:1.5}
+.gb-bab-h span{display:block}
+.gb-h{font-family:var(--font-display);margin:22px 0 6px;line-height:1.4}
+.gb-h.a1{font-size:17px}.gb-h.a2{font-size:16px}.gb-h.a3{font-size:15.5px;font-style:italic}
+.gb-cip{font-family:var(--font-ui,inherit);font-size:11.5px;font-style:normal;font-weight:600;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:1px 9px;margin-left:8px;white-space:nowrap;vertical-align:middle;color:var(--muted)}
+.gb-isi p{margin:0 0 12px;text-align:justify}
+.gb-isi table{border-collapse:collapse;margin:10px 0;width:100%;font-size:14.5px}
+.gb-isi td,.gb-isi th{border:1px solid var(--line-strong);padding:4px 8px;vertical-align:top;text-align:left}
+.gb-isi th{background:var(--surface-2)}
+.gb-isi img{max-width:100%;height:auto}
+.gb-isi .w-merah{color:var(--w-merah)}.gb-isi .w-biru{color:var(--w-biru)}.gb-isi .w-hijau{color:var(--w-hijau)}.gb-isi .w-oren{color:var(--w-oren)}.gb-isi .w-ungu{color:var(--w-ungu)}.gb-isi .w-kelabu{color:var(--w-kelabu)}
+.gb-isi .gb-hari{border-left:3px solid var(--ok);padding-left:10px;margin-left:-13px;background:color-mix(in srgb, var(--ok-soft) 45%, transparent)}
 .tul-tab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:left;display:flex;flex-direction:column;gap:2px;cursor:pointer;color:var(--fg);min-width:0}
 .tul-tab .b{font-weight:800;font-family:var(--font-display);font-size:14px}
 .tul-tab .t{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1159,6 +1209,7 @@ details.pd-hasil[open]>summary{margin-bottom:8px}
 @media (max-width:900px){
   .tul-sambung-grid{grid-template-columns:1fr}
   .tul-bab{grid-template-columns:repeat(2,1fr)}
+  .tul-bab.enam{grid-template-columns:repeat(2,1fr)}
   .tul-badan{grid-template-columns:1fr}
   .tul-kiri{position:static}
   .tul-senarai{max-height:34vh}
@@ -1699,6 +1750,7 @@ ol.bs-soal-l li{margin-bottom:7px}
     <aside class="tul-kiri"><div class="tul-kiri-head"><h2>Seksyen</h2><div class="tul-kiri-acts"><button id="btnTulTemplat" class="btn btn-sm" title="Masukkan subtopik daripada proposal yang belum ada dalam bab ini">Subtopik proposal</button><button id="btnTulSeksyen" class="btn btn-sm btn-primary">Seksyen baharu</button></div></div><div class="help tul-kiri-help">Pegang dan seret untuk menyusun semula (pada telefon, tekan dan tahan). Anak panah: promosi atau demosi aras; nombor dijana automatik.</div><div id="tulSenarai" class="tul-senarai"></div></aside>
     <section id="tulEditor" class="tul-editor"></section>
   </div>
+  <section id="tulDraf" class="gb-panel" hidden></section>
   <div class="harian-note">Cara kerja yang disyorkan: taip terus di sini (disimpan automatik, tiada yang perlu dimuat naik). Jika Prof Dr lebih selesa menaip dalam MS Word, muat turun bab itu, sunting, kemudian muat naik semula; sistem memadankan seksyen mengikut tajuk, menunjukkan pratonton sebelum menimpa, memberi amaran jika versi dalam sistem lebih baharu daripada fail, menyimpan versi lama, dan mengarkibkan setiap fail dalam folder Tulisan di Google Drive. Bab yang dimuat turun ditanda "dipinjam ke Word" dan peringatan dipaparkan setiap kali log masuk sehingga fail dimuat naik semula.</div>
 </main>
 

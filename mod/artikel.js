@@ -149,6 +149,8 @@ export function initArtikel(R, initTulisan) {
     onUnit: id => { A.id = id; R.lsSet(LS_SEMASA, id); renderPanel(); },
     onEditor: () => { if (Pandu) Pandu.onEditor(); }, onTulis: n => { if (Pandu && n === A.id) Pandu.onTulis(); },
     tanda: (n, id) => (Pandu && Pandu.tandaSeksyen ? Pandu.tandaSeksyen(n, id) : ''),
+    /* tajuk artikel mempunyai satu sumber sahaja, iaitu entri indeks (medan Tajuk artikel); salinan dalam dokumen mengikutnya */
+    tajukDok: id => { const e = entri(id); return e && typeof e.tajuk === 'string' ? e.tajuk : null; },
     /* ramalan ayat (mod/ramal.js) mengutamakan artikel sumber penerbitan ini apabila sama kuat */
     sumberRamal: id => ((Teks.doc(id) || {}).sumber || [])
   };
