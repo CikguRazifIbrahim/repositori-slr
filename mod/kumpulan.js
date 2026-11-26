@@ -64,7 +64,7 @@ export function initKumpulan(R) {
     </div>`;
   }
   function html(arr) {
-    const g = kumpul(arr); const lipat = R.S.lipat || {};
+    const g = kumpul(arr); const lipat = R.S.sub && R.S.sub !== 'semua' ? {} : (R.S.lipat || {});   /* dalam sub-menu, kumpulan tunggal sentiasa terbuka */
     return URUTAN.filter(k => g[k].length).map(k => {
       const items = g[k]; const n = items.length; const selesai = items.filter(x => x[1].status === 'Selesai').length, sedang = items.filter(x => x[1].status === 'Sedang dibaca').length; const belum = n - selesai - sedang;
       const yakin = k === 'tiada' ? items.filter(([id]) => { const c = cadang(id); return c && c.yakin; }).length : 0;

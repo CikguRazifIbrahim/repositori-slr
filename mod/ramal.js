@@ -408,7 +408,7 @@ export function initRamal(R, H) {
     const k = document.createElement('div'); k.className = 'rm-kad'; k.setAttribute('role', 'status');
     if (mesej) k.innerHTML = `<div class="rm-kad-b">${mesej}</div><div class="rm-kad-a"><button class="btn btn-sm" data-rk="tutup">Tutup</button><button class="btn btn-sm" data-rk="tetapan" title="Tetapan ramalan">Tetapan</button></div>`;
     else {
-      const bukti = (c.bukti || []).map(b => { const e = P.peta.get(b.id); return e ? `<div class="rm-kad-b">Disokong oleh <b>${esc(naratif(e, c.en))}</b>, medan ${esc(b.medan)}: <q>${esc(potong(b.petikan, 220))}</q>${b.lemah ? ' <span class="rm-semak">semak</span>' : ''}</div>` : ''; }).join('');
+      const bukti = (c.bukti || []).map(b => { const e = P.peta.get(b.id); return e ? `<div class="rm-kad-b">Disokong oleh <b>${esc(naratif(e, c.en))}</b>, ${/^teks penuh/.test(b.medan) ? '' : 'medan '}${esc(b.medan)}: <q>${esc(potong(b.petikan, 220))}</q>${b.lemah ? ' <span class="rm-semak">semak</span>' : ''}</div>` : ''; }).join('');
       k.innerHTML = `<div class="rm-kad-h"><b>Ramalan ayat</b>${Z.calon.length > 1 ? `<span>${Z.i + 1}/${Z.calon.length}</span>` : ''}${c.fungsi ? `<span class="rm-fn">${esc(c.fungsi)}</span>` : ''}${c.model ? `<span class="rm-mdl" title="Model yang menjana cadangan ini">${esc(namaPendek(c.model))}</span>` : ''}</div>
         ${bukti}
         ${c.lemah ? '<div class="rm-amaran">Petikan bukti hanya sepadan sebahagian dengan teks rekod (ditanda semak). Semak rekod sebelum menggunakan ayat ini.</div>' : ''}
@@ -471,9 +471,9 @@ export function initRamal(R, H) {
     for (let i = qa; i < qb; i++) { const cur = new Uint16Array(f.length + 1); for (let j = 1; j <= f.length; j++) if (q[i] === f[j - 1].w) { cur[j] = prev[j - 1] + 1; if (cur[j] > best.n) best = { n: cur[j], qa: i + 1 - cur[j], fa: j - cur[j] }; } prev = cur; }
     return best;
   }
-  function padanBukti(petikan, e) {
+  function padanBukti(petikan, e, tambahan) {
     const teksQ = satuBaris(petikan); const qt = tokenKedudukan(teksQ); const q = qt.map(x => x.w); if (q.length < 5) return null; let terbaik = null;
-    medanRekod(e).forEach(m => {
+    medanRekod(e).concat(tambahan || []).forEach(m => {
       const f = m.tok; const r1 = runTerpanjang(q, 0, q.length, f); if (r1.n < 4) return;
       let n = r1.n, fa = r1.fa, fb = r1.fa + r1.n, qmin = r1.qa, qmax = r1.qa + r1.n;
       const kiri = runTerpanjang(q, 0, r1.qa, f), kanan = runTerpanjang(q, r1.qa + r1.n, q.length, f); const dua = [];
@@ -489,7 +489,7 @@ export function initRamal(R, H) {
   }
   /* Angka dalam ayat (peratus, pekali, nilai p, saiz sampel, tahun) mesti tertulis dalam rekod yang disitasi. */
   const angkaDari = s => (String(s || '').match(/(?<![\d.,])(?:\d+(?:[.,]\d+)*|[.,]\d+)/g) || []).map(x => String(parseFloat(x.replace(/,(?=\d{3}(?!\d))/g, '').replace(',', '.'))));
-  function angkaSah(ayat, rek) { const a = angkaDari(String(ayat).replace(/\bke-\d+/gi, '')); if (!a.length) return true; const ada = new Set(rek.flatMap(e => e._angka || (e._angka = angkaDari(e.teksPenuh + ' ' + e.tahun)))); return a.every(x => ada.has(x)); }
+  function angkaSah(ayat, rek, pdf) { const a = angkaDari(String(ayat).replace(/\bke-\d+/gi, '')); if (!a.length) return true; const ada = new Set(rek.flatMap(e => (e._angka || (e._angka = angkaDari(e.teksPenuh + ' ' + e.tahun))).concat(pdf && pdf.get(e.kod) ? angkaDari(pdf.get(e.kod).map(x => x.s).join(' ')) : []))); return a.every(x => ada.has(x)); }
   /* Nama pengarang yang ditulis model (dengan atau tanpa tahun) ditolak: sitasi hanya dibina oleh sistem. */
   const RE_ATRIBUSI = /(?:^|[\s,])(?:[Mm]enurut|[Kk]ajian\s+oleh|[Dd]inyatakan\s+oleh|[Dd]ihujahkan\s+oleh|[Dd]itegaskan\s+oleh|[Dd]ikemukakan\s+oleh|[Aa]ccording\s+to|[Aa]s\s+(?:noted|argued|reported|suggested)\s+by)\s+\p{Lu}/u;
   function adaNamaPengarang(ayat, P) {
@@ -520,14 +520,14 @@ export function initRamal(R, H) {
     /* setiap kod hanya disemak dengan petikan yang dilabel bagi kod itu; petikan tanpa kod yang dikenali hanya sah bagi cadangan satu sumber */
     const tanpaKod = senaraiBukti.filter(b => !dibenar.has(normKod(b.kod)));
     const nafiAyat = adaNafi(ayat); const tokAyat = token(ayat); const lulus = [];
-    kod.forEach(k => { const e = dibenar.get(k); const urut = senaraiBukti.filter(b => normKod(b.kod) === k).concat(kod.length === 1 ? tanpaKod : []); let t = null; urut.forEach(b => { const r = padanBukti(b.petikan, e); if (r && (!t || r.nisbah > t.nisbah)) t = r; });
+    kod.forEach(k => { const e = dibenar.get(k); const urut = senaraiBukti.filter(b => normKod(b.kod) === k).concat(kod.length === 1 ? tanpaKod : []); let t = null; const pdfE = (ctx.pdf && ctx.pdf.get(k)) || []; urut.forEach(b => { const r = padanBukti(b.petikan, e, pdfE); if (r && (!t || r.nisbah > t.nisbah)) t = r; });
       /* ayat cadangan mesti sama kekutuban dengan klausa rekod (contohnya rekod "tidak mempengaruhi" tidak boleh menyokong ayat "mempengaruhi") */
       if (!t || t.nisbah < 0.6 || adaNafi(t.klausa) !== nafiAyat) return;
       /* bukti lemah ditanda "semak": petikan pendek, padanan separa, medan Tajuk atau Sampel, atau isi ayat jauh daripada rekod */
-      const rekTok = new Set(token(e.teksPenuh)); const tindih = tokAyat.length ? tokAyat.filter(w => rekTok.has(w)).length / tokAyat.length : 0;
+      const rekTok = new Set(token(e.teksPenuh + ' ' + pdfE.map(x => x.s).join(' '))); const tindih = tokAyat.length ? tokAyat.filter(w => rekTok.has(w)).length / tokAyat.length : 0;
       t.lemah = t.nisbah < 0.8 || t.n < 8 || t.medan === 'Tajuk' || t.medan === 'Sampel' || tindih < 0.2 || adaLangka(t.klausa) !== adaLangka(ayat); lulus.push({ e, b: t }); });
     if (!lulus.length) return null;
-    const rek = lulus.map(x => x.e); if (!angkaSah(ayat, rek)) return null;
+    const rek = lulus.map(x => x.e); if (!angkaSah(ayat, rek, ctx.pdf)) return null;
     const st = sitasiKurungan(rek, H.tesis);
     return { ayat: ayat.replace(/([.?!])$/, ' ' + st.teks + '$1'), sit: st.teks, ids: st.ids, bukti: st.ids.map(id => { const x = lulus.find(z => z.e.id === id); return { id, medan: x.b.medan, petikan: x.b.petikan, lemah: x.b.lemah }; }), fungsi: satuBaris(c.fungsi).toLowerCase().slice(0, 30), lemah: lulus.some(x => x.b.lemah), en: ctx.en };
   }
@@ -535,17 +535,17 @@ export function initRamal(R, H) {
 
 PERATURAN:
 1. Satu cadangan ialah SATU ayat lengkap (lazimnya 18 hingga 35 patah perkataan) yang menyambung ayat terakhir Prof Dr dengan fungsi yang paling wajar: menghuraikan, memberi bukti empirikal, membandingkan, menunjukkan percanggahan, merumus implikasi atau menonjolkan jurang.
-2. Isi ayat mesti disokong secara langsung oleh medan rekod dalam "sumber". Jangan melampaui apa yang dinyatakan rekod: hubungan atau korelasi tidak boleh ditulis sebagai sebab-akibat, dan konteks kajian (negara, peringkat, sampel) dikekalkan apabila dakwaan bergantung padanya.
+2. Isi ayat mesti disokong secara langsung oleh medan rekod dalam "sumber", atau oleh ayat rekod itu dalam AYAT TEKS PENUH PDF (jika disertakan dalam tugasan; ayat itu dipetik terus daripada PDF artikel dan sama sahnya dengan medan rekod). Jangan melampaui apa yang dinyatakan rekod: hubungan atau korelasi tidak boleh ditulis sebagai sebab-akibat, dan konteks kajian (negara, peringkat, sampel) dikekalkan apabila dakwaan bergantung padanya.
 3. "sumber": satu atau dua kod rekod (contohnya ["R4"]) daripada PUSTAKA sahaja. Gunakan dua kod hanya jika kedua-dua rekod menyokong dakwaan yang sama.
 4. JANGAN tulis sitasi, nama pengarang (termasuk dalam bentuk "Menurut ..." atau "Kajian oleh ..."), tahun, "et al." atau kurungan dalam "ayat". Sistem membina sitasi APA 7 sendiri daripada rekod dan meletakkannya sebelum noktah. Ayat yang menyebut nama pengarang ditolak.
-5. "bukti": satu item bagi SETIAP kod dalam "sumber", iaitu {"kod": kod rekod itu, "petikan": salin TEPAT satu frasa berturutan (8 hingga 25 patah perkataan) daripada SATU medan rekod itu yang menyokong ayat}. Jangan ubah, tambah atau buang satu perkataan pun, termasuk kata nafi seperti "tidak". Sistem menyemak setiap petikan dengan teks rekod; sumber yang petikannya tidak ditemui dibuang daripada sitasi.
+5. "bukti": satu item bagi SETIAP kod dalam "sumber", iaitu {"kod": kod rekod itu, "petikan": salin TEPAT satu frasa berturutan (8 hingga 25 patah perkataan) daripada SATU medan rekod itu, atau daripada SATU ayat rekod itu dalam AYAT TEKS PENUH PDF, yang menyokong ayat}. Petikan disalin dalam bahasa asalnya walaupun "ayat" ditulis dalam bahasa lain. Jangan ubah, tambah atau buang satu perkataan pun, termasuk kata nafi seperti "tidak". Sistem menyemak setiap petikan dengan teks rekod; sumber yang petikannya tidak ditemui dibuang daripada sitasi.
 5b. Kekalkan makna dan kekutuban dapatan rekod: jika rekod menyatakan sesuatu TIDAK berlaku atau TIDAK signifikan, ayat mesti menyatakan perkara yang sama. Ayat yang bercanggah dengan klausa rekod yang dipetik ditolak.
 5a. Angka (peratus, pekali, nilai p, saiz sampel, tahun) hanya boleh ditulis dalam "ayat" jika angka yang sama tertulis dalam rekod sumber; jika tidak, tulis tanpa angka.
 6. "fungsi": satu daripada huraian, bukti, perbandingan, percanggahan, implikasi, jurang.
 7. Parafrasa: jangan salin lebih daripada lima perkataan berturut-turut daripada rekod ke dalam "ayat"; tulis dengan struktur ayat sendiri.
 8. Jangan mengulang idea atau ayat yang sudah ada dalam TEKS SEBELUM. Mulakan ayat dengan penanda wacana yang sesuai dengan fungsinya, tetapi jangan gunakan penanda yang sama bagi setiap cadangan.
 9. Bahasa ikut BAHASA TEKS. Bahasa Melayu: laras akademik baku Malaysia mengikut PIAWAIAN BAHASA di bawah, tanpa em-dash. Bahasa Inggeris: formal academic British English.
-10. Cadangan yang berlainan mesti berbeza fungsi atau sumbernya, bukan parafrasa antara satu sama lain. Susun cadangan yang paling kukuh dahulu.
+10. KEPELBAGAIAN SUMBER: setiap cadangan mesti bersandarkan rekod yang BERLAINAN daripada cadangan lain, dan bukan parafrasa antara satu sama lain. Rekod dalam SUMBER YANG SUDAH DISITASI tidak digunakan lagi selagi ada rekod lain yang menyokong ayat seterusnya; tujuannya supaya satu perenggan tidak mengulang sitasi yang sama. Susun cadangan yang paling kukuh dahulu.
 11. Jika tiada rekod yang benar-benar menyokong ayat seterusnya yang bermakna, pulangkan "cadangan": [] (senarai kosong). Tiada cadangan lebih baik daripada cadangan yang lemah.
 
 ${PIAWAI_RINGKAS}`;
@@ -574,11 +574,12 @@ ${PIAWAI_RINGKAS}`;
     const P = pustaka(); if (!P.N) { if (paksa) toast('Repositori belum ada rekod yang lengkap dengan Penulis dan Tahun untuk disitasi', true); return; }
     const seq = ++Z.seq; clearTimeout(Z.timer); Z.timer = null;
     let tk; try { tk = await kunci(t.model); } catch (e) { return; }
+    try { if (R.Peta && R.Peta.ensureLoaded) await R.Peta.ensureLoaded(); } catch (e) {}
     if (seq !== Z.seq || !kursorSama(rg)) return;
     if (!tk.key) { if (paksa || Date.now() - BERSAMA.kunciDimaklum > 30000) { BERSAMA.kunciDimaklum = Date.now(); toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); } return; }
     const en = bahasaInggeris(konteks); const awalan = /[\s ]$/.test(sebelumBlok) || !sebelumBlok ? '' : ' ';
     const ut = utamaSet(); const ayatKonteks = konteks.split(/(?<=[.?!])\s+/).filter(Boolean);
-    const kunciCache = tk.model + '|' + t.bil + '|' + hashTeks(konteks.slice(-900)) + '|' + P.tanda;
+    const kunciCache = tk.model + '|' + t.bil + '|' + hashTeks(konteks.slice(-900)) + '|' + P.tanda + '|' + ((R.Peta && R.Peta.state && R.Peta.state.ver) || 0);
     if (!kursorSama(rg) || !pasangHantu('memuat')) return; Z.hantu.innerHTML = '<span class="tr-titik" aria-label="Sedang meramal">&#8943;</span>'; Z.hantu.title = 'Sedang meramal ayat seterusnya daripada repositori (Esc untuk batal)'; Z.awalan = awalan;
     let calon = Z.cache.get(kunciCache); if (paksa && calon && !calon.length) calon = null;
     if (!calon) {
@@ -589,14 +590,23 @@ ${PIAWAI_RINGKAS}`;
       const q = token(akhir).map(w => [w, 2]).concat(token(konteks.slice(-700)).map(w => [w, 1]));
       const kx = H.konteks ? H.konteks() : {}; token((kx.seksyen || '') + ' ' + (kx.unit || '')).forEach(w => q.push([w, 1]));
       const rank = bm25(P, q, ut); const penuh = P.token <= HAD_PENUH;
-      const dihantar = penuh ? P.senarai : rank.slice(0, BIL_HAMPIR).map(x => x.e).sort((a, b) => a.kod.localeCompare(b.kod, undefined, { numeric: true }));
+      /* v1.48.0: spektrum sumber diluaskan. (a) Rekod yang sudah disitasi dalam perenggan dan konteks sebelum kursor dikenal pasti;
+         (b) ayat teks penuh PDF yang paling hampir dengan konteks diambil daripada indeks Peta Ayat (enjin yang sama), merentas artikel
+         dan tanpa rekod yang sudah disitasi, lalu dihantar sebagai bukti tambahan; (c) cadangan yang hanya mengulang rekod yang sudah
+         disitasi digugurkan apabila ada cadangan daripada rekod lain. */
+      const sudah = new Set(), sudahId = new Set(); cariSitasi(konteks, ut).forEach(s => s.rekod.forEach(e => { sudah.add(e.kod); sudahId.add(e.id); }));
+      let ayatPdf = [];
+      try { if (R.Peta && R.Peta.cariAyat) ayatPdf = R.Peta.cariAyat({ tok: token, q: token(akhir).map(w => [w, 2]).concat(token(konteks.slice(-600)).map(w => [w, 1])), had: 24, perArtikel: 2, minKena: 2, boleh: id => P.peta.has(id) && !sudahId.has(id) }); } catch (e) { ayatPdf = []; }
+      const pdf = new Map(); ayatPdf.forEach(x => { const e = P.peta.get(x.art); if (!e) return; if (!pdf.has(e.kod)) pdf.set(e.kod, []); pdf.get(e.kod).push({ lbl: 'teks penuh PDF, m.s. ' + x.m, s: satuBaris(x.s), tok: tokenKedudukan(satuBaris(x.s)), m: x.m }); });
+      const hampirSet = new Set(rank.slice(0, BIL_HAMPIR).map(x => x.e.kod));
+      const dihantar = penuh ? P.senarai : P.senarai.filter(e => hampirSet.has(e.kod) || pdf.has(e.kod));
       const dibenar = new Map(dihantar.map(e => [e.kod, e]));
-      const hampir = rank.filter(x => x.s > 0).slice(0, 8).map(x => x.e.kod);
-      const sudah = new Set(); cariSitasi(konteks.slice(-1200), ut).forEach(s => s.rekod.forEach(e => sudah.add(e.kod)));
+      const hampir = rank.filter(x => x.s > 0 && !sudah.has(x.e.kod)).slice(0, 12).map(x => x.e.kod);
+      const blokPdf = pdf.size ? `\nAYAT TEKS PENUH PDF (${ayatPdf.length} ayat daripada ${pdf.size} rekod yang belum disitasi dalam teks sebelum; bukti yang sah, setiap baris bermula dengan kod rekod dan muka surat):\n${Array.from(pdf.entries()).map(([k, a]) => a.map(x => `[${k}, m.s. ${x.m}] ${x.s}`).join('\n')).join('\n')}\n` : '';
       const utamaKod = P.senarai.filter(e => ut.has(e.id) && dibenar.has(e.kod)).map(e => e.kod);
       const system = `PUSTAKA REPOSITORI (${dihantar.length} rekod${penuh ? '' : ' paling hampir daripada ' + P.N}; satu-satunya sumber yang dibenarkan; setiap baris bermula dengan kod rekod):\n${dihantar.map(e => e.ringkas).join('\n')}`;
       const systemAwal = `${ARAHAN}\n\nPROFIL KAJIAN PROF DR (konteks sahaja, bukan sumber sitasi):\n${tk.profil || ''}`;
-      const tugas = `BAHASA TEKS: ${en ? 'Bahasa Inggeris (formal academic British English)' : 'Bahasa Melayu Malaysia'}\nSASARAN: ${[kx.sasaran, kx.unit, kx.seksyen ? 'seksyen "' + kx.seksyen + '"' : ''].filter(Boolean).join(' · ') || 'RAM'}\nBILANGAN CADANGAN: sehingga ${t.bil}\n\nTEKS SEBELUM (ayat terakhir di hujung):\n"""\n${konteks}\n"""\n\nAYAT TERAKHIR PROF DR: "${akhir}"\n${sudah.size ? `SUMBER YANG SUDAH DISITASI DALAM TEKS SEBELUM: ${Array.from(sudah).join(', ')} (utamakan rekod lain jika sama kuat)\n` : ''}${hampir.length ? `REKOD PALING HAMPIR MENGIKUT CARIAN KATA (petunjuk, bukan had): ${hampir.join(', ')}\n` : ''}${utamaKod.length ? `SUMBER UTAMA ${H.tesis ? 'TULISAN' : 'ARTIKEL'} INI (utamakan jika menyokong): ${utamaKod.join(', ')}\n` : ''}\nRamalkan ayat seterusnya mengikut PERATURAN dan pulangkan JSON.`;
+      const tugas = `BAHASA TEKS: ${en ? 'Bahasa Inggeris (formal academic British English)' : 'Bahasa Melayu Malaysia'}\nSASARAN: ${[kx.sasaran, kx.unit, kx.seksyen ? 'seksyen "' + kx.seksyen + '"' : ''].filter(Boolean).join(' · ') || 'RAM'}\nBILANGAN CADANGAN: sehingga ${t.bil}\n\nTEKS SEBELUM (ayat terakhir di hujung):\n"""\n${konteks}\n"""\n\nAYAT TERAKHIR PROF DR: "${akhir}"\n${sudah.size ? `SUMBER YANG SUDAH DISITASI DALAM TEKS SEBELUM: ${Array.from(sudah).join(', ')} (jangan gunakan lagi selagi ada rekod lain yang menyokong; lihat peraturan 10)\n` : ''}${hampir.length ? `REKOD PALING HAMPIR MENGIKUT CARIAN KATA (petunjuk, bukan had): ${hampir.join(', ')}\n` : ''}${utamaKod.length ? `SUMBER UTAMA ${H.tesis ? 'TULISAN' : 'ARTIKEL'} INI (utamakan jika menyokong): ${utamaKod.join(', ')}\n` : ''}${blokPdf}\nRamalkan ayat seterusnya mengikut PERATURAN dan pulangkan JSON.`;
       /* Dikira semasa dihantar (had harian dan kos termasuk permintaan yang kemudiannya dilangkaui kerana Prof Dr terus menaip).
          Dalam mod rekod paling hampir, blok pustaka berubah setiap kali, maka ia tidak ditanda untuk cache (tiada caj tulis cache). */
       janji = (async () => {
@@ -609,9 +619,14 @@ ${PIAWAI_RINGKAS}`;
           /* jawapan yang tidak dapat dibaca bukan "tiada sokongan": tidak dicache, dikira sebagai kegagalan dan boleh dicuba semula */
           if (!j || !Array.isArray(j.cadangan)) return { ralat: R.Isi.msg({ code: 'json', stop: res.stop }) };
           BERSAMA.gagal = 0;
-          const ctx = { ayat: ayatKonteks, en };
+          const ctx = { ayat: ayatKonteks, en, pdf };
           let cl = j.cadangan.map(c => sahkan(c, dibenar, ctx)).filter(Boolean);
-          const unik = []; cl.forEach(c => { if (!unik.some(u => serupa(u.ayat, c.ayat) > 0.85)) unik.push(c); }); cl = unik.slice(0, t.bil); cl.forEach(c => { c.model = tk.model; });
+          const unik = []; cl.forEach(c => { if (!unik.some(u => serupa(u.ayat, c.ayat) > 0.85)) unik.push(c); });
+          /* kepelbagaian sumber: cadangan daripada rekod yang belum disitasi didahulukan dan, jika ada, cadangan yang hanya mengulang
+             rekod yang sudah disitasi digugurkan; antara cadangan, rekod yang sama tidak diulang selagi ada pilihan lain */
+          const segar = unik.filter(c => c.ids.some(id => !sudahId.has(id))); const asas = segar.length ? segar : unik;
+          const dipakai = new Set(), pelbagai = [], ulang = []; asas.forEach(c => { if (c.ids.every(id => dipakai.has(id))) ulang.push(c); else { pelbagai.push(c); c.ids.forEach(id => dipakai.add(id)); } });
+          cl = (pelbagai.length ? pelbagai : ulang).slice(0, t.bil); cl.forEach(c => { c.model = tk.model; });
           Z.cache.set(kunciCache, cl); if (Z.cache.size > 60) Z.cache.delete(Z.cache.keys().next().value);
           return { calon: cl };
         } catch (e) { console.warn('ramal: ralat dalaman', e); return { ralat: 'ralat dalaman semasa menyemak cadangan (' + String(e && e.message || e).slice(0, 80) + ').' }; }
@@ -674,7 +689,7 @@ ${PIAWAI_RINGKAS}`;
     const tokArahan = Math.round((ARAHAN.length + 2400) / 3.6); const penuh = P.token <= HAD_PENUH; const tokPustaka = penuh ? P.token : Math.round(P.token / Math.max(1, P.N) * BIL_HAMPIR); const ubah = 900 * h0(h) + 500 * h1(h);
     const anggar = !h ? '' : penuh ? `Anggaran setiap ramalan dengan ${esc(namaPendek(m))}: kira-kira ${usd(((tokArahan + tokPustaka) * h[2] + ubah) / 1e6)} apabila pustaka dibaca daripada cache (ramalan dalam masa lima minit selepas ramalan sebelumnya) dan ${usd(((tokArahan + tokPustaka) * h[3] + ubah) / 1e6)} bagi ramalan pertama selepas jeda.` : `Anggaran setiap ramalan dengan ${esc(namaPendek(m))}: kira-kira ${usd((tokArahan * h[2] + tokPustaka * h[0] + ubah) / 1e6)}; ${BIL_HAMPIR} rekod paling hampir berubah setiap kali dan tidak dicache.`;
     const ok = await R.richModal('Ramalan ayat bersitasi', `<p>Apabila hidup, setiap kali Prof Dr menamatkan ayat dalam <b>RAM</b> dengan noktah (atau tanda soal) di hujung perenggan dan berhenti menaip seketika, sistem mencadangkan satu ayat seterusnya yang berkaitan dengan ayat itu, sebagai teks bayang berwarna kelabu. Teruskan menaip seperti biasa jika tidak mahu menggunakannya; bayang itu hilang serta-merta.</p>
-      <p>Ayat itu hanya bersandarkan <b>rekod dalam repositori</b> (${angka(P.N)} rekod boleh disitasi${P.tiada ? `; ${angka(P.tiada)} rekod tiada Penulis atau Tahun dan tidak digunakan` : ''}). Model hanya menulis ayat dan menamakan kod rekod; <b>sitasi APA 7 dibina oleh sistem</b> daripada medan Penulis dan Tahun rekod, dan petikan bukti disemak dengan teks rekod sebenar. Klik sitasi dalam RAM atau ASAL untuk melihat rujukan APA 7 lengkapnya.</p>
+      <p>Ayat itu hanya bersandarkan <b>rekod dalam repositori</b> dan <b>ayat teks penuh PDF</b> yang sudah diindeks dalam Peta Ayat, dengan rekod yang belum disitasi dalam perenggan semasa didahulukan supaya sitasi tidak berulang (${angka(P.N)} rekod boleh disitasi${P.tiada ? `; ${angka(P.tiada)} rekod tiada Penulis atau Tahun dan tidak digunakan` : ''}). Model hanya menulis ayat dan menamakan kod rekod; <b>sitasi APA 7 dibina oleh sistem</b> daripada medan Penulis dan Tahun rekod, dan petikan bukti disemak dengan teks rekod sebenar. Klik sitasi dalam RAM atau ASAL untuk melihat rujukan APA 7 lengkapnya.</p>
       <label class="tul-cb"><input type="checkbox" id="rmOn"${t.on ? ' checked' : ''}> Hidupkan ramalan automatik selepas noktah dalam RAM</label>
       <div class="rm-tet"><label>Model (juga boleh ditukar terus melalui pemilih Model dalam bar RAM) <select id="rmModel" class="modal-in">${MODEL_RAMAL.map(([v, l]) => `<option value="${v}"${v === t.model ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
       <label>Jeda selepas noktah <select id="rmJeda" class="modal-in">${JEDA.map(([v, l]) => `<option value="${v}"${v === t.jeda ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
