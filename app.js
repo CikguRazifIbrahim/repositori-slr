@@ -14,7 +14,7 @@ import { initSintesis } from './mod/sintesis.js';
 import { initBengkel } from './mod/bengkel.js';
 import { initKumpulan } from './mod/kumpulan.js';
 import { initKalendar } from './mod/kalendar.js';
-const VERSION = '1.47.0';
+const VERSION = '1.48.0';
 const C = window.RSLR_CONFIG || {};
 const TEST = !!window.__RSLR_TEST;
 const COLL = C.collection || 'artikel';
@@ -141,7 +141,7 @@ function nilaiMedan(d, k) {
 const S = {
   user: null, docs: new Map(), gotDefinitive: false, view: 'papan', currentId: null,
   filters: {}, sort: 'dikemaskini', pending: {}, timers: {}, dirty: {}, lastError: null,
-  split: false, unsub: null, online: navigator.onLine, installPrompt: null, pendingUpload: null, papar: 'kumpulan', lipat: {}
+  split: false, unsub: null, online: navigator.onLine, installPrompt: null, pendingUpload: null, papar: 'kumpulan', lipat: {}, sub: 'kd'
 };
 const searchCache = new WeakMap();
 
@@ -214,7 +214,7 @@ function goView(name) {
 /* ---------- local persistence (per device conveniences) ---------- */
 function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-function savePrefs() { lsSet('rslr_prefs', { filters: S.filters, sort: S.sort, split: S.split, view: S.view, currentId: S.currentId, papar: S.papar, lipat: S.lipat }); }
+function savePrefs() { lsSet('rslr_prefs', { filters: S.filters, sort: S.sort, split: S.split, view: S.view, currentId: S.currentId, papar: S.papar, lipat: S.lipat, sub: S.sub }); }
 const PAPARAN = ['kumpulan', 'senarai'];
 const paparSah = v => PAPARAN.includes(v) ? v : 'kumpulan';
 
@@ -529,11 +529,24 @@ function metaMasa(d) {
   if (!t) return '<span class="meta-naik" title="Tiada masa muat naik atau masa cipta direkodkan">Tiada masa</span>';
   return `<span class="meta-naik" title="${adaPdf ? 'Masa fail PDF dimuat naik ke Drive' : 'Rekod tanpa PDF: masa rekod dicipta'}">${adaPdf ? 'Dimuat naik' : 'Dicipta'} ${esc(fmtTime(t))}</span>`;
 }
-function filteredEntries() {
-  const f = S.filters; const q = (f.q || '').trim().toLowerCase(); const julat = julatNaik(f.naik);
+/* v1.48.0: sub-menu Artikel. Setiap sub-menu hanya memaparkan artikel satu pemboleh ubah (Tema utama rekod). Artikel yang tidak sesuai
+   dengan tiga pemboleh ubah itu berada dalam "Lain-lain", dan artikel yang baru dimuat naik tanpa Tema utama berada dalam "Belum dilabel"
+   (dengan cadangan label automatik) sehingga dilabel; "Semua" mengekalkan paparan berkumpulan yang asal. */
+const SUB = [['kd', TEMA[0]], ['ppo', TEMA[1]], ['kdg', TEMA[2]], ['lain', 'Lain-lain'], ['tiada', 'Belum dilabel'], ['semua', 'Semua']];
+const subSah = v => SUB.some(x => x[0] === v) ? v : 'kd';
+const kodSub = d => d.tema === TEMA[0] ? 'kd' : d.tema === TEMA[1] ? 'ppo' : d.tema === TEMA[2] ? 'kdg' : d.tema ? 'lain' : 'tiada';
+const SUB_NOTA = { lain: 'Artikel yang tidak sesuai dengan tiga pemboleh ubah (konteks umum, kaedah, dasar). Tukar Tema utama dalam rekod untuk memindahkannya.', tiada: 'Artikel yang belum mempunyai Tema utama. Klik cip KD, PPO, KDG atau Lain pada baris artikel, atau terima cadangan sistem, dan artikel itu berpindah ke sub-menunya.' };
+function renderSub() {
+  const el = $('#subTema'); if (!el) return; const k = { kd: 0, ppo: 0, kdg: 0, lain: 0, tiada: 0, semua: 0 };
+  S.docs.forEach(d => { k[kodSub(d)]++; k.semua++; }); const sub = subSah(S.sub);
+  el.innerHTML = SUB.filter(([kod]) => kod !== 'tiada' || k.tiada || sub === 'tiada').map(([kod, nama]) => `<button class="${kod}${kod === sub ? ' on' : ''}${kod === 'tiada' && k.tiada ? ' perlu' : ''}" data-sub="${kod}" role="tab" aria-selected="${kod === sub}"><i></i>${esc(nama)}<b>${k[kod]}</b></button>`).join('') + (SUB_NOTA[sub] ? `<div class="sub-nota">${esc(SUB_NOTA[sub])}</div>` : '');
+}
+function pilihSub(kod) { S.sub = subSah(kod); savePrefs(); renderList(); window.scrollTo(0, 0); }
+function filteredEntries(subPaksa) {
+  const f = S.filters; const q = (f.q || '').trim().toLowerCase(); const julat = julatNaik(f.naik); const sub = subPaksa || subSah(S.sub);
   let arr = Array.from(S.docs.entries()).filter(([id, d]) => {
     if (julat) { const t = masaNaik(d); if (t < julat[0] || t >= julat[1]) return false; }
-    if (f.tema && d.tema !== f.tema) return false;
+    if (sub !== 'semua' && kodSub(d) !== sub) return false;
     if (f.relevansi && d.relevansi !== f.relevansi) return false;
     if (f.peringkat && d.peringkat !== f.peringkat) return false;
     if (f.jenis && d.jenis !== f.jenis) return false;
@@ -604,7 +617,7 @@ function renderStats() {
     <div class="tile"><div class="k">PDF dalam Drive</div><div class="v">${esc(fmtBytes(bytes))}</div><div class="sub">${pdf} fail dalam folder "${esc(C.driveFolderName || 'Repositori SLR')}"</div></div>`;
 }
 function renderList() {
-  renderStats();
+  renderStats(); renderSub();
   const list = $('#list'); const arr = filteredEntries(); const total = S.docs.size;
   const negara = new Set(); S.docs.forEach(d => { if (d.negara) negara.add(String(d.negara).trim()); });
   $('#negaraList').innerHTML = Array.from(negara).sort().map(x => `<option value="${esc(x)}">`).join('');
@@ -614,8 +627,8 @@ function renderList() {
     list.innerHTML = `<div class="empty"><h3>Repositori masih kosong</h3><p>Muat naik PDF artikel pertama, atau cipta rekod kosong dan isi 13 medan ekstrak. Setiap rekod disegerakkan ke semua peranti Prof Dr.</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px"><label class="btn btn-primary">Muat naik PDF<input type="file" accept=".pdf,application/pdf" multiple hidden data-upload="papan"></label><button class="btn" data-act="baharu">Rekod kosong</button></div></div>`;
     return;
   }
-  $('#hasilCount').textContent = arr.length === total ? `${total} artikel` : `${arr.length} daripada ${total} artikel`;
-  if (!arr.length) { list.innerHTML = `<div class="empty"><h3>Tiada padanan</h3><p>Tiada artikel memenuhi tapisan semasa.</p><button class="btn" data-act="reset" style="margin-top:12px">Set semula tapisan</button></div>`; return; }
+  { const sb = subSah(S.sub); const nSub = sb === 'semua' ? total : Array.from(S.docs.values()).filter(d => kodSub(d) === sb).length; $('#hasilCount').textContent = (arr.length === nSub ? `${nSub} artikel` : `${arr.length} daripada ${nSub} artikel`) + (sb === 'semua' ? '' : ' · ' + SUB.find(x => x[0] === sb)[1]); }
+  if (!arr.length) { const sb = subSah(S.sub); const lain = sb === 'semua' ? 0 : filteredEntries('semua').length; list.innerHTML = `<div class="empty"><h3>Tiada padanan</h3><p>Tiada artikel dalam sub-menu ini memenuhi tapisan semasa.${lain ? ' ' + lain + ' artikel dalam sub-menu lain memenuhinya.' : ''}</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">${lain ? '<button class="btn btn-primary" data-sub="semua">Lihat dalam Semua</button>' : ''}<button class="btn" data-act="reset">Set semula tapisan</button></div></div>`; return; }
   if (S.papar === 'kumpulan' && R.Kumpulan) { list.classList.add('berkumpulan'); list.innerHTML = R.Kumpulan.html(arr); return; }
   list.classList.remove('berkumpulan');
   list.innerHTML = arr.map(([id, d]) => {
@@ -1138,6 +1151,7 @@ $('#btnHome').addEventListener('click', () => { if (S.user) goPapan(); });
 $('#btnBack').addEventListener('click', goPapan);
 $('#btnNew').addEventListener('click', () => { const id = createArticle({}); renderList(); openRecord(id); $('#f_penulis').focus(); });
 $('#list').addEventListener('click', e => {
+  const sbt = e.target.closest('[data-sub]'); if (sbt) { e.stopPropagation(); pilihSub(sbt.dataset.sub); return; }
   const lb = e.target.closest('[data-label]'); if (lb) { e.stopPropagation(); Kumpulan.label(lb.dataset.id, lb.dataset.label); return; }
   const lp = e.target.closest('[data-lipat]'); if (lp) { e.stopPropagation(); Kumpulan.lipat(lp.dataset.lipat); return; }
   if (e.target.closest('[data-terima-semua]')) { e.stopPropagation(); Kumpulan.terimaSemua(); return; }
@@ -1148,6 +1162,7 @@ $('#list').addEventListener('click', e => {
   const act = e.target.closest('[data-act]'); if (act) { if (act.dataset.act === 'baharu') $('#btnNew').click(); if (act.dataset.act === 'reset') resetFilters(); }
 });
 $('#list').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('row')) { e.preventDefault(); openRecord(e.target.dataset.id); } });
+$('#subTema').addEventListener('click', e => { const b = e.target.closest('button[data-sub]'); if (b) pilihSub(b.dataset.sub); });
 $('#nav').addEventListener('click', e => { const b = e.target.closest('button[data-view]'); if (b && S.user) goView(b.dataset.view); });
 $('#list').addEventListener('change', e => { if (e.target.matches('input[data-upload]')) { const files = Array.from(e.target.files); e.target.value = ''; uploadFiles(files, null); } });
 $('#fileTop').addEventListener('change', e => { const files = Array.from(e.target.files); e.target.value = ''; uploadFiles(files, null); });
@@ -1336,7 +1351,7 @@ window.addEventListener('appinstalled', () => { $('#btnInstall').hidden = true; 
 async function start() {
   $('#menuVersi').textContent = 'Repositori SLR v' + VERSION;
   const prefs = lsGet('rslr_prefs', {});
-  S.filters = prefs.filters || {}; S.sort = prefs.sort || 'dikemaskini'; S.split = !!prefs.split; S.papar = paparSah(prefs.papar); S.lipat = prefs.lipat && typeof prefs.lipat === 'object' ? prefs.lipat : {};
+  S.filters = prefs.filters || {}; S.sort = prefs.sort || 'dikemaskini'; S.split = !!prefs.split; S.papar = paparSah(prefs.papar); S.sub = subSah(prefs.sub); if (S.filters.tema) delete S.filters.tema; S.lipat = prefs.lipat && typeof prefs.lipat === 'object' ? prefs.lipat : {};
   writeFilters();
   const miss = configMissing();
   if (!TEST && miss.length) {

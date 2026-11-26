@@ -6,6 +6,7 @@
    (senarai artikel) dan meta/penerbitan_<id> (seksyen, jenis, sumber, soalan), berserta salinan tempatan. */
 import { initPandu } from './pandu.js';
 import { initTajuk } from './tajuk.js';
+import { initLangkah } from './langkah.js';
 import { PIAWAI_RINGKAS } from './bahasa-data.js';
 
 export function initArtikel(R, initTulisan) {
@@ -154,7 +155,7 @@ export function initArtikel(R, initTulisan) {
     /* ramalan ayat (mod/ramal.js) mengutamakan artikel sumber penerbitan ini apabila sama kuat */
     sumberRamal: id => ((Teks.doc(id) || {}).sumber || [])
   };
-  let Pandu = null, Tajuk = null;
+  let Pandu = null, Tajuk = null, Langkah = null;
   const Teks = initTulisan(R, cfg);
   const doc = () => A.id ? Teks.doc(A.id) : null;
   async function simpanDoc(patch) { const d = doc(); if (!d) return; d.masa = Date.now(); Teks.simpanLokal(A.id, d); await Teks.simpanAwan(A.id, Object.assign({ masa: d.masa }, patch)); }
@@ -182,7 +183,7 @@ export function initArtikel(R, initTulisan) {
     const d = doc();
     if (!d || !entri(A.id)) { panel.hidden = true; kosong.hidden = false; kosong.innerHTML = `<h3>${senaraiUnit().length ? 'Pilih artikel di atas' : 'Belum ada artikel penerbitan'}</h3><p>Setiap artikel mempunyai jenis, artikel sumber daripada repositori (tanpa had bilangan), soal jawab merentas semua artikel sumber (sehingga ${HAD_SOALAN} soalan dijawab agen) dan seksyen dengan editor ASAL dan RAM seperti Tulisan Tesis. Tiada struktur bab yang tetap: tambah seksyen mengikut keperluan artikel.</p><button class="btn btn-primary" data-artbaru="1">Artikel baharu</button>`; return; }
     kosong.hidden = true; panel.hidden = false;
-    renderKepala(d); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render(); if (Tajuk) Tajuk.render();
+    renderKepala(d); renderSumber(d); renderSoal(d); if (Pandu) Pandu.render(); if (Tajuk) Tajuk.render(); if (Langkah) Langkah.render(A.id);
   }
   function renderKepala(d) {
     const el = $('#artKepala'); if (!el) return; const e = entri(A.id); const j = JENIS_PETA[d.jenis];
@@ -363,7 +364,7 @@ ${bahan.map(x => Bd().teksRekod(x.i, x.d)).join('\n\n')}`;
     const d = Teks.doc(id); d.tajuk = tajuk; d.jenis = jenis; d.masa = masa; Teks.simpanLokal(id, d); await Teks.simpanAwan(id, { jenis, tajuk, sumber: [], soalan: [], masa });
     A.id = id; R.lsSet(LS_SEMASA, id); Teks.state.bab = id; Teks.state.sek = null; Teks.renderSemua(); renderPanel();
     toast('Artikel "' + tajuk + '" dicipta' + (jenis && STRUKTUR[jenis] ? '. Klik "Struktur lazim" jika mahu seksyen lazim jenis ini dimasukkan' : ''));
-    const k = $('#artKepala'); if (k) k.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (Langkah) Langkah.pergi(1, true); const k = $('#artKepala'); if (k) k.scrollIntoView({ block: 'start', behavior: 'smooth' });
     if (tanpaTajuk && Tajuk) Tajuk.buka();
     return id;
   }
@@ -391,6 +392,7 @@ ${bahan.map(x => Bd().teksRekod(x.i, x.d)).join('\n\n')}`;
   }
   function peringatan() { Teks.peringatan(); }
   /* Pandu Tulis: folder mengikut jenis artikel dan acuan artikel contoh, soal jawab, cadangan ke RAM, meter dan semakan (mod/pandu.js). */
+  Langkah = initLangkah(R); R.Langkah = Langkah;
   Pandu = initPandu(R, { A, Teks, doc, entri, JENIS_PETA, STRUKTUR, sumberAda, tambahSumber: id => tambahSumber(id), onTetapan: () => { if (Tajuk) Tajuk.render(); } });
   /* Pembantu Tajuk: pembayang tajuk, cadangan agen dalam tetingkap timbul dan semakan tajuk (mod/tajuk.js). */
   Tajuk = initTajuk(R, { A, Teks, doc, entri, JENIS_PETA, sumberAda, Pandu, tetapTajuk, medanTajuk });

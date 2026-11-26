@@ -1572,23 +1572,84 @@ ol.bs-soal-l li{margin-bottom:7px}
 .tag.g-ada{background:var(--ok-soft);color:var(--ok)} .tag.g-separa{background:var(--warn-soft);color:var(--warn)} .tag.g-tiada{background:var(--bad-soft);color:var(--bad)}
 .bs-ar-petua .bs-pautan{font-size:12px}
 @media (max-width:520px){.bs-ar-grid{grid-template-columns:minmax(0,1fr)}.bs-ar-cip .bs-cip+.bs-ar-kump{margin-left:0;flex-basis:100%}}
+
+/* v1.48.0: sub-menu Artikel mengikut pemboleh ubah */
+.sub-tema{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.sub-tema button{background:none;border:1px solid transparent;border-radius:8px;padding:7px 12px;font-weight:600;font-size:14px;color:var(--muted);display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+.sub-tema button i{width:9px;height:9px;border-radius:50%;background:var(--lain);flex:none}
+.sub-tema button.kd i{background:var(--kd)} .sub-tema button.ppo i{background:var(--ppo)} .sub-tema button.kdg i{background:var(--kdg)} .sub-tema button.tiada i{background:var(--warn)} .sub-tema button.semua i{display:none}
+.sub-tema button b{font-weight:700;font-size:12px;background:var(--surface-2);border-radius:999px;padding:1px 8px;color:var(--fg)}
+.sub-tema button.on{color:var(--fg);background:var(--accent-soft);border-color:var(--accent-line)}
+.sub-tema button.tiada.perlu b{background:var(--warn-soft);color:var(--warn)}
+.sub-tema .sub-nota{flex-basis:100%;font-size:12.5px;color:var(--muted);padding:2px 8px 4px}
+@media (max-width:640px){.sub-tema{flex-wrap:nowrap;overflow-x:auto}.sub-tema button{flex:none}.sub-tema .sub-nota{display:none}}
+
+/* v1.48.0: Peta Ayat sebagai kamus ayat */
+.hit-no{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:700;margin-right:8px;vertical-align:1px}
+.hit-sit{color:var(--accent);font-weight:700;white-space:nowrap} .hit-sit.belum{color:var(--warn)}
+.hit-tajuk{flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hit-lagi{flex-direction:row;align-items:center;gap:10px}
+.cluster-head .spacer{flex:1}
+.peta-search select{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:6px 8px;font-size:13.5px}
+
+/* v1.48.0: langkah dan senarai semak menu Penerbitan; tab dalam folder Pandu Tulis; teks bantuan dua baris */
+#artPanel[data-langkah="1"]>[data-lk]:not([data-lk="1"]),#artPanel[data-langkah="2"]>[data-lk]:not([data-lk="2"]),#artPanel[data-langkah="3"]>[data-lk]:not([data-lk="3"]),#artPanel[data-langkah="4"]>[data-lk]:not([data-lk="4"]),#artPanel[data-langkah="5"]>[data-lk]:not([data-lk="5"]){display:none!important}
+.lk-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.lk-t{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer;text-align:left;min-width:0}
+.lk-t .no{width:22px;height:22px;border-radius:50%;background:var(--surface-2);color:var(--fg);display:grid;place-items:center;font-size:12px;flex:none}
+.lk-t .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lk-t .kr{font-size:11.5px;font-weight:600}
+.lk-t.on{color:var(--fg);background:var(--accent-soft);border-color:var(--accent-line)} .lk-t.on .no{background:var(--accent);color:var(--accent-ink)}
+.lk-t.siap .no{background:var(--ok);color:#fff}
+.lk-t.kunci{opacity:.55;cursor:not-allowed}
+.lk-kad{background:var(--surface);border:1px solid var(--warn);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px}
+.lk-kad.siap{border-color:var(--line)}
+.lk-kad>summary{cursor:pointer;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+.lk-kad .lk-kira{color:var(--muted);font-size:12.5px}
+.lk-kad .lk-bar{flex:1;min-width:80px;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden} .lk-kad .lk-bar i{display:block;height:100%;background:var(--ok)}
+.lk-kad ul{list-style:none;margin:8px 0 4px;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:4px 18px}
+.lk-kad li label{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.4;cursor:pointer;padding:3px 0}
+.lk-kad li input{margin-top:3px;flex:none;width:16px;height:16px;accent-color:var(--accent)}
+.lk-kad li input:checked+span{color:var(--muted)}
+#artPanel p.help:not(.buka):not(.lk-nota),#artPanel div.help:not(.buka):not(.lk-nota),#artikel>.harian-note:not(.buka),#tulisan>.harian-note:not(.buka),#bengkel>.harian-note:not(.buka){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;cursor:pointer}
+#artPanel p.help.buka,#artPanel div.help.buka,.harian-note.buka{cursor:pointer}
+.pd-folder{scroll-margin-top:calc(var(--bar-h) + 8px)}
+.pd-folder.lk-tabs>details.pd-l>summary{display:none}
+.pd-folder.lk-tabs>details.pd-l:not(.lk-on){display:none}
+.pd-folder.lk-tabs>details.pd-l.lk-on{max-height:calc(100vh - var(--bar-h) - 170px);min-height:220px;overflow:auto;border-top-left-radius:0;border-top-right-radius:0;margin-bottom:0;padding-top:2px}
+.lk-tabs-bar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:-1px}
+.lk-tabs-bar button{flex:1 1 150px;max-width:340px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:1px 8px;align-items:center;text-align:left;background:var(--surface-2);border:1px solid var(--line);border-bottom-color:var(--line);border-radius:10px 10px 0 0;padding:7px 10px;font-weight:700;font-size:13.5px;color:var(--muted);cursor:pointer}
+.lk-tabs-bar button .no{width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:12px;grid-row:1 / span 2}
+.lk-tabs-bar button .no.ruang{background:var(--fg);color:var(--surface);border-radius:6px}
+.lk-tabs-bar button .tj{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lk-tabs-bar button .ring{grid-column:2;font-weight:600;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lk-tabs-bar button.on{background:var(--surface);color:var(--fg);border-bottom-color:var(--surface);box-shadow:inset 0 3px 0 var(--accent)}
+.pd-tetapan-lipat>summary{cursor:pointer;font-size:13.5px}
+.pd-atas{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.pd-atas>*{flex:1 1 100%;min-width:0}
+.pd-atas>details{flex:1 1 280px;margin:0}
+.pd-atas>details[open]{flex-basis:100%}
+.pd-atas>details:not([open])>summary{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.pd-atas>details:not([open])>summary::before{content:'\25B8\00a0'}
+#artPandu .pd-rel{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(138px,1fr);overflow-x:auto;padding-bottom:4px}
+@media (max-width:760px){.lk-nav{grid-template-columns:repeat(5,auto);overflow-x:auto}.lk-t .nm{white-space:nowrap;overflow:visible}.lk-kad ul{grid-template-columns:1fr}.lk-tabs-bar{flex-wrap:nowrap;overflow-x:auto}.lk-tabs-bar button{flex:none;max-width:240px}.pd-folder.lk-tabs>details.pd-l.lk-on{max-height:none}}
 </style>
 </head>
 <body>
 
 <header class="bar">
   <div class="bar-inner">
-    <button id="btnHome" class="brand" title="Papan pemuka">
+    <button id="btnHome" class="brand" title="Artikel repositori">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="4" width="26" height="24" rx="4" fill="var(--accent)"/><rect x="8" y="10" width="16" height="2.4" rx="1.2" fill="var(--accent-ink)"/><rect x="8" y="15" width="16" height="2.4" rx="1.2" fill="var(--accent-ink)" opacity=".8"/><rect x="8" y="20" width="10" height="2.4" rx="1.2" fill="var(--accent-ink)" opacity=".6"/></svg>
       <span class="brand-name">Repositori SLR</span>
     </button>
     <nav class="nav" id="nav" hidden>
-      <button data-view="papan" class="on" title="Papan pemuka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg><span>Papan</span></button>
+      <button data-view="papan" class="on" title="Artikel: semua artikel dalam repositori, dipecahkan mengikut pemboleh ubah"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg><span>Artikel</span></button>
       <button data-view="harian" title="Bacaan hari ini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/><circle cx="12" cy="12" r="4"/></svg><span>Hari ini</span><span class="badge" id="navBadge" hidden>3</span></button>
-      <button data-view="peta" title="Peta Ayat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="17.5" cy="16.5" r="3"/><path d="M20 19l2 2"/></svg><span>Peta Ayat</span></button>
+      <button data-view="peta" title="Peta Ayat: kamus ayat bersitasi daripada PDF repositori"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="17.5" cy="16.5" r="3"/><path d="M20 19l2 2"/></svg><span>Peta Ayat</span></button>
       <button data-view="banding" title="Banding dua artikel kepala ke kepala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 5h6v14H4zM14 5h6v14h-6z"/><path d="M7 9v6M17 9v6M10 12h4"/></svg><span>Banding</span></button>
-      <button data-view="tulisan" title="Tulisan Tesis: buku nota penulisan Bab 1 hingga Bab 5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M12.5 7.5l4 4"/></svg><span>Tulisan</span></button>
-      <button data-view="artikel" title="Artikel Penerbitan: menulis artikel jurnal dan persidangan daripada artikel dalam repositori"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg><span>Artikel</span></button>
+      <button data-view="tulisan" title="Tesis: buku nota penulisan Bab 1 hingga Bab 5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M12.5 7.5l4 4"/></svg><span>Tesis</span></button>
+      <button data-view="artikel" title="Penerbitan: menulis artikel jurnal dan persidangan daripada artikel dalam repositori"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg><span>Penerbitan</span></button>
       <button data-view="bengkel" title="Sintesis: berlatih mensintesis ayat daripada beberapa artikel, dengan semakan kesesuaian bahan dan pustaka penanda wacana"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6c5 0 5 6 10 6h8M3 18c5 0 5-6 10-6M18 9l3 3-3 3"/></svg><span>Sintesis</span></button>
     </nav>
     <div class="bar-status">
@@ -1609,8 +1670,8 @@ ol.bs-soal-l li{margin-bottom:7px}
           <button data-x="drive">Sambung semula Google Drive</button>
           <button data-x="drive-redirect">Sambung Drive (cara lencongan)</button>
           <button data-x="diag">Diagnostik Drive</button>
-          <button data-x="tul-naik">Muat naik fail MS Word (Tulisan Tesis)</button>
-          <button data-x="tul-turun">Muat turun fail MS Word (Tulisan Tesis)</button>
+          <button data-x="tul-naik">Muat naik fail MS Word (Tesis)</button>
+          <button data-x="tul-turun">Muat turun fail MS Word (Tesis)</button>
           <button data-x="bahasa-semua">Semakan bahasa semua rekod (tanpa token)</button>
           <button data-x="tetapan">Tetapan (kunci API, model, Agen Bahasa)</button>
           <button data-x="pasang" id="btnInstall" hidden>Pasang sebagai aplikasi</button>
@@ -1646,6 +1707,7 @@ ol.bs-soal-l li{margin-bottom:7px}
 </main>
 
 <main id="papan" class="view" hidden>
+  <nav id="subTema" class="sub-tema" role="tablist" aria-label="Sub-menu Artikel mengikut pemboleh ubah"></nav>
   <section class="stats" id="stats"></section>
   <div class="papan-grid">
     <aside class="rail">
@@ -1653,7 +1715,7 @@ ol.bs-soal-l li{margin-bottom:7px}
       <form id="filters" class="filters" autocomplete="off">
         <h2>Tapisan</h2>
         <div class="field"><label for="q">Carian</label><input id="q" type="search" placeholder="Penulis, tajuk, DOI, konstruk, dapatan"></div>
-        <div class="field"><label for="fTema">Tema utama</label><select id="fTema"><option value="">Semua</option><option>Kepimpinan Digital</option><option>Pengurusan Pengetahuan Organisasi</option><option>Kompetensi Digital Guru</option><option>Lain-lain / Konteks Umum</option></select></div>
+        <div class="field" hidden><label for="fTema">Tema utama</label><select id="fTema"><option value="">Semua</option><option>Kepimpinan Digital</option><option>Pengurusan Pengetahuan Organisasi</option><option>Kompetensi Digital Guru</option><option>Lain-lain / Konteks Umum</option></select></div>
         <div class="field"><label for="fRel">Relevansi</label><select id="fRel"><option value="">Semua</option><option>Tinggi</option><option>Sederhana-Tinggi</option><option>Sederhana</option><option>Rendah</option></select></div>
         <div class="field"><label for="fStatus">Status bacaan</label><select id="fStatus"><option value="">Semua</option><option>Belum dibaca</option><option>Sedang dibaca</option><option>Selesai</option></select></div>
         <div class="field"><label for="fPeringkat">Peringkat pendidikan</label><select id="fPeringkat"><option value="">Semua</option><option>Sekolah Rendah</option><option>Sekolah Menengah</option><option>Pengajian Tinggi</option><option>Bukan Pendidikan</option><option>Pelbagai peringkat</option></select></div>
@@ -1698,12 +1760,13 @@ ol.bs-soal-l li{margin-bottom:7px}
     <h1>Peta Ayat</h1>
     <div class="idx-bar"><span id="idxStat">Indeks belum dimuatkan.</span><div class="meter" id="idxMeter" hidden><span style="width:0"></span></div><button id="btnIdxSemua" class="btn btn-sm">Indeks semua PDF yang belum</button><button id="btnIdxSync" class="btn btn-sm">Segerak indeks</button></div>
     <form class="peta-search" id="petaForm">
-      <input id="petaQ" type="search" placeholder="Taip istilah, contohnya: knowledge sharing, digital leadership, kompetensi digital" autocomplete="off">
+      <input id="petaQ" type="search" placeholder="Taip beberapa patah perkataan, contohnya: Model SECI, kepimpinan digital, knowledge sharing" autocomplete="off">
       <label><input type="checkbox" id="petaFrasa"> Frasa tepat</label>
+      <label>Susunan <select id="petaSusun"><option value="terbaik">10 padanan teratas</option><option value="pola">Kelompok pola (semua ayat)</option></select></label>
       <button class="btn btn-primary" type="submit">Cari</button>
       <button class="btn" type="button" id="btnPetaCsv" hidden>Eksport CSV</button>
     </form>
-    <div class="peta-status" id="petaStatus">Taip istilah untuk mengumpulkan semua ayat yang mengandunginya daripada semua PDF yang telah diindeks, dikelompokkan mengikut pola istilah yang sama, berserta sumber (Bil., penulis, tahun, muka surat).</div>
+    <div class="peta-status" id="petaStatus">Taip beberapa patah perkataan dan tekan Cari: sistem memulangkan 10 ayat lengkap yang paling sepadan daripada PDF repositori, merentas artikel, setiap satu dengan sitasi (penulis, tahun, muka surat) yang sedia disalin. Carian merentas bahasa: "kepimpinan digital" turut menemui "digital leadership".</div>
   </div>
   <div id="petaHasil"></div>
 </main>
@@ -1733,7 +1796,7 @@ ol.bs-soal-l li{margin-bottom:7px}
 
 <main id="tulisan" class="view" hidden>
   <div class="tul-head">
-    <div><h1>Tulisan Tesis</h1><div class="sub">Buku nota penulisan Bab 1 hingga Bab 5. Disimpan automatik ke awan dan disegerakkan ke semua peranti; MS Word hanya pintu masuk dan keluar.</div></div>
+    <div><h1>Tesis</h1><div class="sub">Buku nota penulisan Bab 1 hingga Bab 5. Disimpan automatik ke awan dan disegerakkan ke semua peranti; MS Word hanya pintu masuk dan keluar.</div></div>
     <span class="spacer"></span>
     <div class="tul-acts">
       <button id="btnTulNaik" class="btn btn-primary" title="Baca fail .docx, padankan seksyen mengikut tajuk dan tunjukkan pratonton sebelum menimpa">Muat naik fail MS Word</button>
@@ -1770,14 +1833,16 @@ ol.bs-soal-l li{margin-bottom:7px}
   <div id="artBab" class="tul-bab art-bab"></div>
   <div id="artKosong" class="art-kosong" hidden></div>
   <div id="artPanel" hidden>
-    <section id="artKepala" class="art-kepala"></section>
-    <details class="art-sek" id="artTerasWrap" open hidden><summary>Pernyataan masalah, objektif kajian dan persoalan kajian <span id="artTerasKira"></span></summary><div id="artTeras" class="teras"></div></details>
-    <details class="art-sek" id="artSumberWrap" open><summary>Artikel sumber daripada repositori <span id="artSumberKira"></span></summary><div id="artSumber"></div></details>
-    <details class="art-sek" id="artSoalWrap" open><summary>Soal jawab semua artikel sumber <span id="artSoalKira"></span></summary><div id="artSoal"></div></details>
-    <details class="art-sek" id="artPanduWrap" open><summary>Pandu Tulis: folder mengikut acuan artikel contoh, soal jawab, cadangan dan semakan <span id="artPanduKira"></span></summary><div id="artPandu" class="pandu"></div></details>
-    <div class="tul-cari"><input id="artCari" type="search" placeholder="Cari dalam semua artikel penerbitan, contohnya: jurang, PRISMA, Hassan" autocomplete="off"><div id="artCariHasil" class="tul-cari-hasil" hidden></div></div>
-    <div id="artPanduBar" class="pd-bar" hidden></div>
-    <div class="tul-badan">
+    <nav id="artLangkah" class="lk-nav" role="tablist" aria-label="Langkah menulis artikel penerbitan"></nav>
+    <section id="artSemak" class="lk-semak"></section>
+    <section id="artKepala" class="art-kepala" data-lk="1"></section>
+    <details class="art-sek" id="artTerasWrap" data-lk="2" open hidden><summary>Pernyataan masalah, objektif kajian dan persoalan kajian <span id="artTerasKira"></span></summary><div id="artTeras" class="teras"></div></details>
+    <details class="art-sek" id="artSumberWrap" data-lk="3" open><summary>Artikel sumber daripada repositori <span id="artSumberKira"></span></summary><div id="artSumber"></div></details>
+    <details class="art-sek" id="artSoalWrap" data-lk="3" open><summary>Soal jawab semua artikel sumber <span id="artSoalKira"></span></summary><div id="artSoal"></div></details>
+    <details class="art-sek" id="artPanduWrap" data-lk="4" open><summary>Pandu Tulis: folder mengikut acuan artikel contoh, soal jawab, cadangan dan semakan <span id="artPanduKira"></span></summary><div id="artPandu" class="pandu"></div></details>
+    <div class="tul-cari" data-lk="5"><input id="artCari" type="search" placeholder="Cari dalam semua artikel penerbitan, contohnya: jurang, PRISMA, Hassan" autocomplete="off"><div id="artCariHasil" class="tul-cari-hasil" hidden></div></div>
+    <div id="artPanduBar" class="pd-bar" data-lk="5" hidden></div>
+    <div class="tul-badan" data-lk="5">
       <aside class="tul-kiri"><div class="tul-kiri-head"><h2>Seksyen</h2><div class="tul-kiri-acts"><button id="btnArtTemplat" class="btn btn-sm" title="Masukkan seksyen yang lazim bagi jenis artikel ini (pilihan; semuanya boleh diubah atau dipadam)">Struktur lazim</button><button id="btnArtSeksyen" class="btn btn-sm btn-primary">Seksyen baharu</button></div></div><div class="help tul-kiri-help">Tiada struktur tetap: tambah seksyen mengikut keperluan artikel. Pegang dan seret untuk menyusun semula; anak panah: promosi atau demosi aras; nombor dijana automatik.</div><div id="artSenarai" class="tul-senarai"></div></aside>
       <section id="artEditor" class="tul-editor"></section>
     </div>
@@ -1808,7 +1873,7 @@ ol.bs-soal-l li{margin-bottom:7px}
     <section class="rekod-form">
       <div class="rekod-head">
         <div class="line1">
-          <button id="btnBack" class="btn btn-sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Papan</button>
+          <button id="btnBack" class="btn btn-sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Artikel</button>
           <div class="ctl">
             <label for="f_bil" class="sr">Bil.</label><span class="bil">Bil.</span><input id="f_bil" type="number" inputmode="numeric" min="1">
             <label for="f_status" class="sr">Status</label>

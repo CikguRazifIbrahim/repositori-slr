@@ -282,7 +282,9 @@ export function initPandu(R, C) {
   }
   function htmlAtas(d, tl) {
     const pv = (P.t.pemboleh || []).filter(v => v.nama); const ac = acuan(); const sendiri = acuanSendiri(kel());
-    return `<div class="pd-atas"><div class="pd-tetap">
+    /* v1.48.0: selepas folder disediakan, tetapan dilipat menjadi satu baris ringkasan supaya folder berada dekat dengan bahagian atas */
+    const lipatA = P.t.sedia ? `<details class="pd-hasil pd-tetapan-lipat" data-pdid="tetapan"${P.terbuka.has('tetapan') ? ' open' : ''}><summary><b>Tetapan Pandu Tulis</b> · ${esc(namaBahasa())} · ${P.t.aras === 'scopus' ? 'Scopus atau WoS' : 'MyCite'} · sasaran ${angka(jumlahSasaran())} patah perkataan · ${ac ? 'acuan ' + esc(ac.pendek) : 'tanpa acuan'} · ${pv.length} pemboleh ubah · alat (klik untuk membuka)</summary>` : ''; const lipatZ = P.t.sedia ? '</details>' : '';
+    return `<div class="pd-atas">${lipatA}<div class="pd-tetap">
       <label class="pd-f"><span class="lbl">Bahasa manuskrip</span><select data-pdsel="bahasa"><option value="ms">Bahasa Melayu</option><option value="en">English</option></select></label>
       <label class="pd-f"><span class="lbl">Jurnal sasaran</span><select data-pdsel="aras" title="Menentukan piawaian yang digunakan agen ketika menyemak dan julat sasaran panjang"><option value="mycite">Berindeks MyCite</option><option value="scopus">Berindeks Scopus atau WoS</option></select></label>
       <label class="pd-f"><span class="lbl">Sasaran jumlah patah perkataan</span><input type="number" data-pdin="sasaran" min="1000" max="30000" step="500" value="${esc(jumlahSasaran())}" title="${ac && P.t.sasaranAuto !== false ? 'Mengikut saiz artikel contoh; taip angka lain untuk menetapkan sendiri' : 'Ditetapkan oleh Prof Dr'}">${ac && P.t.sasaranAuto === false ? '<button class="btn-link" data-pd="sasaranauto" title="Kembali kepada sasaran mengikut saiz artikel contoh">ikut acuan</button>' : ''}</label>
@@ -290,7 +292,7 @@ export function initPandu(R, C) {
       ${htmlPilihLiteratur()}
       <div class="pd-f pd-pv"><span class="lbl">Pemboleh ubah atau konstruk utama</span><div class="pd-pv-senarai">${pv.length ? pv.map(v => `<span class="tag ai" title="${esc(v.alias ? 'Padanan lain: ' + v.alias : 'Tiada padanan lain')}"><span>${esc(v.nama)}</span></span>`).join('') : '<span class="pd-kosong">Belum ditetapkan</span>'}<button class="btn btn-sm${pv.length ? '' : ' btn-primary'}" data-pd="pemboleh">${pv.length ? 'Ubah' : 'Tetapkan'}</button></div></div>
       <div class="pd-f pd-alat"><span class="lbl">Alat</span><div><button class="btn btn-sm" data-pd="gaya" title="Istilah dan frasa yang dilarang, had umur rujukan, had pangkalan data dan arahan gaya kepada agen">Peraturan gaya</button> <button class="btn btn-sm" data-pd="cara">Cara guna</button> <button class="btn btn-sm" data-pd="nombor" title="Nombor Jadual/Table dan Rajah/Figure disusun berturutan merentas semua folder mengikut susunan artikel; rujukan dalam teks turut dikemas kini. Boleh dibatalkan.">Susun nombor Jadual dan Rajah</button> <button class="btn btn-sm" data-pd="dfsub" title="Setiap folder dibaca perenggan demi perenggan; sub-menu dibina mengikut isi sebenar (konstruk, langkah kaedah, tema, implikasi dan batasan). Pratonton dahulu; boleh dibatalkan.">Susun sub-menu mengikut isi</button> <button class="btn btn-sm btn-primary" data-pd="buka" data-k="drafakhir" title="Himpun semua folder menjadi satu manuskrip dan semak kesediaan hantaran">Draf Akhir</button></div></div>
-    </div>${ac ? det('acuanInduk', 'pd-hasil pd-acuan-induk', `Acuan artikel ini: <b>${esc(ac.pendek)}</b>, ${esc(ac.jurnal || '')} · badan ${angka(ac.ukuran.badan)} patah perkataan dalam ${ac.bahagian.length} bahagian`, htmlAcuanInduk(ac)) : ''}${htmlRefleksi()}${P.t.sedia ? htmlKemajuan(tl) : ''}</div>`;
+    </div>${lipatZ}${ac ? det('acuanInduk', 'pd-hasil pd-acuan-induk', `Acuan artikel ini: <b>${esc(ac.pendek)}</b>, ${esc(ac.jurnal || '')} · badan ${angka(ac.ukuran.badan)} patah perkataan dalam ${ac.bahagian.length} bahagian`, htmlAcuanInduk(ac)) : ''}${htmlRefleksi()}${P.t.sedia ? htmlKemajuan(tl) : ''}</div>`;
   }
   /* Pemilih folder Kajian Literatur: hanya ditawarkan apabila struktur asas belum mempunyainya. */
   function htmlPilihLiteratur() {
@@ -356,8 +358,26 @@ export function initPandu(R, C) {
   function syor(f, sp) {
     const d = C.doc(); const medan = sp.medan || []; return C.sumberAda(d).map(id => { const r = Bd().rekod(id); const rel = { 'Tinggi': 3, 'Sederhana-Tinggi': 2, 'Sederhana': 1 }[r.relevansi] || 0; const isi = medan.length ? medan.filter(k => !R.Isi.nilaiKosong(r[k])).length / medan.length : 0; const sebab = []; if (rel >= 2) sebab.push('relevansi ' + r.relevansi); if (isi >= 0.8 && medan.length) sebab.push('medan berkaitan lengkap'); if (r.status === 'Selesai') sebab.push('selesai dibaca'); return { id, skor: rel * 2 + isi * 3 + (r.status === 'Selesai' ? 1 : 0), sebab }; }).sort((a, b) => b.skor - a.skor);
   }
+  /* v1.48.0: langkah dalam folder (Acuan, DNA jurang, Artikel panduan, Ruang PRISMA atau Output, Contoh penulisan) dipaparkan sebagai tab.
+     Hanya satu tab terbuka pada satu masa, di dalam panel yang tingginya terhad kepada skrin dan ditatal di dalam panel itu sendiri,
+     maka halaman tidak lagi memanjang ke bawah apabila satu langkah dibuka. P.terbuka kekal menjadi sumber keadaan: langkah yang
+     dibuka oleh kod lain (contohnya selepas agen menjawab) menjadi tab aktif. */
+  function tabFolder(el, pilih) {
+    const lama = el.querySelector(':scope > .lk-tabs-bar'); if (lama) lama.remove();
+    const ds = Array.from(el.children).filter(x => x.tagName === 'DETAILS' && x.classList.contains('pd-l') && x.dataset.pdid);
+    if (ds.length < 2) { el.classList.remove('lk-tabs'); return; }
+    const ids = ds.map(x => x.dataset.pdid); const kunci = P.id + '|' + P.buka; const tukar = P.tabK !== kunci; if (tukar) { P.tabK = kunci; P.tabLama = new Set(); P.tab = null; }
+    const buka = Array.from(P.terbuka).filter(id => ids.includes(id)); const baharu = buka.filter(id => !P.tabLama.has(id));
+    let aktif = pilih && ids.includes(pilih) ? pilih : P.tabMinta && ids.includes(P.tabMinta) ? P.tabMinta : tukar ? (buka[0] || ids[0]) : baharu.length ? baharu[baharu.length - 1] : ids.includes(P.tab) ? P.tab : (buka[0] || ids[0]);
+    P.tabMinta = null; P.tab = aktif; ids.forEach(id => { if (id === aktif) P.terbuka.add(id); else P.terbuka.delete(id); }); P.tabLama = new Set([aktif]);
+    const bar = document.createElement('div'); bar.className = 'lk-tabs-bar'; bar.setAttribute('role', 'tablist');
+    ds.forEach(x => { const on = x.dataset.pdid === aktif; x.open = on; x.classList.toggle('lk-on', on); const sm = x.querySelector(':scope > summary'); const b = document.createElement('button'); b.type = 'button'; b.dataset.lktab = x.dataset.pdid; b.className = on ? 'on' : ''; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', on ? 'true' : 'false');
+      const no = sm && sm.querySelector('.no'), ring = sm && sm.querySelector('.ring'); let tj = ''; if (sm) { const k = sm.cloneNode(true); k.querySelectorAll('.no,.ring').forEach(z => z.remove()); tj = k.textContent.trim(); }
+      b.title = tj + (ring ? ' · ' + ring.textContent.trim() : ''); b.innerHTML = `${no ? no.outerHTML : ''}<span class="tj">${esc(tj)}</span>${ring ? `<span class="ring">${esc(ring.textContent.trim())}</span>` : ''}`; bar.appendChild(b); });
+    el.insertBefore(bar, ds[0]); el.classList.add('lk-tabs');
+  }
   function renderFolder() {
-    const el = $('#pdFolder'); if (!el) return; if (P.buka === Draf.KUNCI) { Draf.render(el); return; } const tl = tulis(); const f = tl.find(x => x.k === P.buka);
+    const el = $('#pdFolder'); if (!el) return; el.classList.remove('lk-tabs'); if (P.buka === Draf.KUNCI) { Draf.render(el); return; } const tl = tulis(); const f = tl.find(x => x.k === P.buka);
     if (!f) { el.innerHTML = '<div class="help">Pilih satu folder di atas untuk mula. Urutan yang disyorkan ialah dari kiri ke kanan; Abstrak paling akhir. Senarai artikel sumber dan rekod CSV berada dalam Langkah 1 (Artikel panduan) setiap folder: di situlah artikel ditambah daripada repositori, dibuang, dan fail CSV dimuat naik.</div>'; return; }
     const sp = specF(f); const sid = sidFolder(f); const i = tl.indexOf(f); const d = C.doc();
     if (!sid) { el.innerHTML = `<div class="pd-fh"><h3>Folder ${i + 1}: ${esc(tajukF(f))}</h3></div><div class="pd-notis">Seksyen bagi folder ini tiada (mungkin dipadam). <button class="btn btn-sm btn-primary" data-pd="sedia">Cipta semula</button> atau padankan dengan seksyen sedia ada: ${htmlPetaSel(f)}</div>`; return; }
@@ -400,8 +420,10 @@ export function initPandu(R, C) {
     const acF = acuan(); const LA = acF && (f.ac || f.p === 'abstrak') ? det('LA', 'pd-l pd-acuan', `<span class="no ruang">A</span> Acuan: ${f.p === 'abstrak' ? 'abstrak' : 'bahagian ini dalam'} ${esc(acF.pendek)} <span class="ring">${f.ac ? `${f.ac.per} perenggan · ${angka(f.ac.kata)} patah · ${f.ac.sit} sitasi · ${f.ac.peratus}% badan` : esc((acF.abstrak || {}).bentuk || '')}</span>`, htmlAcuanFolder(f, uk)) : '';
     const LJ = f.p === 'pendahuluan' ? det('LJ', 'pd-l pd-acuan pd-dna', `<span class="no ruang">J</span> DNA jurang: acuan pernyataan masalah ${esc(DNA.PENDEK)} <span class="ring">${esc(DNA.ringkasan(dnaCtx()))}</span>`, DNA.html(dnaCtx())) : '';
     const snTop = ($('#pdSenarai') || {}).scrollTop || 0;
+    const tabLamaEl = el.querySelector(':scope > details.lk-on'); const tabTop = tabLamaEl ? tabLamaEl.scrollTop : 0; const tabId = tabLamaEl ? tabLamaEl.dataset.pdid : null;
     const LS = htmlSemakAsal(f);
     el.innerHTML = kepala + LS + LA + LJ + L1 + (f.p === 'kaedah' ? ruangO : '') + (f.p === 'dapatan' ? ruang + ruangO : '') + (f.p === 'perbincangan' ? ruangO : '') + L2;
+    tabFolder(el); if (tabTop && P.tab === tabId) { const tb = el.querySelector(':scope > details.lk-on'); if (tb) tb.scrollTop = tabTop; }
     if (snTop) { const sn = $('#pdSenarai'); if (sn) sn.scrollTop = snTop; }
     const sel = el.querySelector('[data-pdsel="peta"]'); if (sel) sel.value = sid;
     if ($('#pdPrisma')) Prisma.render($('#pdPrisma'), f); if ($('#pdOutput')) Output.render($('#pdOutput'), f); if ($('#pdRajah')) Rajah.render($('#pdRajah'), f);
@@ -1860,7 +1882,7 @@ ${PIAWAI_RINGKAS}`;
     if (k === Draf.KUNCI) { P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(); render(); if (o && o.tatal) { const el = $('#pdFolder'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } return; }
     const f = folderDari(k); if (!f) return; o = o || {};
     if (f.p === 'abstrak' && P.buka !== k) { const belum = tulis().filter(x => x.p !== 'abstrak' && x.p !== 'rujukan' && patah(teksFolder(x)) < 40); if (belum.length) { const ok = await R.richModal('Abstrak ditulis paling akhir', `<p>Abstrak merumuskan manuskrip yang sudah ditulis. ${belum.length} folder belum ada ASAL:</p><ul>${belum.map(x => `<li>${esc(tajukF(x))}</li>`).join('')}</ul><p class="help">Jika abstrak ditulis sekarang, ia perlu ditulis semula apabila folder lain berubah.</p>`, 'Buka Abstrak juga', 'Kembali'); if (!ok) return; } }
-    P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(langkahLalai(f)); if (o.l) { const l = o.l === 'L3' ? 'L2' : o.l; P.terbuka.add(l); if (/^L2./.test(l)) P.terbuka.add('L2'); }
+    P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(langkahLalai(f)); P.tabMinta = Array.from(P.terbuka)[0] || null; if (o.l) { const l = o.l === 'L3' ? 'L2' : o.l; P.terbuka.add(l); if (/^L2./.test(l)) P.terbuka.add('L2'); P.tabMinta = /^L2./.test(l) ? 'L2' : /^L1./.test(l) ? 'L1' : l; }
     const sid = sidFolder(f); if (sid && !(Teks.state.bab === A.id && julat(f).includes(Teks.state.sek))) { Teks.flushEditor(); Teks.state.sek = sid; Teks.renderSenarai(); Teks.renderEditor(); }
     render(); if (o.tatal) { const el = $('#pdFolder'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
   }
@@ -1902,6 +1924,7 @@ ${PIAWAI_RINGKAS}`;
   const root = $('#artPandu');
   if (root) {
     root.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.pdid) { if (d.open) P.terbuka.add(d.dataset.pdid); else P.terbuka.delete(d.dataset.pdid); } }, true);
+    root.addEventListener('click', e => { const tb = e.target.closest('[data-lktab]'); if (!tb) return; const el = $('#pdFolder'); if (!el) return; tabFolder(el, tb.dataset.lktab); if (el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' }); });
     root.addEventListener('click', async e => {
       const b = e.target.closest('[data-pd]'); if (!b || b.disabled) return; const a = b.dataset.pd; const k = P.buka; if (b.tagName === 'BUTTON') e.preventDefault();
       if (a.startsWith('df') && await Draf.klik(a, b)) return;
