@@ -607,7 +607,7 @@ export function initDraf(X) {
     if (a === 'dfsimpan') { const ed = $('#pdFolder .df-ed'); if (!ed) return true; const sid = ed.dataset.sid; const sandaran = {}; tulisSek(sid, ed.innerHTML, sandaran); P.sandaranDraf = sandaran; P.cache = {}; Teks.renderSemua(); X.render(); toast('Suntingan disimpan ke ASAL dan draf dihimpun semula', false, { label: 'Batal', fn: () => batalBetul() }); return true; }
     if (a === 'dfbatalsunting') { X.render(); return true; }
     if (a === 'dfkemsifar') { R.lsSet('rslr_draf_kemajuan_' + A.id, null); X.render(); return true; }
-    if (a === 'dfpergi') { const sid = b.dataset.sid; if (!seksyen(sid)) return true; Teks.flushEditor(); Teks.state.bab = A.id; Teks.state.sek = sid; Teks.renderSenarai(); Teks.renderEditor(); const ed = $('#artEditor'); if (ed) ed.scrollIntoView({ block: 'start', behavior: 'smooth' }); return true; }
+    if (a === 'dfpergi') { const sid = b.dataset.sid; if (!seksyen(sid)) return true; X.keSeksyen(sid); return true; }
     if (a === 'dfsisip') { const z = (asalD().agen || { tanpa: [] }).tanpa[+b.dataset.q]; if (z) sisipSitasi(z.sid, z.ayat, z.sumber); return true; }
     return false;
   }
