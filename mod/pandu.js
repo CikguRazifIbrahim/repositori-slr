@@ -50,7 +50,7 @@ export function initPandu(R, C) {
   const tKosong = () => ({ v: 1, sedia: false, bahasa: 'ms', sasaran: 6000, sasaranAuto: true, acuan: 'bina', aras: 'mycite', pemboleh: [], peta: {}, status: {}, prisma: null, token: { masuk: 0, keluar: 0, panggil: 0 }, menyeluruh: null, masa: 0 });
   const fKosong = k => ({ k, utama: [], sekunder: [], jawab: {}, balas: [], balasLama: [], log: [], padamLog: [], semak: null, arahan: '', tanya: '', had: HAD_PANGGIL, panggil: 0, masa: 0 });
   const penuh = x => !!(x && (x.jawapan || x.data));
-  function muatLokal(id) { P.id = id; P.t = Object.assign(tKosong(), R.lsGet(lsT(id), null) || {}); P.f = {}; P.cache = {}; P.buka = R.lsGet('rslr_pandu_buka_' + id, null); P.terbuka = new Set(); }
+  function muatLokal(id) { P.id = id; P.t = Object.assign(tKosong(), R.lsGet(lsT(id), null) || {}); P.f = {}; P.cache = {}; P.buka = R.lsGet('rslr_pandu_buka_' + id, null); P.terbuka = new Set(); P.bahan = false; }
   async function muatAwan(id) {
     if (P.awan[id]) return; P.awan[id] = true;
     try { const a = await R.db().get(kunciT(id)); if (a && P.id === id && (a.masa || 0) > (P.t.masa || 0)) { P.t = Object.assign(tKosong(), a); R.lsSet(lsT(id), P.t); render(); } } catch (e) {}
@@ -345,8 +345,9 @@ export function initPandu(R, C) {
       <div class="pd-acts"><button class="btn btn-primary" data-pd="sedia">Sediakan folder</button><span class="help">Selepas disediakan, buka folder pertama dan ikut dua langkah: artikel panduan, kemudian contoh penulisan daripada agen ke RAM.</span></div></div>`;
   }
   function htmlRel(tl) {
-    return `<div class="pd-rel" role="tablist">${tl.map((f, i) => { const uk = (P.cache.uk || {})[f.k] || (f.p === 'rujukan' ? { n: patah(teksFolder(f)), sedia: 0 } : ukur(f)); const [st, lb] = statusFolder(f, uk); const ss = sasaran(f); const tiada = !sidFolder(f);
-      return `<button class="pd-kad ${st}${P.buka === f.k ? ' on' : ''}${tiada ? ' tiada' : ''}" data-pd="buka" data-k="${esc(f.k)}" role="tab" aria-selected="${P.buka === f.k}"><span class="no">${i + 1}</span><span class="nm">${esc(tajukF(f))}</span><span class="st">${tiada ? 'Seksyen tiada' : lb}${f.p === 'abstrak' ? ' · paling akhir' : ''}</span>${f.p === 'rujukan' ? '<span class="pt">dijana daripada sitasi</span>' : `<span class="mt"><i style="width:${Math.max(2, uk.sedia || 0)}%"></i></span><span class="pt">${angka(uk.n)}${ss ? ' / ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) : ''} patah</span>`}</button>`; }).join('')}${Draf.htmlKad()}</div>`;
+    const kadBahan = `<button class="pd-kad bahan${P.bahan ? ' on' : ''}" data-pd="bahan" role="tab" aria-selected="${!!P.bahan}" title="Artikel panduan dan acuan artikel contoh bagi semua folder, di satu tempat"><span class="no">B</span><span class="nm">Bahan dan acuan</span><span class="st">artikel panduan · acuan contoh</span><span class="pt">bagi semua folder</span></button>`;
+    return `<div class="pd-rel" role="tablist">${kadBahan}${tl.map((f, i) => { const uk = (P.cache.uk || {})[f.k] || (f.p === 'rujukan' ? { n: patah(teksFolder(f)), sedia: 0 } : ukur(f)); const [st, lb] = statusFolder(f, uk); const ss = sasaran(f); const tiada = !sidFolder(f);
+      return `<button class="pd-kad ${st}${!P.bahan && P.buka === f.k ? ' on' : ''}${tiada ? ' tiada' : ''}" data-pd="buka" data-k="${esc(f.k)}" role="tab" aria-selected="${!P.bahan && P.buka === f.k}"><span class="no">${i + 1}</span><span class="nm">${esc(tajukF(f))}</span><span class="st">${tiada ? 'Seksyen tiada' : lb}${f.p === 'abstrak' ? ' · paling akhir' : ''}</span>${f.p === 'rujukan' ? '<span class="pt">dijana daripada sitasi</span>' : `<span class="mt"><i style="width:${Math.max(2, uk.sedia || 0)}%"></i></span><span class="pt">${angka(uk.n)}${ss ? ' / ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) : ''} patah</span>`}</button>`; }).join('')}${Draf.htmlKad()}</div>`;
   }
   function langkahLalai(f) {
     if (!f) return []; if (f.p === 'rujukan') return ['ruj']; const sp = specF(f); const F = fd(f.k); const out = []; const n = patah(teksFolder(f)); const ss = sasaran(f);
@@ -365,10 +366,11 @@ export function initPandu(R, C) {
   function tabFolder(el, pilih) {
     const lama = el.querySelector(':scope > .lk-tabs-bar'); if (lama) lama.remove();
     const ds = Array.from(el.children).filter(x => x.tagName === 'DETAILS' && x.classList.contains('pd-l') && x.dataset.pdid);
-    if (ds.length < 2) { el.classList.remove('lk-tabs'); return; }
-    const ids = ds.map(x => x.dataset.pdid); const kunci = P.id + '|' + P.buka; const tukar = P.tabK !== kunci; if (tukar) { P.tabK = kunci; P.tabLama = new Set(); P.tab = null; }
+    if (!ds.length) { el.classList.remove('lk-tabs'); return; }
+    const ids = ds.map(x => x.dataset.pdid); const kunci = P.id + '|' + P.buka + '|' + (P.bahan ? 'b' : 'f'); const tukar = P.tabK !== kunci; if (tukar) { P.tabK = kunci; P.tabLama = new Set(); P.tab = null; }
     const buka = Array.from(P.terbuka).filter(id => ids.includes(id)); const baharu = buka.filter(id => !P.tabLama.has(id));
-    let aktif = pilih && ids.includes(pilih) ? pilih : P.tabMinta && ids.includes(P.tabMinta) ? P.tabMinta : tukar ? (buka[0] || ids[0]) : baharu.length ? baharu[baharu.length - 1] : ids.includes(P.tab) ? P.tab : (buka[0] || ids[0]);
+    const lalai = !P.bahan && ids.includes('L2') ? 'L2' : ids[0];   /* folder biasa bermula pada Contoh penulisan */
+    let aktif = pilih && ids.includes(pilih) ? pilih : P.tabMinta && ids.includes(P.tabMinta) ? P.tabMinta : tukar ? (buka[0] || lalai) : baharu.length ? baharu[baharu.length - 1] : ids.includes(P.tab) ? P.tab : (buka[0] || lalai);
     P.tabMinta = null; P.tab = aktif; ids.forEach(id => { if (id === aktif) P.terbuka.add(id); else P.terbuka.delete(id); }); P.tabLama = new Set([aktif]);
     const bar = document.createElement('div'); bar.className = 'lk-tabs-bar'; bar.setAttribute('role', 'tablist');
     ds.forEach(x => { const on = x.dataset.pdid === aktif; x.open = on; x.classList.toggle('lk-on', on); const sm = x.querySelector(':scope > summary'); const b = document.createElement('button'); b.type = 'button'; b.dataset.lktab = x.dataset.pdid; b.className = on ? 'on' : ''; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', on ? 'true' : 'false');
@@ -383,7 +385,7 @@ export function initPandu(R, C) {
     if (!sid) { el.innerHTML = `<div class="pd-fh"><h3>Folder ${i + 1}: ${esc(tajukF(f))}</h3></div><div class="pd-notis">Seksyen bagi folder ini tiada (mungkin dipadam). <button class="btn btn-sm btn-primary" data-pd="sedia">Cipta semula</button> atau padankan dengan seksyen sedia ada: ${htmlPetaSel(f)}</div>`; return; }
     const uk = ukur(f); const [st, lb] = statusFolder(f, uk); const ss = sasaran(f); const s = d.seksyen[sid]; const no = (Teks.nombor(A.id)[sid] || {}).no || '';
     const kepala = `<div class="pd-fh"><h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> Folder ${i + 1}: ${esc(tajukF(f))}</h3><span class="tag pd-st ${st}"><span>${lb}</span></span><span class="pd-fh-m">Seksyen ${esc(no)} ${esc(s.tajuk || '')}${julat(f).length > 1 ? ' dan ' + (julat(f).length - 1) + ' subseksyen' : ''} · ${angka(uk.n)} patah${ss ? ', sasaran ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) : ''}</span><span class="spacer"></span><label class="pd-peta" title="Tukar seksyen yang mewakili folder ini">Seksyen ${htmlPetaSel(f)}</label><button class="btn btn-sm" data-pd="editor">Buka ASAL dan RAM</button>${i < tl.length - 1 ? `<button class="btn btn-sm" data-pd="buka" data-k="${esc(tl[i + 1].k)}">Folder seterusnya &#8594;</button>` : ''}</div><p class="pd-tujuan">${esc(sp.tujuan)}</p>${f.tambahan ? `<p class="help pd-nota-tambahan">Folder ini ditambah atas pilihan Prof Dr (Folder ${esc(tajukF(f))} di bar atas).${acuan() ? ' Artikel contoh ' + esc(acuan().pendek) + ' tidak mempunyai bahagian yang sepadan kerana latar literaturnya berada dalam ' + (en() ? 'Introduction' : 'Pendahuluan') + ', maka folder ini mengikut panduan umum.' : ''} Sasaran folder lain sudah diagih semula.</p>` : ''}`;
-    if (f.p === 'rujukan') { el.innerHTML = kepala + htmlRujukan(f); return; }
+    if (f.p === 'rujukan') { P.bahan = false; el.innerHTML = kepala + htmlRujukan(f); tabFolder(el); return; }
     const F = fd(f.k); const sibuk = P.busy && P.busy.k === f.k ? P.busy.mod : null; const mati = P.busy ? ' disabled' : '';
     const logC = (F.log || []).filter(x => x.mod === 'cadangan'); const cad = baikiCad(logC[logC.length - 1]);
     /* langkah 1 */
@@ -422,7 +424,17 @@ export function initPandu(R, C) {
     const snTop = ($('#pdSenarai') || {}).scrollTop || 0;
     const tabLamaEl = el.querySelector(':scope > details.lk-on'); const tabTop = tabLamaEl ? tabLamaEl.scrollTop : 0; const tabId = tabLamaEl ? tabLamaEl.dataset.pdid : null;
     const LS = htmlSemakAsal(f);
-    el.innerHTML = kepala + LS + LA + LJ + L1 + (f.p === 'kaedah' ? ruangO : '') + (f.p === 'dapatan' ? ruang + ruangO : '') + (f.p === 'perbincangan' ? ruangO : '') + L2;
+    /* v1.49.0: Artikel panduan (atau Bahan folder ini) dan Acuan tidak lagi diulang sebagai tab dalam setiap folder. Kedua-duanya berada
+       dalam folder "Bahan dan acuan" di sebelah kiri folder pertama; di situ Prof Dr memilih folder yang mahu ditetapkan bahannya.
+       Senarai artikel sumber sama bagi semua folder; yang berbeza bagi setiap folder ialah pilihan utama dan sekunder serta bahagian acuan. */
+    if (P.bahan) {
+      const pilih = tl.filter(x => x.p !== 'rujukan').map((x, n) => { const Fx = fd(x.k); const spx = specF(x); const nota = spx.bahan === 'asal' ? 'guna ASAL folder lain' : `${(Fx.utama || []).length} utama, ${(Fx.sekunder || []).length} sekunder`; return `<button class="pd-bf${x.k === f.k ? ' on' : ''}" data-pd="bahanf" data-k="${esc(x.k)}"><b>${n + 1} ${esc(tajukF(x))}</b><span>${esc(nota)}</span></button>`; }).join('');
+      const terang = sp.bahan === 'asal' ? `Folder ${esc(tajukF(f))} tidak memerlukan artikel panduan: agen menulisnya daripada ASAL folder lain yang sudah Prof Dr tulis, supaya ia setia kepada manuskrip sendiri. Tab di bawah hanya menunjukkan folder mana yang sudah ada ASAL.` : `Bagi folder ${esc(tajukF(f))}: tandakan artikel yang menjadi panduan utama dan sekunder. Senarai artikel sumber dan rekod CSV itu sendiri sama bagi semua folder.`;
+      el.innerHTML = `<div class="pd-fh"><h3>Bahan dan acuan</h3><span class="pd-fh-m">artikel panduan dan acuan artikel contoh, di satu tempat bagi semua folder</span><span class="spacer"></span><button class="btn btn-sm" data-pd="buka" data-k="${esc(f.k)}">Buka folder ${esc(tajukF(f))}</button></div><div class="pd-bf-bar"><span class="lbl">Tetapkan bahan bagi folder:</span>${pilih}</div><p class="pd-tujuan">${terang}</p>` + L1 + LA;
+    } else {
+      const keBahan = `<div class="pd-acts pd-ke-bahan"><button class="btn btn-sm" data-pd="bahanf" data-k="${esc(f.k)}">${sp.bahan === 'asal' ? 'Bahan folder ini' : 'Artikel panduan dan acuan folder ini'}</button><span class="help">Dipindahkan ke folder Bahan dan acuan (kad paling kiri) supaya tidak berulang dalam setiap folder.</span></div>`;
+      el.innerHTML = kepala + keBahan + LS + LJ + (f.p === 'kaedah' ? ruangO : '') + (f.p === 'dapatan' ? ruang + ruangO : '') + (f.p === 'perbincangan' ? ruangO : '') + L2;
+    }
     tabFolder(el); if (tabTop && P.tab === tabId) { const tb = el.querySelector(':scope > details.lk-on'); if (tb) tb.scrollTop = tabTop; }
     if (snTop) { const sn = $('#pdSenarai'); if (sn) sn.scrollTop = snTop; }
     const sel = el.querySelector('[data-pdsel="peta"]'); if (sel) sel.value = sid;
@@ -908,7 +920,24 @@ Tiada em-dash.`;
     const T = teras(); const nO = barisTr(T.objektif).length, nS = barisTr(T.soalan).length; if (!T.masalah.trim() && !nO && !nS) return '(belum ditetapkan)';
     return `(pernyataan masalah ${T.masalah.trim() ? 'ditetapkan' : 'belum ditetapkan'} · ${nO} objektif · ${nS} persoalan)`;
   }
-  function htmlTerasBlok(x, T, K) {
+  /* v1.49.0: catatan agen (sebab dan amaran) diagihkan kepada blok yang berkenaan mengikut perkara yang disebutnya, supaya asas setiap
+     cadangan dibaca di sebelah teksnya dan bukan dalam satu panel berasingan di bawah. Satu ayat boleh berkaitan dengan lebih daripada satu blok. */
+  function asasTeras(cad) {
+    const out = { masalah: [], objektif: [], soalan: [] }; if (!cad) return out;
+    const uji = t => { const a = []; if (/jurang|pernyataan masalah|masalah/i.test(t)) a.push('masalah'); if (/objektif|\bRO\d?/i.test(t)) a.push('objektif'); if (/persoalan|soalan|\bRQ\d?/i.test(t)) a.push('soalan'); return a; };
+    String(cad.sebab || '').split(/(?<=[.?!])\s+(?=\p{Lu})/u).map(x => x.trim()).filter(Boolean).forEach(a => { const k = uji(a); (k.length ? k : ['masalah']).forEach(z => out[z].push({ t: a, jenis: 'sebab' })); });
+    (cad.amaran || []).forEach(a => { const awal = String(a).slice(0, 70); const k = /^\s*(persoalan|soalan|RQ)/i.test(awal) ? ['soalan'] : /^\s*(objektif|RO\d)/i.test(awal) ? ['objektif'] : ['masalah']; k.forEach(z => out[z].push({ t: String(a), jenis: 'amaran' })); });
+    return out;
+  }
+  function htmlAsasTeras(k, x, T, cad, asas) {
+    if (!cad) return ''; const beza = String(cad[k] || '').trim() && String(cad[k]).trim() !== String(T[k] || '').trim(); const a = asas[k] || []; if (!beza && !a.length) return '';
+    const sebab = a.filter(z => z.jenis === 'sebab'), amaran = a.filter(z => z.jenis === 'amaran');
+    return `<aside class="tr-asas"><div class="tr-asas-h"><b>Asas cadangan agen</b><span>${esc(R.fmtTime(cad.masa))}</span></div>
+      ${beza ? `<div class="tr-cad-b"><span class="help">Cadangan agen berbeza daripada teks semasa:</span>${k === 'masalah' ? `<p>${esc(cad.masalah)}</p>` : `<ol>${barisTr(cad[k]).map((b, i) => `<li><b>${awalanTr(k)}${i + 1}:</b> ${esc(b)}</li>`).join('')}</ol>`}<button class="btn btn-sm btn-primary" data-tr="gunacad" data-k="${k}">Guna cadangan ini</button></div>` : ''}
+      ${sebab.length ? `<p class="tr-asas-l">Mengapa agen menulisnya begini</p><ul class="tr-asas-s">${sebab.map(z => `<li>${esc(z.t)}</li>`).join('')}</ul>` : ''}
+      ${amaran.length ? `<p class="tr-asas-l">Perkara untuk Prof Dr semak (${amaran.length})</p><ul class="tr-asas-s amaran">${amaran.map(z => `<li>${esc(z.t)}</li>`).join('')}</ul>` : ''}</aside>`;
+  }
+  function htmlTerasBlok(x, T, K, cad, asas) {
     const k = x[0]; const v = String(T[k] || '').trim(); const sunting = TR_SUNTING.has(k) || !v; const baris = k === 'masalah' ? [] : barisTr(T[k]); const kes = K[k] || []; const pun = (T.punca || {})[k];
     const tag = !v ? '<span class="tag pd-bl">belum ditetapkan</span>' : pun === 'agen' ? '<span class="tag ai" title="Dicadangkan oleh agen daripada artikel rujukan; semak sebelum diguna dalam manuskrip">cadangan agen</span>' : pun === 'asal' ? '<span class="tag" title="Diambil daripada ayat yang dikesan dalam ASAL">daripada ASAL</span>' : '<span class="tag" title="Ditulis atau disunting oleh Prof Dr">ditetapkan Prof Dr</span>';
     const ph = k === 'masalah' ? 'Satu perenggan: apa yang sudah diketahui, apa yang belum (jurang), mengapa ia penting, dan apa yang dilakukan oleh artikel ini.' : k === 'objektif' ? 'Satu objektif pada setiap baris. Contoh: To map how digital knowledge management is defined in empirical studies.' : 'Satu persoalan pada setiap baris, bermula dengan Which atau How. Contoh: Which definitions of digital knowledge management are used in empirical studies?';
@@ -916,22 +945,20 @@ Tiada em-dash.`;
     const tinggi = Math.min(16, Math.max(k === 'masalah' ? 5 : 4, v.split('\n').reduce((n, b) => n + Math.max(1, Math.ceil(b.length / (k === 'masalah' ? 150 : 75))), 0) + 1));
     const semak = k === 'soalan' && baris.length ? semakRq(baris) : []; const nO = barisTr(T.objektif).length, nS = barisTr(T.soalan).length;
     if (k === 'soalan' && nO && nS && nO !== nS) semak.push(`Bilangan objektif (${nO}) tidak sama dengan bilangan persoalan (${nS}); lazimnya setiap objektif dipadankan dengan satu persoalan.`);
-    return `<div class="tr-k tr-${k}" data-b="${k}"><div class="tr-h"><span class="no">${TR_KOD.indexOf(k) + 1}</span><b>${x[1]}</b><em>${x[2]}</em>${tag}<span class="spacer"></span>${v ? `<button class="btn btn-sm" data-tr="${sunting ? 'selesai' : 'sunting'}" data-k="${k}">${sunting ? 'Selesai' : 'Sunting'}</button>` : ''}</div>
+    const kotak = htmlAsasTeras(k, x, T, cad, asas || {});
+    return `<div class="tr-k tr-${k}${kotak ? ' ada-asas' : ''}" data-b="${k}"><div class="tr-utama"><div class="tr-h"><span class="no">${TR_KOD.indexOf(k) + 1}</span><b>${x[1]}</b><em>${x[2]}</em>${tag}<span class="spacer"></span>${v ? `<button class="btn btn-sm" data-tr="${sunting ? 'selesai' : 'sunting'}" data-k="${k}">${sunting ? 'Selesai' : 'Sunting'}</button>` : ''}</div>
       ${sunting ? `<textarea data-trin="${k}" rows="${tinggi}" placeholder="${esc(ph)}" aria-label="${x[1]}">${esc(T[k] || '')}</textarea>` : papar}
       ${semak.length ? `<ul class="tr-semak">${semak.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
-      ${!v && kes.length ? `<div class="tr-kesan"><span class="help">Dikesan dalam ASAL (${kes.length} ayat, secara automatik; semak sebelum diguna):</span><ul>${kes.map(a => `<li>${esc(a)}</li>`).join('')}</ul><button class="btn btn-sm" data-tr="gunakesan" data-k="${k}">Guna teks ini</button></div>` : ''}</div>`;
+      ${!v && kes.length ? `<div class="tr-kesan"><span class="help">Dikesan dalam ASAL (${kes.length} ayat, secara automatik; semak sebelum diguna):</span><ul>${kes.map(a => `<li>${esc(a)}</li>`).join('')}</ul><button class="btn btn-sm" data-tr="gunakesan" data-k="${k}">Guna teks ini</button></div>` : ''}</div>${kotak}</div>`;
   }
   function htmlTeras() {
     const T = teras(); const K = kesanTeras(); const cad = T.cad && typeof T.cad === 'object' ? T.cad : null; const sibuk = P.busy && P.busy.mod === 'teras'; const d = C.doc();
     const beza = k => cad && String(cad[k] || '').trim() && String(cad[k]).trim() !== String(T[k] || '').trim(); const adaBeza = cad && TR_KOD.some(beza);
-    const cadH = !cad ? '' : `<details class="tr-cad"${adaBeza ? ' open' : ''}><summary><b>Cadangan agen</b> <span>${esc(R.fmtTime(cad.masa))}${cad.token ? ' · token masuk ' + angka(cad.token.masuk) + ', keluar ' + angka(cad.token.keluar) : ''}${adaBeza ? '' : ' · sudah digunakan'}</span></summary>
-        ${cad.bahan ? `<p class="help pd-bahan">Bahan yang dibaca agen: ${esc(cad.bahan)}.</p>` : ''}
-        ${TR.filter(x => beza(x[0])).map(x => `<div class="tr-cad-b"><b>${x[1]}</b>${x[0] === 'masalah' ? `<p>${esc(cad.masalah)}</p>` : `<ol>${barisTr(cad[x[0]]).map((b, i) => `<li><b>${awalanTr(x[0])}${i + 1}:</b> ${esc(b)}</li>`).join('')}</ol>`}<button class="btn btn-sm" data-tr="gunacad" data-k="${x[0]}">Guna cadangan ini</button></div>`).join('')}
-        ${adaBeza && TR_KOD.filter(beza).length > 1 ? '<div class="pd-acts"><button class="btn btn-sm btn-primary" data-tr="gunacad" data-k="semua">Guna semua cadangan</button></div>' : ''}
-        ${cad.sebab ? `<p class="pd-nota"><b>Sebab agen:</b> ${esc(cad.sebab)}</p>` : ''}${(cad.amaran || []).length ? `<ul class="pd-amaran-senarai">${cad.amaran.map(a => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}</details>`;
+    const asas = asasTeras(cad); const nBeza = cad ? TR_KOD.filter(beza).length : 0;
+    const cadH = !cad ? '' : `<p class="help pd-bahan">Cadangan agen ${esc(R.fmtTime(cad.masa))}${cad.token ? ' · token masuk ' + angka(cad.token.masuk) + ', keluar ' + angka(cad.token.keluar) : ''}${cad.bahan ? ' · bahan yang dibaca: ' + esc(cad.bahan) : ''}. Asas setiap cadangan dipaparkan dalam kotak di sebelah atau di bawah teksnya.</p>`;
     return `<p class="help">Tiga perkara ini ialah tulang belakang artikel, maka ia dipaparkan di sini supaya sentiasa jelas. Agen membacanya dalam setiap panggilan supaya semua folder selaras dengannya. Taip sendiri, guna ayat yang dikesan dalam ASAL, atau minta agen mencadangkannya daripada artikel rujukan.</p>
-      <div class="tr-grid">${TR.map(x => htmlTerasBlok(x, T, K)).join('')}</div>
-      <div class="pd-acts"><button class="btn btn-ai" data-tr="agen"${P.busy || !d || !d.jenis ? ' disabled' : ''}>${sibuk ? 'Agen sedang merumus' : cad ? 'Cadangkan semula oleh agen' : 'Cadangkan oleh agen'}</button>${T.lama ? '<button class="btn btn-sm" data-tr="pulih">Pulihkan teks sebelum ini</button>' : ''}<span class="help">${!d || !d.jenis ? 'Pilih jenis artikel dahulu.' : 'Satu panggilan agen: pernyataan masalah, objektif dan persoalan dirumus daripada artikel rujukan dan teks Prof Dr. Medan yang masih kosong diisi terus; medan yang sudah berisi tidak diganti tanpa klik Prof Dr.'}</span></div>
+      <div class="tr-grid">${TR.map(x => htmlTerasBlok(x, T, K, cad, asas)).join('')}</div>
+      <div class="pd-acts"><button class="btn btn-ai" data-tr="agen"${P.busy || !d || !d.jenis ? ' disabled' : ''}>${sibuk ? 'Agen sedang merumus' : cad ? 'Cadangkan semula oleh agen' : 'Cadangkan oleh agen'}</button>${nBeza > 1 ? '<button class="btn btn-sm btn-primary" data-tr="gunacad" data-k="semua">Guna semua cadangan agen</button>' : ''}${T.lama ? '<button class="btn btn-sm" data-tr="pulih">Pulihkan teks sebelum ini</button>' : ''}<span class="help">${!d || !d.jenis ? 'Pilih jenis artikel dahulu.' : 'Satu panggilan agen: pernyataan masalah, objektif dan persoalan dirumus daripada artikel rujukan dan teks Prof Dr. Medan yang masih kosong diisi terus; medan yang sudah berisi tidak diganti tanpa klik Prof Dr.'}</span></div>
       ${cadH}`;
   }
   /* ---- v1.44.0: Refleksi bacaan. Soalan pendek yang diterbitkan daripada gerakan retorik artikel contoh (acuan), bukan senarai tetap:
@@ -1812,13 +1839,15 @@ Jika bahan tidak memadai untuk sesuatu bahagian, tulis apa yang boleh disokong d
   }
   function htmlRujukan(f) {
     const x = dataRujukan(f); const li = (arr, fn) => arr.map(fn).join('');
-    return `<div class="pd-ruj"><div class="pd-meter-grid">
-      <div class="pd-meter ${x.adaApa.length ? 'ok' : 'info'}"><div class="h"><b>Disitasi dan ada rujukan APA</b><span>${x.adaApa.length} sumber</span></div><ul>${li(x.adaApa, r => `<li>${esc(r.rujukan)} <em>(disitasi dalam: ${esc(Array.from(x.peta.get(r.id)).join(', '))})</em></li>`) || '<li>Belum ada sitasi yang dikenali dalam ASAL.</li>'}</ul></div>
-      <div class="pd-meter ${x.tiadaApa.length ? 'gagal' : 'ok'}"><div class="h"><b>Disitasi tetapi medan Rujukan APA 7 kosong</b><span>${x.tiadaApa.length}</span></div><ul>${li(x.tiadaApa, r => `<li>${esc(r.nama)} <button class="btn btn-sm" data-bukarekod="${esc(r.id)}">Buka rekod</button></li>`) || '<li>Tiada.</li>'}</ul></div>
-      <div class="pd-meter ${x.belum.length ? 'amaran' : 'ok'}"><div class="h"><b>Artikel sumber yang belum disitasi di mana-mana</b><span>${x.belum.length}</span></div><ul>${li(x.belum, r => `<li>${esc(r.nama)}</li>`) || '<li>Semua artikel sumber sudah disitasi.</li>'}</ul>${x.belum.length ? '<div class="nota">Sitasi artikel ini dalam folder yang sesuai, atau buang daripada senarai sumber jika tidak digunakan.</div>' : ''}</div>
-      <div class="pd-meter ${x.luar.length ? 'amaran' : 'ok'}"><div class="h"><b>Sitasi yang tidak ditemui dalam repositori</b><span>${x.luar.length}</span></div><ul>${li(x.luar, r => `<li>${esc(r.nama)} <em>(${esc(Array.from(r.di).join(', '))})</em></li>`) || '<li>Tiada.</li>'}</ul>${x.luar.length ? '<div class="nota">Sahkan setiap sumber ini benar-benar wujud dan taip entri rujukannya sendiri; sistem tidak mereka rujukan.</div>' : ''}</div>
-      ${x.nEntri ? `<div class="pd-meter ${x.yatim.length ? 'gagal' : 'ok'}"><div class="h"><b>Entri dalam senarai rujukan yang tidak disitasi dalam teks</b><span>${x.yatim.length} daripada ${x.nEntri}</span></div><ul>${li(x.yatim, p => `<li>${esc(potong(p, 160))}</li>`) || '<li>Setiap entri disitasi dalam teks.</li>'}</ul></div>` : ''}
-    </div><div class="pd-acts"><button class="btn btn-primary" data-pd="rujram"${x.adaApa.length ? '' : ' disabled'}>Masukkan senarai rujukan (${x.adaApa.length}) ke RAM folder ini</button><button class="btn btn-sm" data-pd="segar">Kira semula</button><span class="help">Senarai disusun mengikut abjad daripada medan Rujukan APA 7 setiap rekod yang disitasi. Semak format mengikut jurnal sasaran sebelum dipindahkan ke ASAL.</span></div></div>`;
+    /* v1.49.0: lima kumpulan semakan menjadi tab (satu kumpulan pada satu masa, selebar halaman) dan senarai rujukan dipaparkan dalam
+       format APA 7 dengan inden tergantung, bukan lima lajur sempit. */
+    const tab = (id, ok, tajuk, n, isi) => det(id, 'pd-l pd-ruj', `<span class="no${ok ? '' : ' ruang'}">${ok ? '&#10003;' : '!'}</span> ${tajuk} <span class="ring">${n}</span>`, isi);
+    const kosong = t => `<p class="help">${t}</p>`;
+    return tab('ruj', x.adaApa.length > 0, 'Senarai rujukan', `${x.adaApa.length} sumber disitasi`, `<div class="pd-acts"><button class="btn btn-primary" data-pd="rujram"${x.adaApa.length ? '' : ' disabled'}>Masukkan senarai rujukan (${x.adaApa.length}) ke RAM folder ini</button><button class="btn btn-sm" data-pd="segar">Kira semula</button><span class="help">Disusun mengikut abjad daripada medan Rujukan APA 7 setiap rekod yang disitasi. Semak format mengikut jurnal sasaran sebelum dipindahkan ke ASAL.</span></div>${x.adaApa.length ? `<ol class="pd-ruj-s">${li(x.adaApa, r => `<li><p class="apa">${esc(r.rujukan)}</p><p class="di">Disitasi dalam: ${esc(Array.from(x.peta.get(r.id)).join(', '))}</p></li>`)}</ol>` : kosong('Belum ada sitasi yang dikenali dalam ASAL.')}`)
+      + tab('rujkosong', !x.tiadaApa.length, 'Rujukan APA 7 kosong', `${x.tiadaApa.length}`, `<p class="pd-tujuan">Sumber ini disitasi dalam teks, tetapi medan Rujukan APA 7 rekodnya masih kosong, maka ia tidak dapat masuk ke senarai rujukan.</p>${x.tiadaApa.length ? `<ul class="pd-ruj-r">${li(x.tiadaApa, r => `<li><span>${esc(r.nama)}</span><button class="btn btn-sm" data-bukarekod="${esc(r.id)}">Buka rekod</button></li>`)}</ul>` : kosong('Tiada. Setiap sumber yang disitasi mempunyai rujukan APA 7.')}`)
+      + tab('rujbelum', !x.belum.length, 'Sumber belum disitasi', `${x.belum.length}`, `<p class="pd-tujuan">Artikel sumber yang belum disitasi di mana-mana folder. Sitasi artikel ini dalam folder yang sesuai, atau buang daripada senarai sumber jika tidak digunakan.</p>${x.belum.length ? `<ul class="pd-ruj-r">${li(x.belum, r => `<li><span>${esc(r.nama)}</span></li>`)}</ul>` : kosong('Semua artikel sumber sudah disitasi.')}`)
+      + tab('rujluar', !x.luar.length, 'Sitasi tiada dalam repositori', `${x.luar.length}`, `<p class="pd-tujuan">Sitasi ini ditulis dalam teks, tetapi tiada rekod yang sepadan dalam repositori. Sahkan setiap sumber benar-benar wujud, kemudian masukkan rekodnya ke repositori atau taip entri rujukannya sendiri; sistem tidak mereka rujukan.</p>${x.luar.length ? `<ul class="pd-ruj-r">${li(x.luar, r => `<li><span><b>${esc(r.nama)}</b></span><em>${esc(Array.from(r.di).join(', '))}</em></li>`)}</ul>` : kosong('Tiada.')}`)
+      + (x.nEntri ? tab('rujyatim', !x.yatim.length, 'Entri tidak disitasi', `${x.yatim.length} daripada ${x.nEntri}`, `<p class="pd-tujuan">Entri yang ada dalam senarai rujukan ASAL folder ini, tetapi tidak disitasi dalam teks mana-mana folder. Buang entri itu, atau sitasi sumbernya dalam teks.</p>${x.yatim.length ? `<ol class="pd-ruj-s">${li(x.yatim, p => `<li><p class="apa">${esc(potong(p, 400))}</p></li>`)}</ol>` : kosong('Setiap entri disitasi dalam teks.')}`) : '');
   }
 
   /* ---- sediakan folder: padankan atau cipta seksyen mengikut struktur piawai ---- */
@@ -1879,9 +1908,11 @@ ${PIAWAI_RINGKAS}`;
     if (pertama || !folderDari(P.buka)) bukaFolder(D.urutanTulis(fs)[0].k); else render();
   }
   async function bukaFolder(k, o) {
-    if (k === Draf.KUNCI) { P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(); render(); if (o && o.tatal) { const el = $('#pdFolder'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } return; }
+    o = o || {}; P.bahan = !!o.bahan || /^(L1|LA)/.test(o.l || '');
+    if (k === Draf.KUNCI) { P.bahan = false; P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(); render(); if (o && o.tatal) { const el = $('#pdFolder'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } return; }
     const f = folderDari(k); if (!f) return; o = o || {};
-    if (f.p === 'abstrak' && P.buka !== k) { const belum = tulis().filter(x => x.p !== 'abstrak' && x.p !== 'rujukan' && patah(teksFolder(x)) < 40); if (belum.length) { const ok = await R.richModal('Abstrak ditulis paling akhir', `<p>Abstrak merumuskan manuskrip yang sudah ditulis. ${belum.length} folder belum ada ASAL:</p><ul>${belum.map(x => `<li>${esc(tajukF(x))}</li>`).join('')}</ul><p class="help">Jika abstrak ditulis sekarang, ia perlu ditulis semula apabila folder lain berubah.</p>`, 'Buka Abstrak juga', 'Kembali'); if (!ok) return; } }
+    if (f.p === 'rujukan') P.bahan = false;
+    if (f.p === 'abstrak' && P.buka !== k && !P.bahan) { const belum = tulis().filter(x => x.p !== 'abstrak' && x.p !== 'rujukan' && patah(teksFolder(x)) < 40); if (belum.length) { const ok = await R.richModal('Abstrak ditulis paling akhir', `<p>Abstrak merumuskan manuskrip yang sudah ditulis. ${belum.length} folder belum ada ASAL:</p><ul>${belum.map(x => `<li>${esc(tajukF(x))}</li>`).join('')}</ul><p class="help">Jika abstrak ditulis sekarang, ia perlu ditulis semula apabila folder lain berubah.</p>`, 'Buka Abstrak juga', 'Kembali'); if (!ok) return; } }
     P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(langkahLalai(f)); P.tabMinta = Array.from(P.terbuka)[0] || null; if (o.l) { const l = o.l === 'L3' ? 'L2' : o.l; P.terbuka.add(l); if (/^L2./.test(l)) P.terbuka.add('L2'); P.tabMinta = /^L2./.test(l) ? 'L2' : /^L1./.test(l) ? 'L1' : l; }
     const sid = sidFolder(f); if (sid && !(Teks.state.bab === A.id && julat(f).includes(Teks.state.sek))) { Teks.flushEditor(); Teks.state.sek = sid; Teks.renderSenarai(); Teks.renderEditor(); }
     render(); if (o.tatal) { const el = $('#pdFolder'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
@@ -1933,6 +1964,7 @@ ${PIAWAI_RINGKAS}`;
       else if (a === 'acuanlihat') { if (P.terbuka.has('acuanInduk')) P.terbuka.delete('acuanInduk'); else P.terbuka.add('acuanInduk'); render(); const x = root.querySelector('[data-pdid="acuanInduk"]'); if (x && x.open) x.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
       else if (a === 'sasaranauto') { P.t.sasaranAuto = true; simpanT(true); P.cache = {}; render(); toast('Sasaran panjang kembali mengikut saiz artikel contoh: ' + angka(jumlahSasaran()) + ' patah perkataan'); }
       else if (a === 'buka') bukaFolder(b.dataset.k, { tatal: !!b.closest('.pd-fh') });
+      else if (a === 'bahan' || a === 'bahanf') { const tl = tulis().filter(x => x.p !== 'rujukan'); const sasar = a === 'bahanf' ? b.dataset.k : (tl.some(x => x.k === P.buka) ? P.buka : (tl[0] || {}).k); if (!sasar) return; await bukaFolder(sasar, { bahan: true, l: 'L1' }); }
       else if (a === 'editor') { const f = folderDari(k); const sid = f && sidFolder(f); if (!sid) return; if (!(Teks.state.bab === A.id && julat(f).includes(Teks.state.sek))) { Teks.flushEditor(); Teks.state.sek = sid; Teks.renderSenarai(); Teks.renderEditor(); } const ed = $('#artEditor'); if (ed) ed.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
       else if (a === 'pilih') { const F = fd(k); const id = b.dataset.id; const jenis = b.dataset.jenis; const lain = jenis === 'utama' ? 'sekunder' : 'utama'; const ada = (F[jenis] || []).includes(id); F[jenis] = (F[jenis] || []).filter(x => x !== id); F[lain] = (F[lain] || []).filter(x => x !== id); if (!ada) { if (jenis === 'utama' && F.utama.length >= HAD_UTAMA) { toast(`Maksimum ${HAD_UTAMA} artikel panduan utama bagi satu folder; selebihnya jadikan sekunder supaya hujah kekal fokus dan kos terkawal.`, true); F.sekunder.push(id); } else F[jenis].push(id); } simpanF(k); P.terbuka.add('L1'); renderFolder(); kemasBar(); }
       else if (a === 'agen') agen(k, b.dataset.mod); else if (a === 'menyeluruh') agen(null, 'menyeluruh');
