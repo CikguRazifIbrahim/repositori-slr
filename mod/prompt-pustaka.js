@@ -8,7 +8,17 @@
    2. References                -> AUDIT_SITASI     -> Semakan sitasi oleh agen dalam Draf Akhir (mod/pandu-draf.js)
    3. Humanize                  -> GAYA_TULISAN     -> arahan gaya semua agen penulisan Pandu Tulis (mod/pandu.js, peraturan gaya)
    4. Data Screening            -> SARINGAN_TAJUK   -> agen saringan tajuk dan abstrak Ruang PRISMA (mod/saring.js)
-   5. Title (dan abstrak)       -> STRATEGI_TAJUK   -> Pembantu tajuk (mod/tajuk.js) */
+   5. Title (dan abstrak)       -> STRATEGI_TAJUK   -> Pembantu tajuk (mod/tajuk.js)
+   Kumpulan kedua (26 November 2026):
+   6. INTRODUCTION              -> resipiTambahan('pendahuluan')   -> Contoh penulisan folder Pendahuluan
+   7. LITERATURE REVIEW         -> resipiTambahan('literatur')     -> Contoh penulisan folder Kajian Literatur (artikel ulasan sahaja)
+   8. METHODS                   -> resipiTambahan('kaedah')        -> Contoh penulisan folder Metodologi (artikel ulasan; alat bibliometrik bagi jenis bibliometrik)
+   9. DISCUSSION                -> resipiTambahan('perbincangan')  -> Contoh penulisan folder Perbincangan
+   10. CONCLUSION (sebenarnya audit manuskrip penuh) -> AUDIT_PENJAJARAN -> Semakan menyeluruh manuskrip; sebahagiannya ke
+       resipiTambahan('dapatan', 'kesimpulan', 'abstrak')
+   11. ANALYSIS                 -> DIBUANG: prompt ini mengaudit set data mentah (tinjauan, transkrip temu bual) tanpa menganalisisnya.
+       Sistem ini tidak menerima set data mentah: Ruang Output menerima output SPSS dan AMOS yang sudah siap dianalisis, dan fail CSV
+       di sini ialah rekod bibliografi yang kualitinya sudah disemak oleh statistik CSV dan saringan. Tiada agen yang boleh memikulnya. */
 
 /* 1. Journal Submission Check. Diambil: keputusan editor, risiko penolakan, ujian sumbangan, ujian "jadi apa" dan "siapa peduli", audit
    setiap seksyen, penjajaran tujuan hingga perbincangan, audit mutu tulisan dan keutamaan pembetulan. Disesuaikan: sepuluh bahagian laporan
@@ -64,3 +74,68 @@ export const SARINGAN_TAJUK = `KAEDAH TAJUK DAHULU: (5) Baca tajuk dahulu. Jika 
 export const STRATEGI_TAJUK = `9. Analisis kedudukan sebelum menulis: daripada pembayang dan petikan manuskrip, kenal pasti dahulu masalah kajian, jurang, objektif, kaedah, konteks dan sumbangan yang menjadikan kajian ini berbeza; kemudian tentukan pembingkaian yang paling jujur bagi kajian ini (pemerihalan, hubungan atau kesan, perbandingan, pemetaan, atau sumbangan konsep). Jangan membesar-besarkan: tajuk tidak boleh menjanjikan sebab-akibat, generalisasi atau kebaharuan yang tidak disokong oleh reka bentuk kajian.
 10. Kepelbagaian pembingkaian: antara cadangan, mesti ada sekurang-kurangnya satu tajuk KONSERVATIF (jelas, tepat, gaya akademik tradisional, risiko penolakan rendah), satu tajuk BERIMPAK (pembingkaian lebih kuat dan sumbangan lebih menonjol, tetapi masih akademik) dan satu tajuk HIBRID (selamat tetapi kuat: mengimbangi kredibiliti dengan daya tarikan); tajuk hibrid yang terbaik diletakkan pertama.
 11. Dalam medan "sebab", selepas ayat tentang apa yang ditonjolkan, tambah penilaian ringkas dalam bentuk ini: "Kategori: konservatif, berimpak atau hibrid. Keselamatan: tinggi, sederhana atau rendah. Kemungkinan teguran penilai: ..." (satu frasa tentang apa yang mungkin dipersoalkan oleh penilai, atau "tiada yang ketara").`;
+
+/* 10. CONCLUSION. Walaupun bernama Conclusion, dokumen ini ialah audit manuskrip penuh tiga belas tugas. Diambil bagi Semakan menyeluruh:
+   penjajaran setiap persoalan kajian daripada kaedah hingga kesimpulan, ketekalan angka, prinsip Dapatan lawan Perbincangan, dakwaan
+   sumbangan dan kebaharuan yang boleh dipertahankan, penjajaran tajuk, abstrak dan kesimpulan, serta susunan keutamaan (integriti dahulu).
+   Dibuang: menyunting terus dalam Microsoft Word dengan Track Changes (dalam sistem ini ASAL ditulis dan disunting oleh Prof Dr; agen
+   semakan hanya melaporkan), pengesahan luaran setiap rujukan melalui Crossref, penerbit dan pangkalan data (agen tiada capaian web; prompt
+   itu sendiri mensyaratkan pengesahan sedemikian dilabel "tidak dilakukan" jika alatnya tiada), pembacaan pruf seluruh dokumen (kerja Agen
+   Bahasa dan Prof Dr), dan semakan nombor jadual serta rujukan silang (sudah dibuat tanpa token oleh Draf Akhir). */
+export const AUDIT_PENJAJARAN = `AUDIT PENJAJARAN DAN INTEGRITI (keutamaan: 1 integriti ilmiah, iaitu angka, dakwaan tanpa sokongan dan sitasi; 2 kepaduan intelektual, iaitu penjajaran persoalan, kaedah, dapatan dan perbincangan; 3 hujah ilmiah, iaitu jurang dan sumbangan; 4 bahasa):
+(f) Bagi SETIAP persoalan kajian dalam TERAS KAJIAN, jejaki rantaian ini: persoalan, prosedur atau teknik analisis yang menjawabnya (Kaedah), dapatan, jadual atau rajah yang menjawabnya (Dapatan), tafsirannya (Perbincangan) dan sintesisnya (Kesimpulan). Masukkan satu perkara "konsistensi" bagi setiap persoalan yang rantaiannya putus, dengan menamakan pautan yang hilang (contohnya "RQ3: tiada dapatan yang menjawabnya" atau "RQ2: perbincangan tidak mentafsir dapatannya").
+(g) Ketekalan angka: bandingkan saiz sampel, bilangan kajian, peratus, jumlah dan nilai statistik yang sama merentas abstrak, kaedah, dapatan, perbincangan dan kesimpulan; kira semula jumlah mudah jika inputnya ada. Laporkan setiap percanggahan sebagai isu Kritikal dengan kedua-dua angka dan foldernya. Jangan cadangkan angka pengganti; yang betul ditentukan oleh Prof Dr daripada data asal.
+(h) Dapatan menetapkan apa yang ditemui; Perbincangan menerangkan maksudnya, kaitannya dengan pengetahuan sedia ada dan mengapa ia penting. Tandakan Dapatan yang mentafsir, Perbincangan yang hanya mengulang angka, tafsiran sebab-akibat yang tidak disokong reka bentuk kajian, dan kekeliruan antara signifikan statistik, saiz kesan dan kepentingan praktikal.
+(i) Dakwaan sumbangan dan kebaharuan: tandakan dakwaan seperti "kajian pertama" atau "belum ada kajian" yang tidak disokong bukti dalam manuskrip, sumbangan teori yang sebenarnya hanya pemerihalan aktiviti kajian, dan kesimpulan yang melampaui bukti atau memperkenalkan dakwaan empirikal baharu.
+(j) Tajuk, abstrak, kata kunci dan kesimpulan: semak bahawa latar, tujuan, kaedah, dapatan dan sumbangan dalam abstrak sepadan tepat dengan teks utama, dan bahawa istilah bagi setiap konstruk sama di semua tempat.
+(k) Jika sesuatu percanggahan tidak dapat diputuskan daripada teks yang diberi, nyatakan dengan tepat apa yang perlu disahkan oleh Prof Dr; jangan teka dan jangan reka pembetulan.`;
+
+/* 6 hingga 10: tambahan kepada resipi penulisan setiap folder. Ditambah selepas resipi sedia ada (atau selepas struktur DNA jurang bagi
+   Pendahuluan) dan tidak mengubah struktur itu, sasaran panjang folder atau peraturan sumber.
+   Dibuang daripada semua prompt penulisan asal: arahan mencari 12 hingga 20 sumber dan mengesahkan DOI daripada ingatan model (sumber yang
+   dibenarkan hanyalah artikel rujukan Prof Dr; fakta yang tiada ditanda [PERLU SUMBER] atau [ISI]), panjang tetap (900 hingga 1,200 atau
+   1,500 hingga 2,500 patah perkataan; sasaran folder yang menentukan), tajuk bernombor tetap 5.1 hingga 5.5 (struktur mengikut acuan artikel
+   contoh), dan senarai rujukan serta "nota pengesahan" yang ditulis agen (senarai rujukan dijana oleh sistem daripada rekod).
+   INTRODUCTION: langkah "analisis penjaga pintu editorial" 300 hingga 400 patah perkataan dibuang sebagai output, tetapi isinya dijadikan
+   peraturan menulis. LITERATURE REVIEW: prompt asal mengekstrak jadual daripada PDF yang dimuat naik; di sini jadual dibina daripada medan
+   rekod, dan lajur "Search Query" digabungkan ke lajur data kerana medan rekod jarang menyimpannya. METHODS: prompt asal khusus bagi kajian
+   bibliometrik; bahagian umum (justifikasi pangkalan data, medan carian, proses pemilihan, kebolehulangan) dipakai bagi semua artikel
+   ulasan, manakala peranan VOSviewer, Biblioshiny, Bibliomagika dan OpenRefine hanya bagi jenis bibliometrik dan hanya jika Prof Dr
+   menyatakan alat itu digunakan. DISCUSSION: unsur bibliometrik (kelompok, kejadian bersama) digeneralisasikan kepada "pola dapatan". */
+const R_PENDAHULUAN = `TAMBAHAN PENDAHULUAN (tulis untuk penilai yang memutuskan dalam tiga halaman pertama sama ada mahu terus membaca; jika STRUKTUR DNA JURANG diberi di atas, struktur itu kekal dan panduan ini hanya menentukan mutu isinya):
+1. Pembuka: perenggan pertama memuatkan tiga unsur yang dijalin secara semula jadi, bukan sebagai senarai: satu pemerhatian yang tidak dijangka, kurang diberi perhatian atau berlawanan dengan jangkaan dalam bidang ini; sekurang-kurangnya satu bukti konkrit daripada artikel rujukan (angka, pola empirikal atau trend) yang disitasi dengan tepat; dan satu teka-teki yang tersirat, iaitu perkara yang belum dapat dijelaskan sepenuhnya oleh kajian sedia ada. Jangan buka dengan takrif, sejarah ringkas atau dakwaan kepentingan umum.
+2. Pembingkaian masalah: sintesiskan apa yang dipersetujui, percanggahan yang berterusan dan andaian atau titik buta yang berulang dalam literatur; tunjukkan mengapa penjelasan sedia ada tidak lengkap. Gunakan sekurang-kurangnya dua lagi angka daripada rekod untuk menunjukkan skop dan akibat isu itu. Jangan senaraikan kajian satu demi satu.
+3. Logik sumbangan sebagai satu rantaian yang ringkas: apa yang dijelaskan dengan baik oleh kajian lepas; apa yang selalu tertinggal atau dianggap sedia maklum; mengapa ketinggalan itu penting dari segi teori atau empirikal; dan bagaimana kajian ini mengubah kefahaman, bukan sekadar menambah satu lagi kajian. Nyatakan mengapa sumbangan itu tidak jelas dengan sendirinya.
+4. Elakkan tanda pendahuluan yang lemah: frasa generik ("semakin mendapat perhatian", "has received increasing attention"), jurang yang diumumkan tanpa dibina, dan sumbangan yang kedengaran tokokan kecil atau boleh diramal.`;
+const R_LITERATUR = `TAMBAHAN KAJIAN LITERATUR: (1) Bina hujah, bukan senarai: tetapkan perbahasan teori dan empirikal yang utama, bezakan pengetahuan yang sudah mantap daripada persoalan yang belum selesai, bandingkan kajian secara kritis, dan tunjukkan mengapa kajian ini perlu. Jangan mendakwa "kajian pertama" atau "tiada kajian". (2) Jika sekurang-kurangnya tiga artikel rujukan ialah artikel ulasan (skop, sistematik, meta-analisis atau bibliometrik), sertakan satu jadual ringkasan ulasan terdahulu dengan lajur: Pengarang (tahun); Domain; Objektif; Bilangan dokumen, sumber data dan tempoh liputan; Atribut yang diteliti; Dapatan utama. Satu ulasan satu baris, dalam frasa pendek dan padat, menggunakan istilah artikel itu sendiri. Isi sel hanya dengan maklumat yang tertulis dalam rekod; jika tiada, tulis "Tidak dilaporkan" dan jangan teka atau tafsir.`;
+const R_KAEDAH_ULASAN = `TAMBAHAN METODOLOGI ARTIKEL ULASAN (pembaca ialah penilai yang skeptikal; setiap pilihan kaedah yang utama mesti berjustifikasi, dan nada kekal neutral tanpa membesar-besarkan kaedah):
+1. Pangkalan data: nyatakan mengapa pangkalan data yang dipilih sesuai (liputan, kawalan mutu, metadata sitasi, keluasan disiplin) dan bandingkan secara tersirat, bukan agresif, dengan alternatifnya.
+2. Strategi carian: nyatakan medan carian (contohnya tajuk sahaja atau tajuk, abstrak dan kata kunci), sebab pilihan itu, dan tukar ganti antara perolehan (recall) dengan ketepatan (precision).
+3. Proses pemilihan: huraikan langkah demi langkah selaras dengan rajah aliran (rekod ditemui, pendua dibuang, saringan, kelayakan, dimasukkan) dan rujuk rajah itu secara jelas dengan nombornya. Angka mesti sama dengan Ruang PRISMA.
+4. Pembersihan dan penyelarasan data: nyatakan bagaimana isu mutu data ditangani dan mengapa ia meningkatkan kesahan dan kebolehpercayaan analisis.
+5. Tutup dengan pernyataan ketelusan dan kebolehulangan: semua langkah didokumenkan dan parameter dilaporkan supaya kajian boleh diulang.
+6. Justifikasi kaedah hanya disitasi kepada sumber metodologi dalam senarai artikel rujukan; jika tiada, tulis [PERLU SUMBER: sumber metodologi bagi perkara itu] dan jangan sitasi daripada ingatan.`;
+const R_KAEDAH_BIBLIO = `TAMBAHAN KHUSUS BIBLIOMETRIK (hanya bagi alat yang dinyatakan oleh Prof Dr dalam catatan, arahan khusus atau ASAL; jangan andaikan alat yang tidak disebut, dan tandakan [ISI: alat dan parameter] jika belum dinyatakan): terangkan reka bentuk bibliometrik dan pemetaan sains serta sebab ia sesuai dengan objektif; analisis prestasi (penerbitan, sitasi, pengarang, sumber) sebagai langkah sebelum pemetaan sains; peranan setiap alat secara berasingan, contohnya OpenRefine bagi pembersihan dan penyelarasan kata kunci pengarang, Bibliomagika bagi penyeragaman nama institusi dan penunjuk prestasi, VOSviewer bagi rangkaian kejadian bersama, pengesanan kelompok dan visualisasi (dengan pilihan parameter seperti kaedah pengiraan dan ambang), dan Biblioshiny (Bibliometrix) bagi peta tematik dan struktur konsep; serta bagaimana peta tematik melengkapi visualisasi rangkaian.`;
+const R_DAPATAN = `TAMBAHAN DAPATAN: dapatan disusun mengikut objektif atau persoalan kajian dan menjawabnya terus; jangan ulang dalam teks semua nilai yang sudah kelihatan dalam jadual atau rajah, hanya yang menjawab persoalan; bezakan bukti yang diperhatikan daripada tafsiran (tafsiran ditulis dalam Perbincangan); setiap jadual dan rajah dirujuk dalam teks dengan nombornya.`;
+const R_PERBINCANGAN = `TAMBAHAN PERBINCANGAN (tafsiran, bukan ulangan dapatan; yakin tetapi berhati-hati; tiada dakwaan kebaharuan yang berlebihan):
+1. Sebelum menulis, kelaskan pola dapatan kepada yang dijangka, yang tidak dijangka, yang kurang diteroka dan yang signifikan dari segi teori; perbincangan dibina di sekeliling pengelasan itu.
+2. Rumusan dapatan utama ditulis ringkas: hanya pola yang paling penting dan maknanya bagi bidang, tanpa mengulang banyak angka.
+3. Tafsiran ialah teras: terangkan MENGAPA pola itu muncul, bagaimana pola-pola itu berkait antara satu sama lain, dan apa yang mengejutkan. Bagi setiap pola, nyatakan sama ada ia selari atau bercanggah dengan artikel rujukan dan terangkan sebab persamaan atau percanggahan itu; sitasi digunakan untuk menganalisis, bukan untuk memerihal. Bezakan tafsiran daripada spekulasi, dan jangan beri penjelasan sebab-akibat yang tidak disokong reka bentuk kajian.
+4. Implikasi teori ialah sumbangan utama dan ditulis paling mendalam: bagaimana dapatan memajukan kefahaman konsep, menjelaskan hubungan antara konstruk, mendedahkan titik buta teori atau mencadangkan pemurnian dan penyepaduan konsep; nyatakan sumbangan itu dengan jelas dan mengapa ia tidak jelas dengan sendirinya.
+5. Implikasi amalan dan dasar: setiap implikasi mesti dipautkan kepada satu dapatan yang khusus dan menamakan pihak yang terlibat (contohnya guru besar, guru, pejabat pendidikan daerah, penggubal dasar). Tiada pernyataan umum.
+6. Arah kajian lanjutan sebagai agenda yang strategik dalam tiga jenis: teori (persoalan konsep baharu, konstruk yang kurang dibangunkan), metodologi (sumber data, reka bentuk campuran atau longitudinal) dan empirikal (konteks, wilayah atau populasi yang kurang dikaji). Setiap cadangan mesti lahir secara logik daripada dapatan atau batasan kajian ini, khusus dan boleh dilaksanakan.
+7. Jika sesuatu dakwaan tidak dapat disokong oleh artikel rujukan, tulis dengan berhati-hati sebagai kemungkinan, atau tandakan [PERLU SUMBER].`;
+const R_KESIMPULAN = `TAMBAHAN KESIMPULAN: jawab setiap objektif kajian secara ringkas; sintesiskan dapatan utama, bukan mengulangnya; nyatakan hanya sumbangan yang disokong oleh dapatan; akui batasan yang berkaitan; jangan perkenalkan dakwaan empirikal, angka atau sitasi baharu; setiap implikasi dipautkan kepada dapatan yang khusus.`;
+const R_ABSTRAK = `TAMBAHAN ABSTRAK: latar, tujuan, kaedah, dapatan dan sumbangan mesti sepadan tepat dengan ASAL folder lain; setiap angka dalam abstrak mesti sama dengan angka dalam Kaedah dan Dapatan; istilah bagi setiap konstruk sama seperti dalam teks utama; tiada dakwaan yang tiada dalam manuskrip.`;
+/* o.ulasan: artikel ulasan (skop, sistematik, meta-analisis, bibliometrik); o.biblio: jenis bibliometrik */
+export function resipiTambahan(peranan, o) {
+  o = o || {};
+  if (peranan === 'pendahuluan') return R_PENDAHULUAN;
+  if (peranan === 'literatur') return o.ulasan ? R_LITERATUR : R_LITERATUR.split(' (2) ')[0];
+  if (peranan === 'kaedah') return o.ulasan ? R_KAEDAH_ULASAN + (o.biblio ? '\n' + R_KAEDAH_BIBLIO : '') : '';
+  if (peranan === 'dapatan') return R_DAPATAN;
+  if (peranan === 'perbincangan') return R_PERBINCANGAN;
+  if (peranan === 'kesimpulan') return R_KESIMPULAN;
+  if (peranan === 'abstrak') return R_ABSTRAK;
+  return '';
+}

@@ -22,7 +22,7 @@ import { blokTeks, svgRajah, svgKePng, adaBlok } from './pandu-blok.js';
 import * as Csv from './pandu-csv.js';
 import { initDraf } from './pandu-draf.js';
 import * as Tema from './pandu-tema.js';
-import { RUBRIK_HANTARAN, GAYA_TULISAN } from './prompt-pustaka.js';
+import { RUBRIK_HANTARAN, AUDIT_PENJAJARAN, GAYA_TULISAN, resipiTambahan } from './prompt-pustaka.js';
 
 export function initPandu(R, C) {
   const { $, esc, toast } = R; const { A, Teks } = C; const Bd = () => R.Banding;
@@ -1080,7 +1080,7 @@ Tiada em-dash.`;
      menyeluruh mengikut panjang ASAL semua folder, bedah mengikut panjang artikel contoh. Soal jawab 5W1H dan soalan terbuka mempunyai
      bentuk jawapan yang tetap. Ruang berfikir model ditambah di atas bajet ini oleh penghantar (R.Isi.hadKeluar). Had itu siling: yang dicaj
      hanyalah token yang benar-benar dijana, maka baki had tidak membazirkan apa-apa. */
-  const HAD_TOKEN = { w5: 5500, teras: 3200, tanya: 8000, cadangan: 7600, semak: 3800, menyeluruh: 6000, bedah: 10000 };
+  const HAD_TOKEN = { w5: 5500, teras: 3200, tanya: 8000, cadangan: 7600, semak: 3800, menyeluruh: 7000, bedah: 10000 };
   const TOKEN_SEPATAH = 3;   // anggaran selamat token bagi sepatah perkataan Bahasa Melayu; Bahasa Inggeris memerlukan kurang
   const kepit = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(v / 100) * 100));
   function bajet(mod, n) {   // n: bilangan patah perkataan yang menentukan panjang jawapan
@@ -1680,7 +1680,8 @@ ARAHAN ACUAN: rangka, cadangan dan semakan bagi folder ini mesti mengikut urutan
       'Tiada sempang em atau en, dan tiada senarai berbutir dalam draf.'
     ];
     const no = a => a.map((x, i) => `${i + 1}. ${x}`).join('\n');
-    const resipi = dnaAktif(f) ? '' : D.resipiTulis(kel(), f.p);
+    const tambahan = resipiTambahan(f.p, { ulasan: D.kumpulanDari(kel()) === 'ulasan', biblio: kel() === 'biblio' });   /* v1.51.0: pustaka prompt */
+    const resipi = [dnaAktif(f) ? '' : D.resipiTulis(kel(), f.p), tambahan].filter(Boolean).join('\n\n');
     const panjang = ss ? `PANJANG DRAF (perenggan sahaja, tidak termasuk dua perenggan pendek di hujung): sekurang-kurangnya ${angka(Math.round((ss[0] + ss[1]) / 2))} dan tidak melebihi ${angka(ss[1])} patah perkataan, iaitu separuh atas sasaran folder (${angka(ss[0])} hingga ${angka(ss[1])}). Jangan berhenti di bawah had itu: tambah bukti dan perbandingan, bukan ayat kosong.` : '';
     const tandaSub = jenis === 'sumber' ? 'Subframe yang belum bersumber ditulis dengan "Sumber: [PERLU SUMBER: perkara]"' : 'Fakta kajian Prof Dr yang belum ada ditulis dengan "Sumber: [ISI: perkara]", dan subframe lain yang belum bersumber dengan "Sumber: [PERLU SUMBER: perkara]"';
     return `TUGAS: Tulis contoh penulisan penuh bagi folder ini dalam SATU jawapan, tanpa menunggu apa-apa jawapan daripada Prof Dr: mula-mula KERANGKA PERENGGAN (mainframe dan subframe), kemudian DRAF, iaitu perenggan contoh yang lengkap aras jurnal berindeks yang memenuhkan kerangka itu dalam ${bhs}. Asas penulisan ialah ${asas}. Soal jawab 5W1H, soalan terbuka, keputusan dan catatan Prof Dr di atas diambil kira jika ada, tetapi ketiadaannya bukan alasan untuk bertanya atau berhenti. Objektif, fokus dan teras kajian Prof Dr adalah muktamad.${nW5(F) ? '' : ' Kerana SOAL JAWAB 5W1H belum ada, jawab sendiri enam soalan itu (apa, siapa, bila, di mana, mengapa, bagaimana) semasa berfikir dan gunakan jawapannya untuk menyusun kerangka.'} Ini contoh untuk diperhalus oleh Prof Dr dengan ayat sendiri, bukan teks akhir; anda penunjuk jalan.${f.p === 'pendahuluan' ? '\n\nALIRAN PENDAHULUAN (wajib, dalam kerangka fungsi acuan): perenggan awal bergerak daripada peringkat GLOBAL (trend dan dapatan kajian di negara lain, dinamakan negaranya, dengan sitasi dan angka daripada sumber), kepada SERANTAU jika ada bukti, kemudian MALAYSIA (dasar, pelan rasmi dan kajian tempatan), dan menunjukkan pertentangan atau kekurangan situasi di Malaysia berbanding peringkat global; selepas itu jurang, tujuan dan soalan kajian mengikut TERAS KAJIAN.' : ''}${o && o.kadTema ? '\n\n' + arahanKadTema(f) : ''}
@@ -1739,7 +1740,7 @@ Selepas perenggan terakhir tulis dua perenggan pendek. Pertama, "${sumberTajuk}:
     let system, awal = '', content = [], tugas, nImej = 0, ringkasBahan = '';
     if (seluruh) {
       const sp0 = D.spec(kel(), 'kesimpulan'); const s0 = sistem(tulis()[0], sp0, fKosong('x'), t, { tanpaCsv: true }); system = s0.teks;
-      tugas = `[MOD:menyeluruh]\n${teksTeras() ? teksTeras() + '\nSemak sama ada setiap objektif dan persoalan dalam TERAS KAJIAN dinyatakan dalam Pendahuluan dan dijawab dalam Dapatan serta Perbincangan.\n\n' : ''}ASAL SEMUA FOLDER (ditulis oleh Prof Dr):\n\n${asalSemua(null, 7000)}${adaPrisma() ? '\n\n' + Prisma.teksAgen() : ''}\n\nTUGAS: Jalankan semakan menyeluruh manuskrip ini sebagai penilai ${arasPenilai()}. Semak keselarasan antara tujuan dan soalan (Pendahuluan), kaedah, dapatan, perbincangan, kesimpulan dan abstrak; keselarasan istilah bagi setiap pemboleh ubah; dakwaan atau angka yang tidak selaras antara folder; dan pengulangan. Pulangkan JSON: ringkasan (tiga hingga lima ayat), kesediaan (integer 0 hingga 100), konsistensi (lima hingga lapan perkara yang disemak, setiap satu dengan status Selaras, Tidak selaras atau Tidak pasti dan ulasan ringkas yang menamakan folder), isu (paling penting dahulu; tahap Kritikal, Sederhana atau Kecil; perkara; cadangan). Jangan menulis semula teks.\n\n${RUBRIK_HANTARAN}`;
+      tugas = `[MOD:menyeluruh]\n${teksTeras() ? teksTeras() + '\nSemak sama ada setiap objektif dan persoalan dalam TERAS KAJIAN dinyatakan dalam Pendahuluan dan dijawab dalam Dapatan serta Perbincangan.\n\n' : ''}ASAL SEMUA FOLDER (ditulis oleh Prof Dr):\n\n${asalSemua(null, 7000)}${adaPrisma() ? '\n\n' + Prisma.teksAgen() : ''}\n\nTUGAS: Jalankan semakan menyeluruh manuskrip ini sebagai penilai ${arasPenilai()}. Semak keselarasan antara tujuan dan soalan (Pendahuluan), kaedah, dapatan, perbincangan, kesimpulan dan abstrak; keselarasan istilah bagi setiap pemboleh ubah; dakwaan atau angka yang tidak selaras antara folder; dan pengulangan. Pulangkan JSON: ringkasan (tiga hingga lima ayat), kesediaan (integer 0 hingga 100), konsistensi (lima hingga lapan perkara yang disemak, setiap satu dengan status Selaras, Tidak selaras atau Tidak pasti dan ulasan ringkas yang menamakan folder), isu (paling penting dahulu; tahap Kritikal, Sederhana atau Kecil; perkara; cadangan). Jangan menulis semula teks.\n\n${RUBRIK_HANTARAN}\n\n${AUDIT_PENJAJARAN}`;
       ringkasBahan = 'ASAL semua folder';
     } else {
       const s0 = sistem(f, sp, F, t, semuaPenuh ? { penuh: true } : null); system = s0.teks; awal = s0.awal || ''; const adaCsv = s0.bs.csv > 0; const kf = konteksFolder(f, sp, F, mod); const bah = [kf];
