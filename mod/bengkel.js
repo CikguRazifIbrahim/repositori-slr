@@ -11,6 +11,7 @@
 import * as BD from './bengkel-data.js';
 import { GAYA_LALAI } from './pandu-data.js';
 import { PIAWAI_RINGKAS } from './bahasa-data.js';
+import { GAYA_TULISAN } from './prompt-pustaka.js';
 
 export function initBengkel(R) {
   const { $, $$, esc, toast } = R;
@@ -634,6 +635,7 @@ GAYA BAHASA HASIL
 - Dalam kedua-dua bahasa: tiada tanda sempang panjang (em dash atau en dash); pelaku kelihatan (guru besar, guru, pengkaji), bukan rangkaian kata nama abstrak; ayat pelbagai panjang, purata sekitar 22 patah perkataan dan tidak melebihi kira-kira 40; perenggan 3 hingga 6 ayat (sehingga 8 apabila ARAH HUJAH PROF DR memerlukannya); kata kerja pelaporan sepadan dengan tindakan sumber (mendapati bagi dapatan, menghujahkan bagi hujah, mentakrifkan bagi takrif) dan tidak diulang-ulang; penanda wacana dipilih mengikut fungsi, tidak diulang dan tidak membuka setiap ayat; sitasi berkumpulan dalam kurungan lebih diutamakan daripada ayat yang bermula dengan nama pengarang; beberapa sumber dalam satu kurungan disusun mengikut SUSUNAN SITASI BERKUMPULAN yang dinyatakan dalam mesej.
 - Jangan guna perkataan ini: ${g.larang}.
 - Jangan guna frasa ini: ${g.frasa}.
+- ${GAYA_TULISAN}
 
 PENANDA (medan "penanda"): senaraikan penanda wacana dan kata kerja pelaporan yang benar-benar digunakan dalam ayat sintesis, tepat seperti tertulis, berserta fungsinya. Dalam setiap ayat sintesis, medan "penanda" menyenaraikan penanda dalam ayat itu sahaja.
 

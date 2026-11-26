@@ -415,13 +415,33 @@ export function initTulisan(R, konfig) {
   /* ---- paparan ---- */
   function show() { if (!T.mula) { T.mula = true; (T.loaded ? Promise.resolve() : muatSemua()).then(() => { templatAuto(); renderSemua(); peringatan(); }); if (Gabung) Gabung.muat().then(() => renderBab()).catch(() => {}); } renderSemua(); }
   /* Tab Draf Tesis (mod/gabung.js, tesis sahaja): apabila aktif, senarai seksyen dan editor disembunyikan dan panel draf dipaparkan. */
-  function renderDraf() { if (!Gabung) return; const badan = root && root.querySelector('.tul-badan'); const panel = $(I('Draf')); if (badan) badan.hidden = !!T.draf; if (panel) { panel.hidden = !T.draf; if (T.draf) Gabung.render(); } }
+  function renderDraf() { if (!Gabung) return; const badan = root && root.querySelector('.tul-badan'); const panel = $(I('Draf')); if (badan) badan.hidden = !!T.draf; if (panel) { panel.hidden = !T.draf; if (T.draf === 'ruj') renderRujukan(panel); else if (T.draf) Gabung.render(); } }
+  /* v1.52.0: tab Rujukan menu Tesis. Senarai rujukan APA 7 dijana daripada sitasi dalam ASAL semua seksyen Bab 1 hingga Bab 5 yang
+     sepadan dengan rekod repositori (medan Rujukan APA 7 rekod), disusun mengikut abjad, dengan bab tempat setiap sumber disitasi.
+     Sitasi yang tidak dapat dipadankan disenaraikan berasingan supaya rujukannya ditulis atau rekodnya dibetulkan; sistem tidak mereka
+     rujukan. Tiada token digunakan. */
+  const RJ = { data: null };
+  function renderRujukan(panel) {
+    const list = []; unit().forEach(([n]) => senarai(n).forEach(id => { const sk = doc(n).seksyen[id]; const t = String(sk.teks || '').trim() || teksDariHtml(htmlSeksyen(sk) || ''); if (t.trim()) list.push({ label: cfg.tab(n), teks: t }); }));
+    const x = Ramal.kumpulRujukan(list); RJ.data = x; const bina = x.susun.filter(r => r.apa.bina); const urut = a => a.slice().sort((p, q) => String(p).localeCompare(String(q), undefined, { numeric: true })).join(', ');
+    const kump = (tajuk, nota, arr, fn) => arr.length ? `<section class="rj-kump"><h3>${tajuk} <span>${arr.length}</span></h3><p class="help">${nota}</p><ul class="pd-ruj-r">${arr.map(fn).join('')}</ul></section>` : '';
+    panel.innerHTML = `<div class="rj-kepala"><div><h2>Rujukan</h2><div class="sub">Senarai rujukan APA 7 bagi semua sitasi dalam ASAL Bab 1 hingga Bab 5, dijana daripada medan Rujukan APA 7 rekod repositori. Tanpa token; dikira semula setiap kali tab ini dibuka.</div></div><span class="spacer"></span><button class="btn btn-primary" data-ruj="salin"${x.susun.length ? '' : ' disabled'}>Salin senarai rujukan (${x.susun.length})</button><button class="btn" data-ruj="segar">Kira semula</button></div>
+      <div class="rj-ringkas"><span class="tag r-tinggi"><span>${x.susun.length} sumber dalam senarai</span></span>${bina.length ? `<span class="tag s-sedang"><span>${bina.length} tanpa Rujukan APA 7 penuh</span></span>` : ''}${x.semak.length ? `<span class="tag s-sedang"><span>${x.semak.length} hampir sepadan</span></span>` : ''}${x.kabur.length ? `<span class="tag s-sedang"><span>${x.kabur.length} sepadan dengan lebih daripada satu rekod</span></span>` : ''}${x.luar.length ? `<span class="tag s-belum"><span>${x.luar.length} tanpa rekod repositori</span></span>` : ''}</div>
+      ${x.susun.length ? `<ol class="pd-ruj-s rj-senarai">${x.susun.map(r => `<li><p class="apa">${Ramal.apaHtml(r.apa.teks)}</p><p class="di">Disitasi dalam: ${esc(urut(r.di))}${r.apa.bina ? ` · <b class="rj-amaran">medan Rujukan APA 7 rekod ini kosong; entri di atas dibina daripada Penulis, Tahun dan Tajuk sahaja</b> <button class="btn btn-sm" data-bukarekod="${esc(r.id)}">Buka rekod</button>` : ''}</p></li>`).join('')}</ol>` : '<div class="empty"><h3>Belum ada sitasi yang dikenali</h3><p>Tiada sitasi dalam ASAL Bab 1 hingga Bab 5 yang sepadan dengan rekod repositori. Sitasi dikenali dalam bentuk APA, contohnya (Ahmad et al., 2024) atau Ahmad dan Ismail (2023).</p></div>'}
+      ${kump('Sitasi yang hampir sepadan dengan rekod', 'Nama pengarang, bilangan pengarang atau tahun berbeza sedikit daripada rekod. Betulkan sitasi dalam teks atau medan rekod supaya sumber ini masuk ke senarai.', x.semak, r => `<li><span><b>${esc(r.sitasi)}</b> · rekod: ${esc(r.rekod.map(z => z.nama).join(' atau '))}</span><em>${esc(urut(r.di))}</em></li>`)}
+      ${kump('Sitasi yang sepadan dengan lebih daripada satu rekod', 'Klik sitasi itu dalam editor bab untuk memilih rekod yang dimaksudkan, atau tambah huruf pada tahun (2024a, 2024b).', x.kabur, r => `<li><span><b>${esc(r.sitasi)}</b> · ${esc(r.rekod.map(z => z.nama).join('; '))}</span><em>${esc(urut(r.di))}</em></li>`)}
+      ${kump('Sitasi tanpa rekod repositori', 'Sumber ini disitasi dalam teks, tetapi tiada rekodnya dalam repositori. Masukkan rekodnya ke menu Artikel, atau tulis entri rujukannya sendiri; sistem tidak mereka rujukan.', x.luar, r => `<li><span><b>${esc(r.sitasi)}</b></span><em>${esc(urut(r.di))}</em></li>`)}`;
+  }
+  async function klikRujukan(a) {
+    if (a === 'segar') { flushEditor(); renderDraf(); toast('Senarai rujukan dikira semula'); return; }
+    if (a === 'salin') { const x = RJ.data; if (!x || !x.susun.length) return; const jadi = await Ramal.salin(x.susun.map(r => r.apa.teks).join('\n\n'), x.susun.map(r => `<p style="margin-left:0.5in;text-indent:-0.5in">${Ramal.apaHtml(r.apa.teks)}</p>`).join('')); toast(jadi ? x.susun.length + ' rujukan disalin (APA 7, inden tergantung)' : 'Papan keratan tidak tersedia', !jadi); }
+  }
   function renderSemua() { renderSemalam(); renderBab(); renderSenarai(); renderEditor(); renderSambung(); renderCari(); renderDraf(); }
   function jumlahPatah(n) { return senarai(n).reduce((s, id) => s + (doc(n).seksyen[id].patah || 0), 0); }
   function renderBab() {
     const el = $(I('Bab')); if (!el) return;
-    el.classList.toggle('enam', !!Gabung);
-    el.innerHTML = unit().map(([n, t]) => { const d = doc(n); return `<button class="tul-tab${n === T.bab && !T.draf ? ' on' : ''}" data-bab="${esc(String(n))}"><span class="b">${esc(cfg.tab(n))}</span><span class="t">${esc(t)}</span><span class="m">${senarai(n).length} seksyen · ${jumlahPatah(n)} patah${d.pinjam ? ' · <b class="pinjam">dipinjam ke Word</b>' : ''}</span></button>`; }).join('') + (Gabung ? Gabung.tabHtml(!!T.draf) : '');
+    el.classList.toggle('enam', !!Gabung); el.classList.toggle('tujuh', !!Gabung);
+    el.innerHTML = unit().map(([n, t]) => { const d = doc(n); return `<button class="tul-tab${n === T.bab && !T.draf ? ' on' : ''}" data-bab="${esc(String(n))}"><span class="b">${esc(cfg.tab(n))}</span><span class="t">${esc(t)}</span><span class="m">${senarai(n).length} seksyen · ${jumlahPatah(n)} patah${d.pinjam ? ' · <b class="pinjam">dipinjam ke Word</b>' : ''}</span></button>`; }).join('') + (Gabung ? `<button class="tul-tab gb-tab${T.draf === 'ruj' ? ' on' : ''}" data-draf="ruj" title="Senarai rujukan APA 7 bagi semua sitasi dalam Bab 1 hingga Bab 5"><span class="b">Rujukan</span><span class="t">Senarai rujukan APA 7</span><span class="m">dijana daripada sitasi</span></button>` + Gabung.tabHtml(T.draf === true) : '');
   }
   function renderSenarai() {
     const el = $(I('Senarai')); if (!el) return; if (!adaUnit()) { el.innerHTML = `<div class="help">${esc(cfg.tiadaUnitTeks)}</div>`; return; } const n = T.bab; const d = doc(n); const ids = senarai(n); const nb = nombor(n);
@@ -438,7 +458,7 @@ export function initTulisan(R, konfig) {
   if (cfg.tesis) Gabung = initGabung(R, {
     unit: () => unit(), doc: n => doc(n), senarai: n => senarai(n), nombor: n => nombor(n), htmlSeksyen: s => htmlSeksyen(s), jumlahPatah: n => jumlahPatah(n),
     hariIni: () => hariIni(), tarikhStr: ms => tarikhStr(ms), tarikhPanjang: ymd => tarikhPanjang(ymd), tajukBab: n => tajukBab(n),
-    janaDocx: (babs, o) => janaDocx(babs, o), pasangImej: r => pasangImej(r), flush: () => flushEditor(), renderBab: () => renderBab(), aktif: () => !!T.draf, SUB, MIME,
+    janaDocx: (babs, o) => janaDocx(babs, o), pasangImej: r => pasangImej(r), flush: () => flushEditor(), renderBab: () => renderBab(), aktif: () => T.draf === true, SUB, MIME,
     /* sebelum menggabung: simpan suntingan yang belum disimpan dan ambil semula kelima-lima bab dari awan (suntingan daripada peranti lain) */
     segar: async () => { flushEditor(); try { await muatSemua(); } catch (e) { console.warn('tulisan: muat semula sebelum gabung gagal', e); } }
   });
@@ -984,7 +1004,8 @@ export function initTulisan(R, konfig) {
   /* ---- peristiwa ---- */
   if (root) {
     root.addEventListener('click', async e => {
-      if (Gabung && e.target.closest('[data-draf]')) { flushEditor(); T.draf = true; renderSemua(); return; }
+      if (Gabung && e.target.closest('[data-draf]')) { flushEditor(); T.draf = e.target.closest('[data-draf]').dataset.draf === 'ruj' ? 'ruj' : true; renderSemua(); return; }
+      { const rj = e.target.closest('[data-ruj]'); if (rj) { klikRujukan(rj.dataset.ruj); return; } }
       if (Gabung && Gabung.klik(e)) return;
       const tab = e.target.closest('[data-bab]'); if (tab) { const n = U(tab.dataset.bab); const tukar = n !== T.bab; T.draf = false; T.bab = n; T.sek = null; if (tukar && cfg.onUnit) cfg.onUnit(n); renderSemua(); return; }
       const it = e.target.closest('[data-sek]'); if (it) { T.sek = it.dataset.sek; if (T.draf) { T.draf = false; renderDraf(); renderBab(); } renderSenarai(); renderEditor(); return; }

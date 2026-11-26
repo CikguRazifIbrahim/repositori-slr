@@ -600,7 +600,10 @@ body.web-open{overflow:hidden}
 .tul-cari input{width:100%}
 .tul-cari-hasil{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;margin-top:6px;max-height:320px;overflow:auto}
 .tul-bab{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
-.tul-bab.enam{grid-template-columns:repeat(6,1fr)}
+.tul-bab.enam{grid-template-columns:repeat(6,1fr)} .tul-bab.enam.tujuh{grid-template-columns:repeat(7,minmax(0,1fr))}
+.rj-kepala{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px} .rj-kepala h2{margin:0;font-size:18px} .rj-kepala .sub{font-size:13px;color:var(--muted)} .rj-kepala .spacer{flex:1}
+.rj-ringkas{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px} .rj-senarai{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px 8px 20px;max-width:none;list-style:none}
+.rj-kump{margin-top:14px} .rj-kump h3{font-size:15px;margin:0 0 2px} .rj-kump h3 span{font-size:12px;background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:1px 8px;margin-left:4px} .rj-amaran{color:var(--warn);font-weight:600}
 /* v1.47.0 tab Draf Tesis (mod/gabung.js) */
 .tul-tab.gb-tab{border-style:dashed}
 .tul-tab.gb-tab .m{color:var(--accent);font-weight:600}
@@ -1209,7 +1212,7 @@ details.pd-hasil[open]>summary{margin-bottom:8px}
 @media (max-width:900px){
   .tul-sambung-grid{grid-template-columns:1fr}
   .tul-bab{grid-template-columns:repeat(2,1fr)}
-  .tul-bab.enam{grid-template-columns:repeat(2,1fr)}
+  .tul-bab.enam,.tul-bab.enam.tujuh{grid-template-columns:repeat(2,1fr)}
   .tul-badan{grid-template-columns:1fr}
   .tul-kiri{position:static}
   .tul-senarai{max-height:34vh}
