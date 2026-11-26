@@ -261,8 +261,32 @@ export function initPandu(R, C) {
   /* ---- paparan ---- */
   const det = (id, cls, ringkasan, isi) => `<details class="${cls}" data-pdid="${esc(id)}"${P.terbuka.has(id) ? ' open' : ''}><summary>${ringkasan}</summary>${isi}</details>`;
   const htmlMeter = x => `<div class="pd-meter ${x.status}" data-pdm="${x.k}"><div class="h"><b>${esc(x.nama)}</b><span>${esc(x.teks)}</span></div><div class="mbar"><i style="width:${Math.max(3, Math.min(100, x.nilai))}%"></i></div>${x.anggaran ? '<div class="nota">Pengesanan automatik daripada kata isyarat; Semakan agen lebih tepat.</div>' : ''}${x.butir && x.butir.length ? `<ul>${x.butir.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}</div>`;
+  /* ---- v1.50.0: Tulis seksyen di dalam folder ----
+     Editor ASAL dan RAM (satu tika, dimiliki oleh kilang Tulisan) tidak lagi menjadi langkah kelima yang berasingan. Nod DOM editor itu
+     dipindahkan ke dalam tab "Tulis seksyen" folder yang sedang dibuka, dan senarai seksyennya ditapis kepada seksyen folder itu sahaja,
+     maka Prof Dr menjana contoh, menulis ASAL dan menyemak dalam folder yang sama. Sebelum folder dilukis semula, nod editor dipulangkan
+     ke rumah asalnya supaya tidak musnah; lukisan semula ditangguhkan semasa Prof Dr sedang menaip di dalam editor. Draf Akhir tetap
+     menghimpun ASAL daripada stor seksyen yang sama, maka tiada salinan kedua teks. ---- */
+  const nodEditor = () => document.querySelector('#artikel .tul-badan');
+  const editorFokus = () => { const tb = nodEditor(); return !!(tb && tb.closest('#artPandu') && tb.contains(document.activeElement)); };
+  function rumahkanEditor() { const tb = nodEditor(); const rumah = $('#artPanel'); if (tb && rumah && tb.closest('#artPandu')) rumah.appendChild(tb); }
+  function tapisSenarai() {
+    let st = document.getElementById('pdTapisSek'); if (!st) { st = document.createElement('style'); st.id = 'pdTapisSek'; document.head.appendChild(st); }
+    const f = !P.bahan && P.buka !== Draf.KUNCI ? folderDari(P.buka) : null; const tb = nodEditor();
+    if (!f || !tb || !tb.closest('#pdTulis')) { st.textContent = ''; return; }
+    const ids = julat(f); st.textContent = `#pdTulis #artSenarai [data-sek]{display:none}` + (ids.length ? ids.map(id => `#pdTulis #artSenarai [data-sek="${String(id).replace(/"/g, '')}"]`).join(',') + '{display:revert}' : '');
+  }
+  function pasangEditor() { const slot = $('#pdTulis'); const tb = nodEditor(); if (slot && tb && tb.parentNode !== slot) slot.appendChild(tb); tapisSenarai(); }
+  /* Buka folder yang memiliki satu seksyen, pada tab Tulis seksyen (carian, butang Pergi dalam Draf Akhir). */
+  function keSeksyen(sid) {
+    const f = folderSeksyen(sid); if (!f) { toast('Seksyen ini berada di luar folder Pandu Tulis. Suntingnya melalui butang Sunting dalam Draf Akhir.', true); return false; }
+    if (!(Teks.state.bab === A.id && Teks.state.sek === sid)) { Teks.flushEditor(); Teks.state.bab = A.id; Teks.state.sek = sid; P.suis = true; try { Teks.renderSenarai(); Teks.renderEditor(); } finally { P.suis = false; } }
+    bukaFolder(f.k, { l: 'LT', tatal: true, terus: true }); return true;
+  }
   function render() {
     const el = $('#artPandu'); if (!el) return; const d = C.doc(); const kira = $('#artPanduKira');
+    if (editorFokus() && P.id === A.id) { P.tertunda = true; return; }
+    rumahkanEditor();
     if (!d || !A.id) { el.innerHTML = ''; if (kira) kira.textContent = ''; kemasBar(); renderTeras(true); return; }
     const tukarArtikel = P.id !== A.id;
     if (tukarArtikel) { muatLokal(A.id); muatAwan(A.id); muatGaya(); const f0 = d.jenis ? folderDari(P.buka) : null; if (f0 && P.t.sedia) P.terbuka = new Set(langkahLalai(f0)); }
@@ -276,7 +300,7 @@ export function initPandu(R, C) {
     el.querySelectorAll('[data-pdsel="aras"]').forEach(s => { s.value = P.t.aras === 'scopus' ? 'scopus' : 'mycite'; });
     el.querySelectorAll('[data-pdsel="acuan"]').forEach(s => { const ac = acuan(); s.value = !ac ? 'tiada' : ac.sendiri ? 'sendiri' : 'bina'; });
     el.querySelectorAll('[data-pdsel="literatur"]').forEach(s => { s.value = literaturPilih(); });
-    if (P.t.sedia) renderFolder();
+    if (P.t.sedia) renderFolder(); else tapisSenarai();
     if (kira) kira.textContent = P.t.sedia ? `(${tl.length} folder)` : '(belum disediakan)';
     kemasBar();
   }
@@ -369,7 +393,8 @@ export function initPandu(R, C) {
     if (!ds.length) { el.classList.remove('lk-tabs'); return; }
     const ids = ds.map(x => x.dataset.pdid); const kunci = P.id + '|' + P.buka + '|' + (P.bahan ? 'b' : 'f'); const tukar = P.tabK !== kunci; if (tukar) { P.tabK = kunci; P.tabLama = new Set(); P.tab = null; }
     const buka = Array.from(P.terbuka).filter(id => ids.includes(id)); const baharu = buka.filter(id => !P.tabLama.has(id));
-    const lalai = !P.bahan && ids.includes('L2') ? 'L2' : ids[0];   /* folder biasa bermula pada Contoh penulisan */
+    /* folder biasa bermula pada Contoh penulisan; folder yang ASALnya sudah ditulis bermula pada Tulis seksyen */
+    const fL = folderDari(P.buka); const lalai = P.bahan ? ids[0] : ids.includes('LT') && ids.includes('L2') && fL && patah(teksFolder(fL)) >= 40 ? 'LT' : ids.includes('L2') ? 'L2' : ids[0];
     let aktif = pilih && ids.includes(pilih) ? pilih : P.tabMinta && ids.includes(P.tabMinta) ? P.tabMinta : tukar ? (buka[0] || lalai) : baharu.length ? baharu[baharu.length - 1] : ids.includes(P.tab) ? P.tab : (buka[0] || lalai);
     P.tabMinta = null; P.tab = aktif; ids.forEach(id => { if (id === aktif) P.terbuka.add(id); else P.terbuka.delete(id); }); P.tabLama = new Set([aktif]);
     const bar = document.createElement('div'); bar.className = 'lk-tabs-bar'; bar.setAttribute('role', 'tablist');
@@ -379,13 +404,14 @@ export function initPandu(R, C) {
     el.insertBefore(bar, ds[0]); el.classList.add('lk-tabs');
   }
   function renderFolder() {
-    const el = $('#pdFolder'); if (!el) return; el.classList.remove('lk-tabs'); if (P.buka === Draf.KUNCI) { Draf.render(el); return; } const tl = tulis(); const f = tl.find(x => x.k === P.buka);
+    const el = $('#pdFolder'); if (!el) return; if (editorFokus()) { P.tertunda = true; return; } rumahkanEditor(); el.classList.remove('lk-tabs'); if (P.buka === Draf.KUNCI) { Draf.render(el); tapisSenarai(); return; } const tl = tulis(); const f = tl.find(x => x.k === P.buka);
     if (!f) { el.innerHTML = '<div class="help">Pilih satu folder di atas untuk mula. Urutan yang disyorkan ialah dari kiri ke kanan; Abstrak paling akhir. Senarai artikel sumber dan rekod CSV berada dalam Langkah 1 (Artikel panduan) setiap folder: di situlah artikel ditambah daripada repositori, dibuang, dan fail CSV dimuat naik.</div>'; return; }
     const sp = specF(f); const sid = sidFolder(f); const i = tl.indexOf(f); const d = C.doc();
     if (!sid) { el.innerHTML = `<div class="pd-fh"><h3>Folder ${i + 1}: ${esc(tajukF(f))}</h3></div><div class="pd-notis">Seksyen bagi folder ini tiada (mungkin dipadam). <button class="btn btn-sm btn-primary" data-pd="sedia">Cipta semula</button> atau padankan dengan seksyen sedia ada: ${htmlPetaSel(f)}</div>`; return; }
     const uk = ukur(f); const [st, lb] = statusFolder(f, uk); const ss = sasaran(f); const s = d.seksyen[sid]; const no = (Teks.nombor(A.id)[sid] || {}).no || '';
-    const kepala = `<div class="pd-fh"><h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> Folder ${i + 1}: ${esc(tajukF(f))}</h3><span class="tag pd-st ${st}"><span>${lb}</span></span><span class="pd-fh-m">Seksyen ${esc(no)} ${esc(s.tajuk || '')}${julat(f).length > 1 ? ' dan ' + (julat(f).length - 1) + ' subseksyen' : ''} · ${angka(uk.n)} patah${ss ? ', sasaran ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) : ''}</span><span class="spacer"></span><label class="pd-peta" title="Tukar seksyen yang mewakili folder ini">Seksyen ${htmlPetaSel(f)}</label><button class="btn btn-sm" data-pd="editor">Buka ASAL dan RAM</button>${i < tl.length - 1 ? `<button class="btn btn-sm" data-pd="buka" data-k="${esc(tl[i + 1].k)}">Folder seterusnya &#8594;</button>` : ''}</div><p class="pd-tujuan">${esc(sp.tujuan)}</p>${f.tambahan ? `<p class="help pd-nota-tambahan">Folder ini ditambah atas pilihan Prof Dr (Folder ${esc(tajukF(f))} di bar atas).${acuan() ? ' Artikel contoh ' + esc(acuan().pendek) + ' tidak mempunyai bahagian yang sepadan kerana latar literaturnya berada dalam ' + (en() ? 'Introduction' : 'Pendahuluan') + ', maka folder ini mengikut panduan umum.' : ''} Sasaran folder lain sudah diagih semula.</p>` : ''}`;
-    if (f.p === 'rujukan') { P.bahan = false; el.innerHTML = kepala + htmlRujukan(f); tabFolder(el); return; }
+    const kepala = `<div class="pd-fh"><h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> Folder ${i + 1}: ${esc(tajukF(f))}</h3><span class="tag pd-st ${st}"><span>${lb}</span></span><span class="pd-fh-m">Seksyen ${esc(no)} ${esc(s.tajuk || '')}${julat(f).length > 1 ? ' dan ' + (julat(f).length - 1) + ' subseksyen' : ''} · ${angka(uk.n)} patah${ss ? ', sasaran ' + angka(ss[0]) + ' hingga ' + angka(ss[1]) : ''}</span><span class="spacer"></span><label class="pd-peta" title="Tukar seksyen yang mewakili folder ini">Seksyen ${htmlPetaSel(f)}</label><button class="btn btn-sm" data-pd="editor">Tulis seksyen</button>${i < tl.length - 1 ? `<button class="btn btn-sm" data-pd="buka" data-k="${esc(tl[i + 1].k)}">Folder seterusnya &#8594;</button>` : ''}</div><p class="pd-tujuan">${esc(sp.tujuan)}</p>${f.tambahan ? `<p class="help pd-nota-tambahan">Folder ini ditambah atas pilihan Prof Dr (Folder ${esc(tajukF(f))} di bar atas).${acuan() ? ' Artikel contoh ' + esc(acuan().pendek) + ' tidak mempunyai bahagian yang sepadan kerana latar literaturnya berada dalam ' + (en() ? 'Introduction' : 'Pendahuluan') + ', maka folder ini mengikut panduan umum.' : ''} Sasaran folder lain sudah diagih semula.</p>` : ''}`;
+    const LT = det('LT', 'pd-l pd-tulis', `<span class="no">${f.p === 'rujukan' ? '&#9998;' : '3'}</span> Tulis seksyen <span class="ring">ASAL dan RAM folder ini · ${angka(uk.n)} patah</span>`, `<p class="pd-tulis-nota">Hanya seksyen folder ${esc(tajukF(f))} dipaparkan di sini. ASAL ialah teks rasmi yang dihimpun oleh Draf Akhir; RAM ialah ruang bahan dan contoh agen.</p><div id="pdTulis"></div>`);
+    if (f.p === 'rujukan') { P.bahan = false; el.innerHTML = kepala + htmlRujukan(f) + LT; tabFolder(el); pasangEditor(); return; }
     const F = fd(f.k); const sibuk = P.busy && P.busy.k === f.k ? P.busy.mod : null; const mati = P.busy ? ' disabled' : '';
     const logC = (F.log || []).filter(x => x.mod === 'cadangan'); const cad = baikiCad(logC[logC.length - 1]);
     /* langkah 1 */
@@ -433,9 +459,9 @@ export function initPandu(R, C) {
       el.innerHTML = `<div class="pd-fh"><h3>Bahan dan acuan</h3><span class="pd-fh-m">artikel panduan dan acuan artikel contoh, di satu tempat bagi semua folder</span><span class="spacer"></span><button class="btn btn-sm" data-pd="buka" data-k="${esc(f.k)}">Buka folder ${esc(tajukF(f))}</button></div><div class="pd-bf-bar"><span class="lbl">Tetapkan bahan bagi folder:</span>${pilih}</div><p class="pd-tujuan">${terang}</p>` + L1 + LA;
     } else {
       const keBahan = `<div class="pd-acts pd-ke-bahan"><button class="btn btn-sm" data-pd="bahanf" data-k="${esc(f.k)}">${sp.bahan === 'asal' ? 'Bahan folder ini' : 'Artikel panduan dan acuan folder ini'}</button><span class="help">Dipindahkan ke folder Bahan dan acuan (kad paling kiri) supaya tidak berulang dalam setiap folder.</span></div>`;
-      el.innerHTML = kepala + keBahan + LS + LJ + (f.p === 'kaedah' ? ruangO : '') + (f.p === 'dapatan' ? ruang + ruangO : '') + (f.p === 'perbincangan' ? ruangO : '') + L2;
+      el.innerHTML = kepala + keBahan + LS + LJ + (f.p === 'kaedah' ? ruangO : '') + (f.p === 'dapatan' ? ruang + ruangO : '') + (f.p === 'perbincangan' ? ruangO : '') + L2 + LT;
     }
-    tabFolder(el); if (tabTop && P.tab === tabId) { const tb = el.querySelector(':scope > details.lk-on'); if (tb) tb.scrollTop = tabTop; }
+    tabFolder(el); pasangEditor(); if (tabTop && P.tab === tabId) { const tb = el.querySelector(':scope > details.lk-on'); if (tb) tb.scrollTop = tabTop; }
     if (snTop) { const sn = $('#pdSenarai'); if (sn) sn.scrollTop = snTop; }
     const sel = el.querySelector('[data-pdsel="peta"]'); if (sel) sel.value = sid;
     if ($('#pdPrisma')) Prisma.render($('#pdPrisma'), f); if ($('#pdOutput')) Output.render($('#pdOutput'), f); if ($('#pdRajah')) Rajah.render($('#pdRajah'), f);
@@ -1035,7 +1061,7 @@ Tiada em-dash.`;
   }
   /* ---- meter ringkas di atas editor ---- */
   function kemasBar() {
-    const bar = $('#artPanduBar'); if (!bar) return; const d = C.doc(); const sid = Teks.state.bab === A.id ? Teks.state.sek : null; const f = d && P.t && P.id === A.id ? folderSeksyen(sid) : null;
+    const bar = $('#artPanduBar'); if (!bar) return; if (P.t && P.t.sedia) { bar.hidden = true; bar.innerHTML = ''; return; } const d = C.doc(); const sid = Teks.state.bab === A.id ? Teks.state.sek : null; const f = d && P.t && P.id === A.id ? folderSeksyen(sid) : null;
     if (!f || f.p === 'rujukan') { bar.hidden = true; bar.innerHTML = ''; return; }
     const uk = ukur(f); const [, lb] = statusFolder(f, uk); bar.hidden = false; const hb = document.querySelector('header.bar') || document.querySelector('.bar'); bar.style.top = ((hb ? hb.offsetHeight : 0) + 4) + 'px';
     bar.innerHTML = `<button class="pd-bar-f" data-pd="buka" data-k="${esc(f.k)}" data-l="L2" title="Buka folder ini dalam Pandu Tulis"><b>Folder ${esc(tajukF(f))}</b><span>${lb} · ${angka(uk.n)} patah</span></button>`;
@@ -1912,7 +1938,7 @@ ${PIAWAI_RINGKAS}`;
     if (k === Draf.KUNCI) { P.bahan = false; P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(); render(); if (o && o.tatal) { const el = $('#pdFolder'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } return; }
     const f = folderDari(k); if (!f) return; o = o || {};
     if (f.p === 'rujukan') P.bahan = false;
-    if (f.p === 'abstrak' && P.buka !== k && !P.bahan) { const belum = tulis().filter(x => x.p !== 'abstrak' && x.p !== 'rujukan' && patah(teksFolder(x)) < 40); if (belum.length) { const ok = await R.richModal('Abstrak ditulis paling akhir', `<p>Abstrak merumuskan manuskrip yang sudah ditulis. ${belum.length} folder belum ada ASAL:</p><ul>${belum.map(x => `<li>${esc(tajukF(x))}</li>`).join('')}</ul><p class="help">Jika abstrak ditulis sekarang, ia perlu ditulis semula apabila folder lain berubah.</p>`, 'Buka Abstrak juga', 'Kembali'); if (!ok) return; } }
+    if (f.p === 'abstrak' && P.buka !== k && !P.bahan && !o.terus) { const belum = tulis().filter(x => x.p !== 'abstrak' && x.p !== 'rujukan' && patah(teksFolder(x)) < 40); if (belum.length) { const ok = await R.richModal('Abstrak ditulis paling akhir', `<p>Abstrak merumuskan manuskrip yang sudah ditulis. ${belum.length} folder belum ada ASAL:</p><ul>${belum.map(x => `<li>${esc(tajukF(x))}</li>`).join('')}</ul><p class="help">Jika abstrak ditulis sekarang, ia perlu ditulis semula apabila folder lain berubah.</p>`, 'Buka Abstrak juga', 'Kembali'); if (!ok) return; } }
     P.buka = k; R.lsSet('rslr_pandu_buka_' + P.id, k); P.terbuka = new Set(langkahLalai(f)); P.tabMinta = Array.from(P.terbuka)[0] || null; if (o.l) { const l = o.l === 'L3' ? 'L2' : o.l; P.terbuka.add(l); if (/^L2./.test(l)) P.terbuka.add('L2'); P.tabMinta = /^L2./.test(l) ? 'L2' : /^L1./.test(l) ? 'L1' : l; }
     const sid = sidFolder(f); if (sid && !(Teks.state.bab === A.id && julat(f).includes(Teks.state.sek))) { Teks.flushEditor(); Teks.state.sek = sid; Teks.renderSenarai(); Teks.renderEditor(); }
     render(); if (o.tatal) { const el = $('#pdFolder'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
@@ -1965,7 +1991,7 @@ ${PIAWAI_RINGKAS}`;
       else if (a === 'sasaranauto') { P.t.sasaranAuto = true; simpanT(true); P.cache = {}; render(); toast('Sasaran panjang kembali mengikut saiz artikel contoh: ' + angka(jumlahSasaran()) + ' patah perkataan'); }
       else if (a === 'buka') bukaFolder(b.dataset.k, { tatal: !!b.closest('.pd-fh') });
       else if (a === 'bahan' || a === 'bahanf') { const tl = tulis().filter(x => x.p !== 'rujukan'); const sasar = a === 'bahanf' ? b.dataset.k : (tl.some(x => x.k === P.buka) ? P.buka : (tl[0] || {}).k); if (!sasar) return; await bukaFolder(sasar, { bahan: true, l: 'L1' }); }
-      else if (a === 'editor') { const f = folderDari(k); const sid = f && sidFolder(f); if (!sid) return; if (!(Teks.state.bab === A.id && julat(f).includes(Teks.state.sek))) { Teks.flushEditor(); Teks.state.sek = sid; Teks.renderSenarai(); Teks.renderEditor(); } const ed = $('#artEditor'); if (ed) ed.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+      else if (a === 'editor') { const f = folderDari(k); const sid = f && sidFolder(f); if (!sid) return; if (!(Teks.state.bab === A.id && julat(f).includes(Teks.state.sek))) { Teks.flushEditor(); Teks.state.sek = sid; P.suis = true; try { Teks.renderSenarai(); Teks.renderEditor(); } finally { P.suis = false; } } await bukaFolder(k, { l: 'LT', tatal: true }); }
       else if (a === 'pilih') { const F = fd(k); const id = b.dataset.id; const jenis = b.dataset.jenis; const lain = jenis === 'utama' ? 'sekunder' : 'utama'; const ada = (F[jenis] || []).includes(id); F[jenis] = (F[jenis] || []).filter(x => x !== id); F[lain] = (F[lain] || []).filter(x => x !== id); if (!ada) { if (jenis === 'utama' && F.utama.length >= HAD_UTAMA) { toast(`Maksimum ${HAD_UTAMA} artikel panduan utama bagi satu folder; selebihnya jadikan sekunder supaya hujah kekal fokus dan kos terkawal.`, true); F.sekunder.push(id); } else F[jenis].push(id); } simpanF(k); P.terbuka.add('L1'); renderFolder(); kemasBar(); }
       else if (a === 'agen') agen(k, b.dataset.mod); else if (a === 'menyeluruh') agen(null, 'menyeluruh');
       else if (a === 'csvabstrak') modalAbstrak(b.dataset.id);
@@ -2043,6 +2069,11 @@ ${PIAWAI_RINGKAS}`;
       else if (s === 'peta') { const k = el.dataset.k; if (!el.value) return; P.t.peta = P.t.peta || {}; P.t.peta[k] = el.value; simpanT(true); P.cache = {}; bukaFolder(k); toast('Folder dipadankan dengan seksyen yang dipilih'); }
     });
   }
+  { const tb = nodEditor(); const panel = $('#artPanel');
+    if (tb) tb.addEventListener('focusout', () => setTimeout(() => { if (P.tertunda && !tb.contains(document.activeElement)) { P.tertunda = false; render(); } }, 60));
+    /* klik di luar editor melepaskan fokus editor dahulu (sesetengah pelayar tidak memfokus butang), supaya lukisan semula tidak ditangguhkan */
+    if (panel && tb) panel.addEventListener('pointerdown', e => { if (!tb.contains(e.target) && tb.contains(document.activeElement)) { Teks.flushEditor(); document.activeElement.blur(); } }, true);
+    const cr = $('#artCariHasil'); if (cr) cr.addEventListener('click', () => setTimeout(() => { if (Teks.state.bab === A.id && Teks.state.sek && P.t && P.t.sedia) keSeksyen(Teks.state.sek); }, 0)); }
   const bar = $('#artPanduBar'); if (bar) bar.addEventListener('click', e => { const b = e.target.closest('[data-pd="buka"]'); if (!b) return; const w = $('#artPanduWrap'); if (w) w.open = true; bukaFolder(b.dataset.k, { l: b.dataset.l, tatal: true }); });
   const edRoot = $('#artEditor'); if (edRoot) edRoot.addEventListener('input', () => kemasHidup());
 
@@ -2064,11 +2095,20 @@ ${PIAWAI_RINGKAS}`;
       P.timers.tr = setTimeout(() => { const f = document.activeElement; if ((f && f.tagName === 'TEXTAREA' && rootTr.contains(f)) || rootTr.querySelector(':active')) return; const T = teras(); if (String(T[k] || '').trim()) { TR_SUNTING.delete(k); T[k] = String(T[k]).trim(); simpanT(true); } renderTeras(false); }, 250); });
   }
   /* ---- ruang kerja folder ---- */
-  const X = { tulis: () => tulis(), sisipSelepasRujukan: (f, html) => sisipSelepasRujukan(f, html), R, C, P, D, Teks, A, esc, toast, angka, patah, bersih, sekarang, idBaru, simpanT, gaya, en, namaBahasa, kel, fd: k => fd(k), folderDari, sidFolder, julat, sasaranRam, sisip, urai, renderFolder: () => renderFolder(), render: () => render(), kemasBar: () => kemasBar(), terbuka: () => P.terbuka };
+  const X = { tulis: () => tulis(), sisipSelepasRujukan: (f, html) => sisipSelepasRujukan(f, html), R, C, P, D, Teks, A, esc, toast, angka, patah, bersih, sekarang, idBaru, simpanT, gaya, en, namaBahasa, kel, fd: k => fd(k), folderDari, sidFolder, julat, sasaranRam, sisip, urai, renderFolder: () => renderFolder(), render: () => render(), keSeksyen: sid => keSeksyen(sid), kemasBar: () => kemasBar(), terbuka: () => P.terbuka };
   const Prisma = initPrisma(X); const Output = initOutput(X); const Rajah = initRajah(X);
   const Draf = initDraf(Object.assign({}, X, { folders: () => folders(), tajukF, cariSitasi, indeks, semakAsal: f => semakAsal(f), semakAngka: k => semakAngka(k), dataRujukan: f => dataRujukan(f), teras: () => teras(), barisTr, teksTeras: () => teksTeras(), csvAktif: () => csvAktif(), kiraTokenRes: r => kiraTokenRes(r), adaPrisma: () => adaPrisma() }));
 
-  function onEditor() { kemasBar(); }
+  /* Editor menukar seksyen: jika editor berada dalam folder dan seksyen baharu itu milik folder lain, folder itu dibuka; seksyen yang baru
+     dicipta (ditambah di hujung susunan) dipindahkan ke hujung folder semasa supaya ia kekal kelihatan. */
+  function onEditor() {
+    kemasBar(); if (P.suis || !P.t || !P.t.sedia || P.id !== A.id) return; const tb = nodEditor(); if (!tb || !tb.closest('#pdTulis')) return;
+    const sid = Teks.state.bab === A.id ? Teks.state.sek : null; const f = folderDari(P.buka); if (!sid || !f) return; const ids = julat(f); if (ids.includes(sid)) { tapisSenarai(); return; }
+    const d = C.doc(); const s = d && d.seksyen[sid]; const baharu = s && Date.now() - (s.cipta || 0) < 8000 && !patah(String(s.teks || ''));
+    if (baharu && d.susunan && ids.length) { const dari = d.susunan.indexOf(sid); if (dari >= 0) { d.susunan.splice(dari, 1); const ke = d.susunan.indexOf(ids[ids.length - 1]); d.susunan.splice(ke + 1, 0, sid); s.aras = ((Teks.nombor(A.id)[ids[0]] || { aras: 1 }).aras || 1) + 1;   /* subseksyen folder ini */
+      P.suis = true; try { Teks.tulisSeksyen(A.id, sid, {}, { senyap: true, segera: true }); Teks.renderSenarai(); Teks.renderEditor(); } finally { P.suis = false; } P.cache = {}; tapisSenarai(); const tj = $('#artTajuk'); if (tj) tj.focus(); } return; }
+    const g = folderSeksyen(sid); if (g && g.k !== f.k) { P.suis = true; bukaFolder(g.k, { l: 'LT' }).finally(() => { P.suis = false; }); } else tapisSenarai();
+  }
   function onTulis() { kemasHidup(); Draf.onTulis(); }
   return { Draf, tandaSeksyen: (n, id) => Draf.tandaSeksyen(n, id), semakGanti, pelanPrisma, adaPrismaRasmi, semakAsal, htmlSemakAsal, semakAngka, semakPrisma, sisipSelepas, objekPerlu, objekKeAsal, janaObjek, rancangNombor, susunNombor, batalNombor, contohP, htmlPelan, pecahDraf, soalanRefleksi, agenRefleksi, htmlRefleksi, teksRefleksi, ayatKeAsal, binaPeta, janaKad, htmlTema, temaData, kadSedia, temaSah, blokCsvTema, keTulisan, arahanKadTema, htmlTemaRam, arasCsv, render, onEditor, onTulis, sediakan, bukaFolder, tandaSiap, agen, bedah, bajet, uraiKeputusan, bahagiKeputusan, pecahKp, htmlCadangan, muatNaikCsv, csvData, csvAktif, blokCsv, csvPeta, statCsv, htmlStatCsv, hadAbstrak, pulihCsvLama, blokSumber, konteksFolder, teksKerangka, pecahCadangan, tugasCadangan, teras, teksTeras, kesanTeras, semakRq, tetapTeras, renderTeras, agenTeras, w5, nW5, W5_KOD, indeks, acuan, kemasAcuan, sasaran, jumlahSasaran, ukur, cariSitasi, folders, tulis, folderDari, sidFolder, julat, fd, gaya, cadangPemboleh, state: P, Prisma, Output, Rajah, D, ACUAN, POLA };
 }
