@@ -17,6 +17,7 @@
    cache. Harga (USD per juta token, disemak dengan dokumentasi Anthropic pada 23 November 2026): Haiku 5.5 masuk 0.10, keluar 0.50;
    Sonnet 5.5 masuk 2, keluar 10; Opus 5.5 masuk 4, keluar 20; Fable 5.2 masuk 8, keluar 40. */
 import { PIAWAI_RINGKAS } from './bahasa-data.js';
+import { GAYA_AYAT } from './prompt-pustaka.js';
 
 /* Keadaan yang dikongsi oleh kedua-dua tika (Tulisan dan Artikel): kiraan kegagalan berturut-turut, tetapan API yang dicache dan
    masa makluman kunci API, supaya menghidupkan semula Auto atau membetulkan kunci berkuat kuasa pada kedua-dua menu. */
@@ -349,6 +350,18 @@ export function initRamal(R, H) {
     if (ok && susun.length) { const jadi = await salin(tk.join('\n\n'), susun.map(e => `<p style="margin-left:0.5in;text-indent:-0.5in">${apaHtml(apaTeks(e).teks)}</p>`).join('')); toast(jadi ? susun.length + ' rujukan disalin (APA 7)' : 'Papan keratan tidak tersedia', !jadi); }
   }
 
+  /* v1.52.0: senarai rujukan merentas banyak seksyen (tab Rujukan menu Tesis). list ialah [{ label, teks }]; setiap sitasi dipadankan
+     dengan rekod repositori seperti dalam senarai rujukan seksyen, dan label (contohnya "Bab 2") direkodkan bagi setiap sumber. */
+  function kumpulRujukan(list) {
+    const ut = utamaSet(); const ids = new Map(), di = new Map(), luar = new Map(), kabur = new Map(), semak = new Map();
+    (list || []).forEach(x => { const t = String(x.teks || ''); if (!RE_ADA_TAHUN.test(t)) return; cariSitasi(t, ut).forEach(s => { const k = satuBaris(s.pengarang) + ', ' + s.tahun;
+      const tanda = (m, rek) => { if (!m.has(k)) m.set(k, { rekod: rek || [], di: new Set() }); m.get(k).di.add(x.label); };
+      if (s.rekod.length === 1) { const e = s.rekod[0]; ids.set(e.id, e); if (!di.has(e.id)) di.set(e.id, new Set()); di.get(e.id).add(x.label); } else if (s.rekod.length > 1) tanda(kabur, s.rekod); else if (s.hampir && s.hampir.length) tanda(semak, s.hampir); else tanda(luar); }); });
+    const susun = Array.from(ids.values()).sort((a, b) => bersih(apaTeks(a).teks).localeCompare(bersih(apaTeks(b).teks)) || a.tahun.localeCompare(b.tahun)).map(e => ({ id: e.id, nama: naratif(e, false), apa: apaTeks(e), di: Array.from(di.get(e.id) || []) }));
+    const senarai = m => Array.from(m.entries()).map(([k, v]) => ({ sitasi: k, di: Array.from(v.di), rekod: v.rekod.map(e => ({ id: e.id, nama: naratif(e, false) })) }));
+    return { susun, kabur: senarai(kabur), semak: senarai(semak), luar: senarai(luar) };
+  }
+
   /* ---------------- ramalan ayat ---------------- */
   const RE_TAMAT = /[.?!]["'”’)\]]?[\s ]*$/;
   const SINGKATAN = /(?:\bet\s+al|\bdll|\bdsb|\bdsbnya|\bcth|\bmis|\bhlm|\bm\.s|\bms|\bDr|\bProf|\bEn|\bPn|\bSdn|\bBhd|\bNo|\bvol|\beds?|\bpp?|\be\.g|\bi\.e|\bcf|\bvs|\betc|\bJan|\bFeb|\bApr|\bOgos|\bSept|\bOkt|\bNov|\bDis|(?:^|\s)\p{Lu}|(?:^|\s)\d{1,2})\.[\s ]*$/u;
@@ -547,6 +560,7 @@ PERATURAN:
 9. Bahasa ikut BAHASA TEKS. Bahasa Melayu: laras akademik baku Malaysia mengikut PIAWAIAN BAHASA di bawah, tanpa em-dash. Bahasa Inggeris: formal academic British English.
 10. KEPELBAGAIAN SUMBER: setiap cadangan mesti bersandarkan rekod yang BERLAINAN daripada cadangan lain, dan bukan parafrasa antara satu sama lain. Rekod dalam SUMBER YANG SUDAH DISITASI tidak digunakan lagi selagi ada rekod lain yang menyokong ayat seterusnya; tujuannya supaya satu perenggan tidak mengulang sitasi yang sama. Susun cadangan yang paling kukuh dahulu.
 11. Jika tiada rekod yang benar-benar menyokong ayat seterusnya yang bermakna, pulangkan "cadangan": [] (senarai kosong). Tiada cadangan lebih baik daripada cadangan yang lemah.
+12. ${GAYA_AYAT}
 
 ${PIAWAI_RINGKAS}`;
   const SKEMA = { type: 'object', additionalProperties: false, required: ['cadangan'], properties: { cadangan: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['ayat', 'sumber', 'bukti', 'fungsi'], properties: { ayat: { type: 'string' }, sumber: { type: 'array', items: { type: 'string' } }, bukti: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['kod', 'petikan'], properties: { kod: { type: 'string' }, petikan: { type: 'string' } } } }, fungsi: { type: 'string' } } } } } };
@@ -718,6 +732,6 @@ ${PIAWAI_RINGKAS}`;
   function pasang() { batal(); tutupPopup(); serlah(); }
   function tutup() { batal(); tutupPopup(); }
 
-  return { input, kekunci, tekan, klik, kabur, pilihan, pasang, tutup, butang, barHtml, serlah, bukaTetapan, senaraiRujukan, tukarModel,
+  return { input, kekunci, tekan, klik, kabur, pilihan, pasang, tutup, butang, barHtml, serlah, bukaTetapan, senaraiRujukan, tukarModel, kumpulRujukan, apaHtml, salin,
     /* untuk ujian */ _: { cariSitasi, pustaka, urusPenulis, ayatTerakhir, sahkan, bersihAyat, apaHtml, padanBukti, sitasiKurungan, bahasaInggeris, tet, guna, state: Z, bersama: BERSAMA } };
 }

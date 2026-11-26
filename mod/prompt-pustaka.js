@@ -16,6 +16,7 @@
    9. DISCUSSION                -> resipiTambahan('perbincangan')  -> Contoh penulisan folder Perbincangan
    10. CONCLUSION (sebenarnya audit manuskrip penuh) -> AUDIT_PENJAJARAN -> Semakan menyeluruh manuskrip; sebahagiannya ke
        resipiTambahan('dapatan', 'kesimpulan', 'abstrak')
+   Menu Tesis: GAYA_TULISAN -> Cadangan Sintesis (mod/bengkel.js); GAYA_AYAT -> Ramal ayat (mod/ramal.js); lihat nota di hujung fail.
    11. ANALYSIS                 -> DIBUANG: prompt ini mengaudit set data mentah (tinjauan, transkrip temu bual) tanpa menganalisisnya.
        Sistem ini tidak menerima set data mentah: Ruang Output menerima output SPSS dan AMOS yang sudah siap dianalisis, dan fail CSV
        di sini ialah rekod bibliografi yang kualitinya sudah disemak oleh statistik CSV dan saringan. Tiada agen yang boleh memikulnya. */
@@ -139,3 +140,13 @@ export function resipiTambahan(peranan, o) {
   if (peranan === 'abstrak') return R_ABSTRAK;
   return '';
 }
+
+/* Semakan silang menu Tesis (v1.51.1). Menu Tesis tidak mempunyai agen penulisan folder atau agen semakan sendiri: teksnya ditulis oleh
+   Prof Dr, dan agen hanya menyumbang melalui tiga laluan, iaitu Ramal ayat dalam RAM (mod/ramal.js), Cadangan Sintesis daripada menu
+   Sintesis yang dihantar ke RAM (mod/bengkel.js) dan contoh penulisan yang dihantar dari Penerbitan. Maka hanya prompt gaya (Humanize) yang
+   terpakai kepada Tesis: GAYA_TULISAN disambung kepada Cadangan Sintesis, dan GAYA_AYAT, iaitu bentuk ringkasnya bagi satu ayat, kepada
+   Ramal ayat. Prompt lain tidak disambung kepada Tesis, dengan sebab: resipi Pendahuluan, Metodologi, Perbincangan dan Kesimpulan ditulis
+   bagi artikel jurnal (bab tesis mengikut struktur dan panduan UPSI, dan tiada agen yang menulis bab); rubrik pra-hantaran, audit penjajaran
+   dan audit sitasi memerlukan agen semakan yang tidak wujud dalam Tesis (Draf Tesis hanya menggabung bab dan mencatat aktiviti, tanpa
+   token); saringan tajuk dahulu dan strategi tajuk khusus bagi Ruang PRISMA dan Pembantu tajuk artikel. */
+export const GAYA_AYAT = `Mutu ayat: jangan membesarkan kepentingan tanpa bukti ("penting", "pivotal", "anjakan paradigma"); jangan guna atribusi kabur ("kajian menunjukkan", "pakar berpendapat") kerana sumbernya sudah dinamakan oleh sitasi sistem; jangan tambah tafsiran kosong di hujung ayat ("mencerminkan", "menonjolkan", "underscoring", "highlighting"); guna "ialah" atau "adalah" (is, are), bukan "berfungsi sebagai" atau "serves as"; jangan guna binaan "bukan sekadar X, tetapi Y" sebagai hiasan; senaraikan tiga perkara hanya jika rekod memang menyebut tiga; guna istilah konstruk yang sama seperti dalam TEKS SEBELUM, bukan sinonimnya; satu lindung nilai sahaja bagi satu dakwaan; buang frasa pengisi ("dalam usaha untuk" menjadi "untuk", "in order to" menjadi "to"); dan jangan umumkan apa yang akan ditulis.`;
