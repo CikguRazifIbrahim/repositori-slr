@@ -266,6 +266,63 @@ export const TAJUK = {
     perbincangan: { t: ['Perbincangan', 'Discussion'], sub: [
       [2, 'Recommendations', 'Cadangan']] },
     kesimpulan: { t: ['Kesimpulan dan Cadangan', 'Conclusions and recommendations'], sub: [] }
+  },
+  /* Wohlfart dan Wagner (2023), PMC9628337: acuan ulasan payung (pandu-acuan-jenis.js) */
+  'payung-wohlfart-2023': {
+    nota: 'Artikel contoh tiada tajuk Results; Quantitative results dan Qualitative findings ialah dua bahagian yang berturutan, maka kedua-duanya menjadi dua folder. Aras subtajuk disimpulkan daripada susunan teks kerana sumber tidak menandakan aras.',
+    pendahuluan: { t: ['Pendahuluan', 'Introduction'], sub: [] },
+    kaedah: { t: ['Kaedah', 'Method'], sub: [
+      [2, 'Inclusion criteria', 'Kriteria penerimaan'],
+      [2, 'Search procedure', 'Prosedur carian'],
+      [2, 'Study selection', 'Pemilihan kajian'],
+      [2, 'Data analysis', 'Analisis data']] },
+    dapatan: { t: ['Hasil Kuantitatif', 'Quantitative results'], sub: [] },
+    dapatan2: { t: ['Dapatan Kualitatif', 'Qualitative findings'], sub: [
+      [2, 'Research focus of previous reviews', 'Tumpuan kajian ulasan terdahulu'],
+      [2, 'Digital literacy', 'Literasi digital'],
+      [3, 'Concept of digital literacy', 'Konsep literasi digital'],
+      [3, 'TPACK', 'TPACK'],
+      [3, 'Approaches to developing teachers’ digital literacy', 'Pendekatan membangunkan literasi digital guru'],
+      [3, 'Requirements for developing teachers’ digital literacy', 'Keperluan bagi membangunkan literasi digital guru'],
+      [2, 'Technology integration', 'Integrasi teknologi'],
+      [3, 'Strategies, requirements, and barriers to technology integration', 'Strategi, keperluan dan halangan integrasi teknologi'],
+      [3, 'Technology acceptance', 'Penerimaan teknologi'],
+      [2, 'Future research', 'Kajian masa depan']] },
+    perbincangan: { t: ['Perbincangan', 'Discussion'], sub: [
+      [2, 'Implications', 'Implikasi'],
+      [2, 'Limitations and recommendations for future research', 'Batasan dan cadangan kajian lanjutan']] },
+    kesimpulan: { t: ['Kesimpulan', 'Conclusion'], sub: [] }
+  },
+  /* Gause et al. (2022), PMC9257720: acuan ulasan bersepadu (pandu-acuan-jenis.js) */
+  'bersepadu-gause-2022': {
+    nota: 'Aim, Integrative review question dan Limitations of the study dicetak sebagai tajuk yang berdiri sendiri dalam artikel contoh; di sini setiap satunya menjadi subtajuk dalam folder yang memikulnya. Aras subtajuk disimpulkan daripada susunan teks.',
+    pendahuluan: { t: ['Pendahuluan', 'Introduction'], sub: [
+      [2, 'Aim', 'Tujuan'],
+      [2, 'Integrative review question', 'Soalan ulasan bersepadu']] },
+    kaedah: { t: ['Reka Bentuk dan Kaedah', 'Design and methods'], sub: [
+      [2, 'Step 1: Problem identification', 'Langkah 1: Pengenalpastian masalah'],
+      [2, 'Step 2: Literature search', 'Langkah 2: Carian literatur'],
+      [2, 'Step 3: Data evaluation', 'Langkah 3: Penilaian data'],
+      [2, 'Step 4: Data analysis', 'Langkah 4: Analisis data'],
+      [2, 'Ethical considerations', 'Pertimbangan etika'],
+      [2, 'Step 5: Data presentation', 'Langkah 5: Pembentangan data']] },
+    dapatan: { t: ['Dapatan', 'Results'], sub: [
+      [2, 'Theme 1: Technology use in nursing education', 'Tema 1: Penggunaan teknologi dalam pendidikan kejururawatan'],
+      [2, 'Theme 2: Manner in which technology is used in nursing education', 'Tema 2: Cara teknologi digunakan dalam pendidikan kejururawatan'],
+      [3, 'Manner in which technology is used in classroom nursing education', 'Cara teknologi digunakan dalam pendidikan kejururawatan di bilik darjah'],
+      [3, 'Manner in which technology is used in clinical nursing education', 'Cara teknologi digunakan dalam pendidikan kejururawatan klinikal'],
+      [2, 'Theme 3: Antecedents for technology use in nursing education', 'Tema 3: Prasyarat penggunaan teknologi dalam pendidikan kejururawatan'],
+      [3, 'Antecedents for technology use in classroom nursing education', 'Prasyarat penggunaan teknologi dalam pendidikan kejururawatan di bilik darjah'],
+      [2, 'Theme 4: Advantages of technology use in nursing education', 'Tema 4: Kelebihan penggunaan teknologi dalam pendidikan kejururawatan'],
+      [3, 'Advantages of technology use in classroom nursing education', 'Kelebihan penggunaan teknologi dalam pendidikan kejururawatan di bilik darjah'],
+      [3, 'Advantages of technology use in clinical nursing education', 'Kelebihan penggunaan teknologi dalam pendidikan kejururawatan klinikal'],
+      [2, 'Theme 5: Disadvantages of technology usage in nursing education', 'Tema 5: Kekurangan penggunaan teknologi dalam pendidikan kejururawatan'],
+      [3, 'Disadvantages and challenges of technology use in classroom nursing education', 'Kekurangan dan cabaran penggunaan teknologi dalam pendidikan kejururawatan di bilik darjah'],
+      [3, 'Disadvantages and challenges of technology use in clinical nursing education', 'Kekurangan dan cabaran penggunaan teknologi dalam pendidikan kejururawatan klinikal'],
+      [2, 'Theme 6: Technology use in nursing education amidst COVID-19', 'Tema 6: Penggunaan teknologi dalam pendidikan kejururawatan semasa COVID-19']] },
+    perbincangan: { t: ['Perbincangan', 'Discussion'], sub: [
+      [2, 'Limitations of the study', 'Batasan kajian']] },
+    kesimpulan: { t: ['Kesimpulan', 'Conclusion'], sub: [] }
   }
 };
 /* Tajuk asal bagi satu bahagian acuan terbina, atau null jika belum direkodkan. */
