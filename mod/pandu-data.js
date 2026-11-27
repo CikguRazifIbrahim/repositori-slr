@@ -313,7 +313,7 @@ export function spec(kel, peranan) {
 export const GAYA_LALAI = {
   larang: 'korpus, corpus, bottleneck, lewah, berlewah-lewah, sauh, menyauh, disauh, bersauh, jangkar, menjangkar, dijangkar, penjangkaran, mengkonseptualisasikan, dikonseptualisasikan, konseptualisasi, mengoperasionalisasikan, mengoperasionalkan, parsimoni, dikotomi, songsang, menyongsang, artikulasi, mengartikulasikan, epistemologi, ontologi, lakuran, meleburkan, substantif, kontingen',
   frasa: 'adalah penting untuk diperhatikan bahawa; perlu ditekankan di sini bahawa; dalam era globalisasi yang serba mencabar ini; tidak dapat dinafikan bahawa; secara keseluruhannya dapat dirumuskan bahawa; dengan itu, dapat disimpulkan bahawa; ianya; berdasarkan kepada; it is important to note that; it is worth noting that; in today\'s rapidly; delve into; a myriad of; plays a pivotal role; in the realm of',
-  pembuka: 'apakah; sejauh mana; sejauh manakah; to what extent; what is the level',
+  pembuka: 'yang mana; yang manakah; sejauh mana; sejauh manakah; to what extent; what is the level',
   hadTahun: 5, hadPangkalan: 2,
   arahan: 'Ayat pelbagai panjang, satu ayat satu idea, suara aktif lebih kerap. Mulakan perenggan dengan dapatan atau hujah, bukan dengan ayat yang menerangkan apa yang akan diterangkan. Setiap kali sumber disebut, lakukan analisis (apa yang didapati, dengan angka jika ada) dan sintesis (bagaimana ia selari atau bercanggah dengan sumber lain) serentak. Elakkan frasa pembuka klise dan tiga kata sifat berturutan. Jangan guna "di mana" sebagai kata hubung, "ianya" atau "berdasarkan kepada". Nilai statistik yang tidak boleh melebihi satu ditulis tanpa sifar di hadapan (.75). Soalan kajian bermula dengan "Yang mana" atau "Bagaimana" (Which, How), tidak menggunakan "Apakah", "Sejauh mana" atau perkataan "tahap", dan tidak menggabungkan dua perkara dalam satu soalan. Bagi ulasan skop: maksimum dua pangkalan data, rentetan carian dicetak penuh, rajah aliran mengikut templat rasmi PRISMA 2020. Jangan campurkan Bahasa Melayu dan Bahasa Inggeris dalam satu teks.'
 };
@@ -372,7 +372,7 @@ Sempadan: yang dinilai ialah sintesis, iaitu perbandingan dan pengelompokan sumb
 1. Buka dengan isu yang khusus dan bersitasi dalam konteks artikel ini; elakkan pembuka umum tentang zaman atau era.
 2. Rumuskan apa yang sudah diketahui bagi setiap pemboleh ubah dalam beberapa ayat bersitasi yang membandingkan sumber; huraian terperinci disimpan untuk folder lain.
 3. Bina jurang secara berperingkat. Bagi setiap jurang nyatakan apa yang sudah dikaji, apa yang belum, dan bukti kekosongan itu daripada rekod (konteks, populasi, konstruk atau kaedah yang ditinggalkan). Elakkan dakwaan mutlak seperti "tiada kajian"; hadkan dakwaan kepada skop yang boleh dipertahankan.
-4. Nyatakan tujuan dan soalan yang padan satu banding satu dengan jurang. Setiap soalan bermula dengan Which atau How (Yang mana atau Bagaimana) dan menanya satu perkara sahaja.
+4. Nyatakan tujuan dan soalan yang padan satu banding satu dengan jurang. Setiap soalan bermula dengan Which atau How (Bahasa Melayu: Apakah atau Bagaimanakah, bukan "Yang mana") dan menanya satu perkara sahaja.
 5. Tutup dengan sumbangan kepada teori, amalan atau dasar.`;
   if (peranan === 'perbincangan') return `RESIPI PERBINCANGAN:
 1. Setiap perenggan bermula dengan satu dapatan utama artikel ini, seperti yang ditulis dalam ASAL folder Dapatan atau data yang diberi, bukan dengan literatur.

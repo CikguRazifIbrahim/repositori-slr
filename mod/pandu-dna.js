@@ -40,7 +40,7 @@ export const KOD = [
   ['2 Teras bukti', 'T2', 'Jambatan tujuan', 'tiada'],
   ['3 Pengisian', 'K-PERANAN', 'Kritikan sisi IV (fungsi IV dalam proses M)', 'naratif'],
   ['3 Pengisian', 'I', 'Pengisian jurang', 'tiada'],
-  ['3 Pengisian', 'SK', 'Soalan kajian (Bagaimanakah, Yang mana; How, Which)', 'tiada'],
+  ['3 Pengisian', 'SK', 'Soalan kajian (Bagaimanakah, Apakah; How, Which)', 'tiada'],
   ['3 Pengisian', 'OK', 'Objektif bernombor (1), (2), (3) dalam satu ayat (artikel)', 'tiada'],
   ['3 Pengisian', 'S', 'Sumbangan integratif', 'pilihan'],
   ['Koda', 'P', 'Kepentingan praktikal kepada pemimpin dan penggubal dasar', 'satu sumber'],

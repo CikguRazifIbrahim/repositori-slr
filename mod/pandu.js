@@ -24,7 +24,7 @@ import { blokTeks, svgRajah, svgKePng, adaBlok } from './pandu-blok.js';
 import * as Csv from './pandu-csv.js';
 import { initDraf } from './pandu-draf.js';
 import * as Tema from './pandu-tema.js';
-import { RUBRIK_HANTARAN, AUDIT_PENJAJARAN, GAYA_TULISAN, resipiTambahan } from './prompt-pustaka.js';
+import { RUBRIK_HANTARAN, AUDIT_PENJAJARAN, GAYA_TULISAN, resipiTambahan, RESIPI_MASALAH } from './prompt-pustaka.js';
 
 export function initPandu(R, C) {
   const { $, esc, toast } = R; const { A, Teks } = C; const Bd = () => R.Banding;
@@ -79,8 +79,10 @@ export function initPandu(R, C) {
     const f = P.f[k]; if (!f || !P.id) return; f.masa = sekarang(); f.log = (f.log || []).slice(-HAD_LOG); R.lsSet(lsF(P.id, k), ringkasLokal(f)); const id = P.id; clearTimeout(P.timers['f' + k]);
     P.timers['f' + k] = setTimeout(async () => { try { await R.db().set(kunciF(id, k), f); } catch (e) { console.warn('pandu: folder awan gagal', e); } }, segera ? 0 : 900);
   }
-  function gaya() { if (!P.gaya) P.gaya = Object.assign({}, D.GAYA_LALAI, R.lsGet(LS_GAYA, null) || {}); return P.gaya; }
-  async function muatGaya() { if (P.awan.gaya) return; P.awan.gaya = true; try { const a = await R.db().get(KUNCI_GAYA); const l = R.lsGet(LS_GAYA, null) || {}; if (a && (a.masa || 0) > (l.masa || 0)) { P.gaya = Object.assign({}, D.GAYA_LALAI, a); R.lsSet(LS_GAYA, a); } } catch (e) {} }
+  /* v1.54.2: "apakah" dikeluarkan daripada pembuka soalan yang dielakkan dan "yang mana" dimasukkan, termasuk bagi peraturan gaya yang sudah tersimpan */
+  const kemasGaya = g => { const p = String(g.pembuka || '').split(/[;\n]/).map(x => x.trim()).filter(Boolean).filter(x => !/^apa(kah)?$/i.test(x)); ['yang manakah', 'yang mana'].forEach(x => { if (!p.some(y => y.toLowerCase() === x)) p.unshift(x); }); g.pembuka = p.join('; '); return g; };
+  function gaya() { if (!P.gaya) P.gaya = kemasGaya(Object.assign({}, D.GAYA_LALAI, R.lsGet(LS_GAYA, null) || {})); return P.gaya; }
+  async function muatGaya() { if (P.awan.gaya) return; P.awan.gaya = true; try { const a = await R.db().get(KUNCI_GAYA); const l = R.lsGet(LS_GAYA, null) || {}; if (a && (a.masa || 0) > (l.masa || 0)) { P.gaya = kemasGaya(Object.assign({}, D.GAYA_LALAI, a)); R.lsSet(LS_GAYA, a); } } catch (e) {} }
   const senarai = (t, pemisah) => String(t || '').split(pemisah).map(x => x.trim()).filter(Boolean);
 
   /* ---- model: folder dan seksyen ---- */
@@ -199,7 +201,7 @@ export function initPandu(R, C) {
     const frasa = senarai(g.frasa, /[;\n]/).map(x => bersih(x)).filter(x => tn.includes(' ' + x + ' ') || tn.includes(' ' + x + ',') || tn.includes(' ' + x + '.')); if (frasa.length) { ringan++; butir.push('Frasa yang berbunyi seperti tulisan mesin atau terjemahan terus: ' + frasa.map(x => '"' + x + '"').join(', ') + '.'); }
     if (/(^|[^a-z])di mana([^a-z]|$)/.test(tn) && !en()) { const kali = (tn.match(/ di mana /g) || []).length; if (kali) { ringan++; butir.push(`"di mana" digunakan ${kali} kali; jika ia berfungsi sebagai kata hubung, gantikan dengan "yang", "iaitu" atau pecahkan ayat.`); } }
     const pembuka = senarai(g.pembuka, /[;\n]/).map(x => bersih(x)); const soalan = ayat(u.teks).filter(a => /\?\s*$/.test(a) || /^(SK|RQ|Soalan)\s*\d/i.test(a)); const salahSoalan = soalan.filter(a => { const b = bersih(a).replace(/^(sk|rq|soalan( kajian| ulasan)?)\s*\d+\s*[:.)-]?\s*/, ''); return pembuka.some(p => b.startsWith(p)) || /\btahap\b/.test(b); });
-    if (salahSoalan.length) { ringan++; butir.push(`${salahSoalan.length} soalan kajian bermula dengan "Apakah", "Sejauh mana" atau menggunakan "tahap": gunakan "Yang mana" atau "Bagaimana" (Which, How), satu soalan satu perkara.`); }
+    if (salahSoalan.length) { ringan++; butir.push(`${salahSoalan.length} soalan kajian bermula dengan "Yang mana", "Sejauh mana" atau menggunakan "tahap": gunakan "Apakah" atau "Bagaimanakah" (Which, How dalam Bahasa Inggeris), satu soalan satu perkara.`); }
     const awal = per.filter(p => p.n >= 12).map(p => bersih(p.t).split(/[\s,]+/)[0]); for (let i = 0; i + 2 < awal.length; i++) if (awal[i] && awal[i] === awal[i + 1] && awal[i] === awal[i + 2]) { ringan++; butir.push(`Tiga perenggan berturut-turut bermula dengan "${awal[i]}"; pelbagaikan pembuka perenggan.`); break; }
     const ay = ayat(u.teks).map(patah).filter(n => n >= 3); if (ay.length >= 8) { const min = ay.reduce((s, x) => s + x, 0) / ay.length; const sp2 = Math.sqrt(ay.reduce((s, x) => s + (x - min) * (x - min), 0) / ay.length); if (sp2 / min < 0.28) butir.push(`Panjang ayat hampir seragam (purata ${Math.round(min)} patah); selang-selikan ayat pendek dengan ayat sederhana supaya tulisan bersuara.`); }
     const lain = en() ? [' yang ', ' dan ', ' dalam ', ' kepada ', ' untuk ', ' dengan ', ' adalah ', ' ini '] : [' the ', ' of ', ' and ', ' is ', ' are ', ' that ', ' with ', ' this ']; const w = u.patah || 1; const asing = lain.reduce((s, k) => s + (tn.split(k).length - 1), 0); if (u.patah >= 80 && asing / w > 0.07) butir.push(`Teks bercampur bahasa (kira-kira ${Math.round(100 * asing / w)}% kata tugas ${en() ? 'Bahasa Melayu' : 'Bahasa Inggeris'}); manuskrip ini ditetapkan dalam ${namaBahasa()}.`);
@@ -946,13 +948,15 @@ Tiada em-dash.`;
     });
     return out;
   }
-  /* Semakan gaya persoalan kajian mengikut peraturan pemilik: bermula dengan Which atau How, satu soalan satu perkara, tanda soal. */
+  /* Semakan gaya persoalan kajian mengikut peraturan pemilik: Which atau How bagi Bahasa Inggeris; Apakah atau Bagaimanakah bagi Bahasa Melayu
+     (v1.54.2: "Yang mana" tidak lagi dibenarkan sebagai pembuka), satu soalan satu perkara, tanda soal. */
   function semakRq(baris) {
     const nota = []; const lab = awalanTr('soalan');
     baris.forEach((b, i) => {
       const n = lab + (i + 1); const t = b.trim();
       if (!/\?\s*$/.test(t)) nota.push(`${n} tidak diakhiri tanda soal.`);
-      if (/^(what|apakah|apa|to what extent|sejauh mana(kah)?|adakah|is |are |does |do )/i.test(t)) nota.push(`${n} tidak bermula dengan Which atau How (Yang mana atau Bagaimana).`);
+      if (/^(what|to what extent|sejauh mana(kah)?|adakah|yang\b|is |are |does |do )/i.test(t)) nota.push(`${n} tidak bermula dengan Which atau How (Bahasa Melayu: Apakah atau Bagaimanakah; bukan "Yang mana").`);
+      else if (/^(apa|bagaimana|mengapa)\s/i.test(t)) nota.push(`${n}: kata tanya pembuka perlu berpartikel -kah (Apakah, Bagaimanakah).`);
       if (/\b(level|levels|extent|tahap)\b/i.test(t)) nota.push(`${n} menanya tentang tahap (level, extent); peraturan Prof Dr mengelakkannya.`);
       if ((t.match(/\?/g) || []).length > 1 || /\b(and|dan|serta)\s+(how|which|what|why|bagaimana(kah)?|yang mana(kah)?|apakah|mengapa(kah)?)\b/i.test(t)) nota.push(`${n} kelihatan menanya dua perkara; pecahkan kepada dua persoalan.`);
     });
@@ -982,7 +986,7 @@ Tiada em-dash.`;
   function htmlTerasBlok(x, T, K, cad, asas) {
     const k = x[0]; const v = String(T[k] || '').trim(); const sunting = TR_SUNTING.has(k) || !v; const baris = k === 'masalah' ? [] : barisTr(T[k]); const kes = K[k] || []; const pun = (T.punca || {})[k];
     const tag = !v ? '<span class="tag pd-bl">belum ditetapkan</span>' : pun === 'agen' ? '<span class="tag ai" title="Dicadangkan oleh agen daripada artikel rujukan; semak sebelum diguna dalam manuskrip">cadangan agen</span>' : pun === 'asal' ? '<span class="tag" title="Diambil daripada ayat yang dikesan dalam ASAL">daripada ASAL</span>' : '<span class="tag" title="Ditulis atau disunting oleh Prof Dr">ditetapkan Prof Dr</span>';
-    const ph = k === 'masalah' ? 'Satu perenggan: apa yang sudah diketahui, apa yang belum (jurang), mengapa ia penting, dan apa yang dilakukan oleh artikel ini.' : k === 'objektif' ? 'Satu objektif pada setiap baris. Contoh: To map how digital knowledge management is defined in empirical studies.' : 'Satu persoalan pada setiap baris, bermula dengan Which atau How. Contoh: Which definitions of digital knowledge management are used in empirical studies?';
+    const ph = k === 'masalah' ? 'Satu perenggan: apa yang sudah diketahui, apa yang belum (jurang), mengapa ia penting, dan apa yang dilakukan oleh artikel ini.' : k === 'objektif' ? 'Satu objektif pada setiap baris. Contoh: To map how digital knowledge management is defined in empirical studies.' : 'Satu persoalan pada setiap baris, bermula dengan Which atau How (Bahasa Melayu: Apakah atau Bagaimanakah). Contoh: Which definitions of digital knowledge management are used in empirical studies?';
     const papar = !v ? '' : k === 'masalah' ? `<div class="tr-teks">${v.split(/\n{2,}/).map(p => `<p>${esc(p.trim())}</p>`).join('')}</div>` : `<ol class="tr-senarai">${baris.map((b, i) => `<li><b>${awalanTr(k)}${i + 1}:</b> ${esc(b)}</li>`).join('')}</ol>`;
     const tinggi = Math.min(16, Math.max(k === 'masalah' ? 5 : 4, v.split('\n').reduce((n, b) => n + Math.max(1, Math.ceil(b.length / (k === 'masalah' ? 150 : 75))), 0) + 1));
     const semak = k === 'soalan' && baris.length ? semakRq(baris) : []; const nO = barisTr(T.objektif).length, nS = barisTr(T.soalan).length;
@@ -1834,12 +1838,12 @@ Selepas perenggan terakhir tulis dua perenggan pendek. Pertama, "${sumberTajuk}:
     const kesan = TR.filter(x => !String(T[x[0]] || '').trim() && (K[x[0]] || []).length).map(x => `${x[1]} (ayat yang dikesan dalam ASAL Prof Dr):\n${K[x[0]].map(a => '- ' + a).join('\n')}`).join('\n\n');
     const nm = rev ? 'ulasan' : 'kajian';
     const tugas = `[MOD:teras]\nARTIKEL INI: ${rev ? 'artikel ulasan' : 'artikel ' + (D.NAMA_KELUARGA[kel()] || 'penyelidikan')}; bahasa manuskrip ${bhs}.${semasa ? `\n\nTERAS KAJIAN YANG SUDAH DITETAPKAN PROF DR (kekalkan maksudnya; perbaiki bentuknya sahaja jika perlu):\n${semasa}` : ''}${kesan ? `\n\n${kesan}` : ''}${w5teks ? `\n\nSOAL JAWAB 5W1H YANG SUDAH ADA:\n${w5teks}` : ''}${patah(asal) >= 20 ? `\n\nTEKS ASAL PENDAHULUAN (ditulis oleh Prof Dr):\n${potong(asal, 5000)}` : ''}${dnaAktif(fP) ? DNA.teksAgen(dnaCtx()) : ''}\n\nTUGAS: Rumuskan TERAS KAJIAN bagi artikel ini sebagai penyelidik, berdasarkan ARTIKEL RUJUKAN dalam mesej sistem${adaCsv ? ' berserta rekod CSV' : ''} dan teks Prof Dr di atas. Tiga bahagian pertama ditulis dalam ${bhs}; dua bahagian terakhir dalam Bahasa Melayu mudah. Pulangkan JSON:
-- masalah: pernyataan masalah dalam SATU perenggan, lima hingga tujuh ayat, mengikut urutan ini: apa yang sudah diketahui tentang topik ini; apa yang belum diketahui atau masih bercanggah, iaitu jurang, dengan bukti daripada artikel rujukan; mengapa jurang itu penting kepada teori, amalan atau dasar; dan satu ayat penutup tentang apa yang dilakukan oleh ${nm} ini untuk mengisinya. Setiap dakwaan tentang kajian lepas disitasi sebagai Penulis (Tahun) daripada senarai sahaja; tiada sitasi sekunder; tiada dakwaan mutlak seperti "tiada kajian". Pengakuan pengarang sendiri bahawa kajian masih kurang ialah bukti jurang yang paling kuat.
+- masalah: pernyataan masalah dalam SATU perenggan, lima hingga tujuh ayat, ditulis mengikut CARA MENULIS PERNYATAAN MASALAH di bawah dan ditutup dengan satu ayat tentang apa yang dilakukan oleh ${nm} ini. Setiap dakwaan tentang kajian lepas disitasi sebagai Penulis (Tahun) daripada senarai sahaja; tiada sitasi sekunder; tiada dakwaan mutlak seperti "tiada kajian". Pengakuan pengarang sendiri bahawa kajian masih kurang ialah bukti jurang yang paling kuat.
 - objektif: dua hingga empat objektif ${nm}. Setiap satu ialah satu ayat yang bermula dengan kata kerja yang boleh dicapai (${E ? 'contohnya To identify, To map, To compare, To examine' : 'contohnya Mengenal pasti, Memetakan, Membandingkan, Meneliti'}) dan menyatakan SATU perkara sahaja. Jangan tulis awalan atau nombor; sistem menomborkannya.
-- soalan: persoalan ${nm} yang bilangannya SAMA dengan objektif dan sejajar satu banding satu mengikut urutan (persoalan pertama menjawab objektif pertama). Setiap satu ialah satu ayat tanya yang lengkap dan betul tatabahasanya, bermula dengan ${E ? 'Which atau How' : 'Yang mana atau Bagaimana'}; jangan gunakan ${E ? 'What, To what extent atau level' : 'Apakah, Sejauh mana atau tahap'}; satu persoalan menanya satu perkara sahaja; jelas dari segi populasi, konsep dan konteks; diakhiri tanda soal. Jangan tulis awalan atau nombor.
+- soalan: persoalan ${nm} yang bilangannya SAMA dengan objektif dan sejajar satu banding satu mengikut urutan (persoalan pertama menjawab objektif pertama). Setiap satu ialah satu ayat tanya yang lengkap dan betul tatabahasanya, bermula dengan ${E ? 'Which atau How' : 'kata tanya Apakah atau Bagaimanakah (dengan partikel -kah)'}; jangan ${E ? 'gunakan What, To what extent atau level' : 'mulakan dengan "Yang", "Yang mana" atau "Yang manakah", dan jangan gunakan Sejauh mana atau tahap; contoh bentuk yang betul: "Apakah dimensi [konstruk] yang dilaporkan dalam [konteks]?" dan "Bagaimanakah [konstruk] ditakrifkan dalam [konteks]?"'}; satu persoalan menanya satu perkara sahaja; jelas dari segi populasi, konsep dan konteks; diakhiri tanda soal. Jangan tulis awalan atau nombor.
 - sebab: dua hingga empat ayat: jurang yang mana membawa kepada persoalan yang mana, dan jika Prof Dr sudah mempunyai objektif atau persoalan, apa yang anda ubah dan mengapa.
 - amaran: perkara yang berisiko ditolak penilai (contohnya persoalan berganda dalam teks Prof Dr, jurang yang belum bersumber, objektif yang tidak dijawab oleh mana-mana persoalan), setiap satu diakhiri dengan cara membaikinya; senarai kosong jika tiada.
-Jika bahan tidak memadai untuk sesuatu bahagian, tulis apa yang boleh disokong dan nyatakan kekurangannya dalam amaran; jangan mereka sumber, angka atau dapatan.`;
+Jika bahan tidak memadai untuk sesuatu bahagian, tulis apa yang boleh disokong dan nyatakan kekurangannya dalam amaran; jangan mereka sumber, angka atau dapatan.\n\n${RESIPI_MASALAH}`;
     const anggaran = anggarToken(awal) + anggarToken(system) + anggarToken(tugas);
     if (anggaran > HAD_KONTEKS) { toast(`Bahan bagi panggilan ini dianggarkan ${angka(anggaran)} token, melebihi konteks model. Dalam Langkah 1, tukar kandungan rekod CSV kepada Abstrak ringkas, kemudian cuba lagi. Tiada kos dikenakan.`, true); return; }
     const tk = P.t.token || { masuk: 0, keluar: 0, panggil: 0 }; const bj = HAD_TOKEN.teras; const ringkasBahan = `${s0.bs.penuh} artikel sumber dengan medan penuh` + (adaCsv ? ` dan ${angka(s0.bs.csv)} rekod CSV (${teksArasKini()})` : '');
