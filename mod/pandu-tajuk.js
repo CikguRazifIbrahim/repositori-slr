@@ -12,6 +12,34 @@
      bahagian utama tambahan itu diletakkan sebagai subtajuk aras 2 dalam folder yang memikulnya; hal ini dicatat dalam medan nota.
    Acuan yang tiada dalam fail ini (teks penuhnya tidak dapat dicapai ketika fail ini dibina) menggunakan subtajuk umum pandu-acuan.js. */
 export const TAJUK = {
+  /* Nadav et al. (2026), PDF artikel yang dimuat naik oleh pemilik */
+  'kuan-nadav-2026': {
+    nota: 'Limitations and Future Research ialah bahagian utama yang berdiri sendiri dalam artikel contoh; di sini ia menjadi subtajuk folder Perbincangan. Subtajuk 2.3 hanya mempunyai satu subtajuk aras 3 dalam artikel itu.',
+    pendahuluan: { t: ['Pendahuluan', 'Introduction'], sub: [] },
+    literatur: { t: ['Latar Teori dan Hipotesis', 'Theoretical Background and Hypotheses'], sub: [
+      [2, 'Promoting Teacher Outcomes: CTE and SMT Innovation', 'Menggalakkan Hasil Guru: CTE dan Inovasi SMT'],
+      [3, 'Collective Teacher Efficacy', 'Efikasi Kolektif Guru'],
+      [3, 'SMT Innovation', 'Inovasi SMT'],
+      [2, 'The Relationship Between Principals’ Systems Thinking and Organisational Learning Mechanisms', 'Hubungan antara Pemikiran Sistem Pengetua dengan Mekanisme Pembelajaran Organisasi'],
+      [2, 'The Relationship Between Organisational Learning Mechanisms and School Teams’ Outcomes: CTE and SMT Innovation', 'Hubungan antara Mekanisme Pembelajaran Organisasi dengan Hasil Pasukan Sekolah: CTE dan Inovasi SMT'],
+      [3, 'SMT Innovation', 'Inovasi SMT'],
+      [2, 'Mediation Model', 'Model Pengantaraan']] },
+    kaedah: { t: ['Kaedah', 'Method'], sub: [
+      [2, 'Participants and Procedure', 'Peserta dan Prosedur'],
+      [2, 'Measures', 'Alat Ukur'],
+      [3, 'Principals’ Systems Thinking', 'Pemikiran Sistem Pengetua'],
+      [3, 'Organisational Learning Mechanisms', 'Mekanisme Pembelajaran Organisasi'],
+      [3, 'Collective Teacher Efficacy', 'Efikasi Kolektif Guru'],
+      [3, 'SMT Innovation', 'Inovasi SMT'],
+      [3, 'Control Variables', 'Pemboleh Ubah Kawalan'],
+      [2, 'Level of Analysis', 'Aras Analisis'],
+      [2, 'Data Analysis', 'Analisis Data']] },
+    dapatan: { t: ['Dapatan', 'Results'], sub: [
+      [2, 'Structural Model Testing', 'Pengujian Model Struktur']] },
+    perbincangan: { t: ['Perbincangan', 'Discussion'], sub: [
+      [2, 'Limitations and Future Research', 'Batasan dan Kajian Lanjutan']] },
+    kesimpulan: { t: ['Implikasi Konseptual dan Praktikal', 'Conceptual and Practical Implications'], sub: [] }
+  },
   /* Bice dan Tang (2022), PMC9002040 */
   'campur-bice-2022': {
     pendahuluan: { t: ['Pendahuluan', 'Introduction'], sub: [] },
