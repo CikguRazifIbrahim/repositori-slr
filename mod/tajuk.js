@@ -292,6 +292,8 @@ ${t.profil}`;
       const s = e.target.closest('[data-tjs]'); if (!s || !T.d) return; const k = s.dataset.tjs;
       if (k === 'bil') T.d.bil = s.value === '5' ? 5 : 3; else if (k === 'bahasa') T.d.bahasa = s.value === 'en' ? 'en' : s.value === 'ms' ? 'ms' : ''; else if (k === 'huruf') T.d.huruf = s.value === 'ayat' ? 'ayat' : 'tajuk'; else if (k === 'padanan') T.d.padanan = !!s.checked;
       simpan(); render();
+      /* v1.54.3: selagi bahasa manuskrip belum dipilih sendiri, ia mengikut Bahasa tajuk supaya agen langkah seterusnya menulis dalam bahasa yang sama */
+      if (k === 'bahasa' && T.d.bahasa && C.Pandu && C.Pandu.ikutBahasaTajuk && C.Pandu.state && C.Pandu.state.id === A.id) C.Pandu.ikutBahasaTajuk(T.d.bahasa, { dariTajuk: true });
     });
     akar.addEventListener('focusin', e => { const m = e.target.closest('[data-tjm]'); if (m) T.fokus = m.dataset.tjm; });
   }
