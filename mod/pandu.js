@@ -857,6 +857,9 @@ Tiada em-dash.`;
     F.keputusan = uraiKeputusan(cad.jawapan).map((teks, i) => ({ id: cad.id + '-' + (i + 1), teks, jawapan: '', siap: false })); F.keputusanCad = cad.id; F.keputusanV = 2; return F.keputusan;
   }
   function htmlKeputusan(F) {
+    /* v1.54.6: senarai "Keputusan untuk Prof Dr" tidak lagi dipaparkan (arahan pemilik). Agen folder sudah diarah menulis PENDIRIAN AGEN dan
+       tidak menyenaraikan keputusan; panel ini hanya muncul bagi cadangan lama yang masih mengandungi perenggan itu. */
+    if (F) return '';
     const senarai = segarKeputusan(F); if (!senarai.length) return ''; const siap = senarai.filter(x => x.siap).length; const jawab = senarai.filter(x => String(x.jawapan || '').trim()).length;
     return `<div class="pd-keputusan"><div class="pd-kp-kepala"><b>Keputusan untuk Prof Dr</b><span class="ring" id="pdKpKira">${siap} daripada ${senarai.length} selesai · ${jawab} dijawab</span></div>
       <p class="help">Hanya perkara yang agen tidak dapat putuskan sendiri disenaraikan di sini. Pilihan bertanda "disyorkan" ialah syor agen berserta sebabnya. Tiada jawapan diwajibkan: jika Prof Dr memilih satu pilihan atau menulis keputusan sendiri, agen mengikutnya apabila Jana cadangan baharu ditekan dan tidak membangkitkan semula perkara itu.</p>
