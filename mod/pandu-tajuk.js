@@ -12,6 +12,34 @@
      bahagian utama tambahan itu diletakkan sebagai subtajuk aras 2 dalam folder yang memikulnya; hal ini dicatat dalam medan nota.
    Acuan yang tiada dalam fail ini (teks penuhnya tidak dapat dicapai ketika fail ini dibina) menggunakan subtajuk umum pandu-acuan.js. */
 export const TAJUK = {
+  /* Nadav et al. (2026), PDF artikel yang dimuat naik oleh pemilik */
+  'kuan-nadav-2026': {
+    nota: 'Limitations and Future Research ialah bahagian utama yang berdiri sendiri dalam artikel contoh; di sini ia menjadi subtajuk folder Perbincangan. Subtajuk 2.3 hanya mempunyai satu subtajuk aras 3 dalam artikel itu.',
+    pendahuluan: { t: ['Pendahuluan', 'Introduction'], sub: [] },
+    literatur: { t: ['Latar Teori dan Hipotesis', 'Theoretical Background and Hypotheses'], sub: [
+      [2, 'Promoting Teacher Outcomes: CTE and SMT Innovation', 'Menggalakkan Hasil Guru: CTE dan Inovasi SMT'],
+      [3, 'Collective Teacher Efficacy', 'Efikasi Kolektif Guru'],
+      [3, 'SMT Innovation', 'Inovasi SMT'],
+      [2, 'The Relationship Between Principals’ Systems Thinking and Organisational Learning Mechanisms', 'Hubungan antara Pemikiran Sistem Pengetua dengan Mekanisme Pembelajaran Organisasi'],
+      [2, 'The Relationship Between Organisational Learning Mechanisms and School Teams’ Outcomes: CTE and SMT Innovation', 'Hubungan antara Mekanisme Pembelajaran Organisasi dengan Hasil Pasukan Sekolah: CTE dan Inovasi SMT'],
+      [3, 'SMT Innovation', 'Inovasi SMT'],
+      [2, 'Mediation Model', 'Model Pengantaraan']] },
+    kaedah: { t: ['Kaedah', 'Method'], sub: [
+      [2, 'Participants and Procedure', 'Peserta dan Prosedur'],
+      [2, 'Measures', 'Alat Ukur'],
+      [3, 'Principals’ Systems Thinking', 'Pemikiran Sistem Pengetua'],
+      [3, 'Organisational Learning Mechanisms', 'Mekanisme Pembelajaran Organisasi'],
+      [3, 'Collective Teacher Efficacy', 'Efikasi Kolektif Guru'],
+      [3, 'SMT Innovation', 'Inovasi SMT'],
+      [3, 'Control Variables', 'Pemboleh Ubah Kawalan'],
+      [2, 'Level of Analysis', 'Aras Analisis'],
+      [2, 'Data Analysis', 'Analisis Data']] },
+    dapatan: { t: ['Dapatan', 'Results'], sub: [
+      [2, 'Structural Model Testing', 'Pengujian Model Struktur']] },
+    perbincangan: { t: ['Perbincangan', 'Discussion'], sub: [
+      [2, 'Limitations and Future Research', 'Batasan dan Kajian Lanjutan']] },
+    kesimpulan: { t: ['Implikasi Konseptual dan Praktikal', 'Conceptual and Practical Implications'], sub: [] }
+  },
   /* Bice dan Tang (2022), PMC9002040 */
   'campur-bice-2022': {
     pendahuluan: { t: ['Pendahuluan', 'Introduction'], sub: [] },
@@ -238,6 +266,63 @@ export const TAJUK = {
     perbincangan: { t: ['Perbincangan', 'Discussion'], sub: [
       [2, 'Recommendations', 'Cadangan']] },
     kesimpulan: { t: ['Kesimpulan dan Cadangan', 'Conclusions and recommendations'], sub: [] }
+  },
+  /* Wohlfart dan Wagner (2023), PMC9628337: acuan ulasan payung (pandu-acuan-jenis.js) */
+  'payung-wohlfart-2023': {
+    nota: 'Artikel contoh tiada tajuk Results; Quantitative results dan Qualitative findings ialah dua bahagian yang berturutan, maka kedua-duanya menjadi dua folder. Aras subtajuk disimpulkan daripada susunan teks kerana sumber tidak menandakan aras.',
+    pendahuluan: { t: ['Pendahuluan', 'Introduction'], sub: [] },
+    kaedah: { t: ['Kaedah', 'Method'], sub: [
+      [2, 'Inclusion criteria', 'Kriteria penerimaan'],
+      [2, 'Search procedure', 'Prosedur carian'],
+      [2, 'Study selection', 'Pemilihan kajian'],
+      [2, 'Data analysis', 'Analisis data']] },
+    dapatan: { t: ['Hasil Kuantitatif', 'Quantitative results'], sub: [] },
+    dapatan2: { t: ['Dapatan Kualitatif', 'Qualitative findings'], sub: [
+      [2, 'Research focus of previous reviews', 'Tumpuan kajian ulasan terdahulu'],
+      [2, 'Digital literacy', 'Literasi digital'],
+      [3, 'Concept of digital literacy', 'Konsep literasi digital'],
+      [3, 'TPACK', 'TPACK'],
+      [3, 'Approaches to developing teachers’ digital literacy', 'Pendekatan membangunkan literasi digital guru'],
+      [3, 'Requirements for developing teachers’ digital literacy', 'Keperluan bagi membangunkan literasi digital guru'],
+      [2, 'Technology integration', 'Integrasi teknologi'],
+      [3, 'Strategies, requirements, and barriers to technology integration', 'Strategi, keperluan dan halangan integrasi teknologi'],
+      [3, 'Technology acceptance', 'Penerimaan teknologi'],
+      [2, 'Future research', 'Kajian masa depan']] },
+    perbincangan: { t: ['Perbincangan', 'Discussion'], sub: [
+      [2, 'Implications', 'Implikasi'],
+      [2, 'Limitations and recommendations for future research', 'Batasan dan cadangan kajian lanjutan']] },
+    kesimpulan: { t: ['Kesimpulan', 'Conclusion'], sub: [] }
+  },
+  /* Gause et al. (2022), PMC9257720: acuan ulasan bersepadu (pandu-acuan-jenis.js) */
+  'bersepadu-gause-2022': {
+    nota: 'Aim, Integrative review question dan Limitations of the study dicetak sebagai tajuk yang berdiri sendiri dalam artikel contoh; di sini setiap satunya menjadi subtajuk dalam folder yang memikulnya. Aras subtajuk disimpulkan daripada susunan teks.',
+    pendahuluan: { t: ['Pendahuluan', 'Introduction'], sub: [
+      [2, 'Aim', 'Tujuan'],
+      [2, 'Integrative review question', 'Soalan ulasan bersepadu']] },
+    kaedah: { t: ['Reka Bentuk dan Kaedah', 'Design and methods'], sub: [
+      [2, 'Step 1: Problem identification', 'Langkah 1: Pengenalpastian masalah'],
+      [2, 'Step 2: Literature search', 'Langkah 2: Carian literatur'],
+      [2, 'Step 3: Data evaluation', 'Langkah 3: Penilaian data'],
+      [2, 'Step 4: Data analysis', 'Langkah 4: Analisis data'],
+      [2, 'Ethical considerations', 'Pertimbangan etika'],
+      [2, 'Step 5: Data presentation', 'Langkah 5: Pembentangan data']] },
+    dapatan: { t: ['Dapatan', 'Results'], sub: [
+      [2, 'Theme 1: Technology use in nursing education', 'Tema 1: Penggunaan teknologi dalam pendidikan kejururawatan'],
+      [2, 'Theme 2: Manner in which technology is used in nursing education', 'Tema 2: Cara teknologi digunakan dalam pendidikan kejururawatan'],
+      [3, 'Manner in which technology is used in classroom nursing education', 'Cara teknologi digunakan dalam pendidikan kejururawatan di bilik darjah'],
+      [3, 'Manner in which technology is used in clinical nursing education', 'Cara teknologi digunakan dalam pendidikan kejururawatan klinikal'],
+      [2, 'Theme 3: Antecedents for technology use in nursing education', 'Tema 3: Prasyarat penggunaan teknologi dalam pendidikan kejururawatan'],
+      [3, 'Antecedents for technology use in classroom nursing education', 'Prasyarat penggunaan teknologi dalam pendidikan kejururawatan di bilik darjah'],
+      [2, 'Theme 4: Advantages of technology use in nursing education', 'Tema 4: Kelebihan penggunaan teknologi dalam pendidikan kejururawatan'],
+      [3, 'Advantages of technology use in classroom nursing education', 'Kelebihan penggunaan teknologi dalam pendidikan kejururawatan di bilik darjah'],
+      [3, 'Advantages of technology use in clinical nursing education', 'Kelebihan penggunaan teknologi dalam pendidikan kejururawatan klinikal'],
+      [2, 'Theme 5: Disadvantages of technology usage in nursing education', 'Tema 5: Kekurangan penggunaan teknologi dalam pendidikan kejururawatan'],
+      [3, 'Disadvantages and challenges of technology use in classroom nursing education', 'Kekurangan dan cabaran penggunaan teknologi dalam pendidikan kejururawatan di bilik darjah'],
+      [3, 'Disadvantages and challenges of technology use in clinical nursing education', 'Kekurangan dan cabaran penggunaan teknologi dalam pendidikan kejururawatan klinikal'],
+      [2, 'Theme 6: Technology use in nursing education amidst COVID-19', 'Tema 6: Penggunaan teknologi dalam pendidikan kejururawatan semasa COVID-19']] },
+    perbincangan: { t: ['Perbincangan', 'Discussion'], sub: [
+      [2, 'Limitations of the study', 'Batasan kajian']] },
+    kesimpulan: { t: ['Kesimpulan', 'Conclusion'], sub: [] }
   }
 };
 /* Tajuk asal bagi satu bahagian acuan terbina, atau null jika belum direkodkan. */
