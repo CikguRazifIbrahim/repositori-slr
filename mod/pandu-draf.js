@@ -122,6 +122,7 @@ export function initDraf(X) {
     const B = blokFolder(f); const E = en() ? 1 : 0; const sub = B.ids.slice(1); const subIsi = sub.filter(id => (seksyen(id) || {}).patah > 0);
     const out = { f, ids: B.ids, segmen: [], tanda: {}, nota: '', ubah: false, lama: sub.map(id => (seksyen(id) || {}).tajuk || ''), nPer: 0 };
     const perIdx = B.blok.map((b, i) => blokTeks(b) && !kapsyen(b) ? i : -1).filter(i => i >= 0); out.nPer = perIdx.length;
+    if (kunciAcuan(f)) { out.nota = 'Subtajuk folder ini mengikut artikel contoh; tidak diubah oleh susunan mengikut isi.'; return out; }
     if (TANPA_SUB.has(f.p)) { out.ubah = sub.length > 0; out.nota = sub.length ? (subIsi.length ? 'Isi sub-menu digabungkan ke dalam ' + X.tajukF(f) + ' kerana bahagian ini tidak memerlukan sub-menu.' : 'Sub-menu kosong dibuang; bahagian ini tidak memerlukan sub-menu.') : 'Tiada sub-menu (sudah betul).'; return out; }
     if (f.p === 'kesimpulan') { if (sub.length && !subIsi.length) { out.ubah = true; out.nota = 'Sub-menu kosong dibuang; Kesimpulan lazimnya tanpa sub-menu.'; } else if (subIsi.length) { subIsi.forEach(id => { out.tanda[id] = 'Kesimpulan lazimnya tanpa sub-menu. Pertimbangkan untuk menggabungkan sub-menu ini ke dalam Kesimpulan.'; }); out.nota = 'Sub-menu berisi dikekalkan dan ditanda merah untuk pertimbangan Prof Dr.'; } else out.nota = 'Tiada sub-menu (sudah betul).'; return out; }
     const kat = kategori(f, B.blok.map(b => b.teks).join(' '));
@@ -199,7 +200,7 @@ export function initDraf(X) {
     const s = R.lsGet(LS_SAND(), null); const d = dokumen(); if (!s || !d) { toast('Tiada susunan sub-menu untuk dibatalkan', true); return; } Teks.flushEditor();
     Object.keys(s.seksyen).forEach(id => { d.seksyen[id] = Object.assign({}, s.seksyen[id], { masa: sekarang() }); }); (s.baru || []).forEach(id => { if (d.seksyen[id]) d.seksyen[id] = Object.assign({}, d.seksyen[id], { padam: true, masa: sekarang() }); });
     d.susunan = s.susunan; d.masa = sekarang(); Teks.simpanLokal(A.id, d); const patch = { seksyen: {}, susunan: d.susunan, masa: d.masa }; Object.keys(s.seksyen).concat(s.baru || []).forEach(id => { if (d.seksyen[id]) patch.seksyen[id] = d.seksyen[id]; }); Teks.simpanAwan(A.id, patch);
-    P.t.tandaSub = s.tanda || {}; simpanT(true); R.lsSet(LS_SAND(), null); P.cache = {}; Teks.renderSemua(); X.render(); toast('Susunan seksyen sebelum sub-menu dipulihkan');
+    P.t.tandaSub = s.tanda || {}; if ('subAcuan' in s) P.t.subAcuan = s.subAcuan; simpanT(true); R.lsSet(LS_SAND(), null); P.cache = {}; Teks.renderSemua(); X.render(); toast('Susunan seksyen sebelum sub-menu dipulihkan');
   }
   /* Pratonton sebelum diterapkan: setiap folder dengan sebelum, selepas dan nota; kotak tanda bagi folder yang diubah. */
   async function modalSub(rancang, sumberAgen) {
@@ -213,10 +214,72 @@ export function initDraf(X) {
     if (!ok) return; const nilai = R.richModal.values || {}; const pilih = new Set(rancang.filter(r => r.ubah && nilai['dfsub_' + r.f.k] !== false).map(r => r.f.k));
     terapSub(rancang, pilih);
   }
+  /* ---------------- (1b) SUBTAJUK MENGIKUT ARTIKEL CONTOH (v1.53.0) ----------------
+     Apabila jenis artikel dan artikel contoh sudah dipilih, tajuk bahagian dan semua subtajuk folder disalin tepat daripada artikel
+     contoh itu (pandu-tajuk.js bagi acuan terbina; tajuk asal yang dipulangkan agen bagi bedahan sendiri), supaya pemilik tidak perlu
+     menamakan subtajuk sendiri. Seksyen sedia ada yang berisi TIDAK dipadam: yang sepadan dinamakan semula, subtajuk yang belum ada
+     dicipta kosong mengikut urutan artikel contoh, subtajuk lain yang kosong dibuang, dan yang berisi dikekalkan di hujung folder serta
+     ditanda. Selagi mod ini aktif (P.t.subAcuan), "Susun sub-menu mengikut isi" tidak menyentuh folder yang mengikut artikel contoh. */
+  const kunciAcuan = f => !!(P.t && P.t.subAcuan && f && f.ac && f.asal);
+  const tanpaNo = t => String(t || '').replace(/^\s*\d+(?:\.\d+)*\.?\s+/, '').trim();
+  const kunciT = t => norm(tanpaNo(t)).trim();
+  const adaIsi = id => { const s = seksyen(id); return !!s && ((s.patah || 0) > 0 || !!String(s.ram || '').replace(/<[^>]+>/g, '').trim() || /<(img|table|svg)\b/i.test(Teks.htmlSeksyen(s) || '')); };
+  function rancangAcuan(f) {
+    const E = en() ? 1 : 0; const ids = X.julat(f); const main = ids[0]; const sub = ids.slice(1); const nb = nombor();
+    const sasar = (f.sub || []).map(s => ({ tajuk: s[E] || s[1] || s[0], aras: Math.max(2, Math.min(3, s[2] || 2)), alt: [s[0], s[1]].concat(s[3] || []).filter(Boolean).map(kunciT), id: null }));
+    const guna = new Set();
+    sasar.forEach(T => { const id = sub.find(x => !guna.has(x) && T.alt.includes(kunciT((seksyen(x) || {}).tajuk))); if (id) { T.id = id; guna.add(id); } });
+    const lebih = sub.filter(x => !guna.has(x)); const kekal = lebih.filter(adaIsi); const padam = lebih.filter(x => !adaIsi(x));
+    const tj1 = f.t[E]; const kini1 = (seksyen(main) || {}).tajuk || ''; const l1 = f.asal && tj1 && tanpaNo(kini1) !== tj1 ? tj1 : '';
+    const susun = sasar.map(T => T.id || '+' + T.tajuk).concat(kekal); const lamaSusun = sub.slice();
+    const ubah = !!l1 || padam.length > 0 || sasar.some(T => !T.id || tanpaNo((seksyen(T.id) || {}).tajuk) !== T.tajuk || ((nb[T.id] || {}).aras || 2) !== T.aras) || JSON.stringify(susun) !== JSON.stringify(lamaSusun);
+    return { f, ids, main, sasar, kekal, padam, l1, ubah, lama: sub.map(id => ({ tajuk: (seksyen(id) || {}).tajuk || '', aras: (nb[id] || {}).aras || 2, isi: adaIsi(id) })) };
+  }
+  const rancangAcuanSemua = () => X.tulis().filter(f => f.ac && f.asal && X.sidFolder(f)).map(rancangAcuan);
+  /* Benar jika sekurang-kurangnya satu folder belum mengikut tajuk artikel contoh (untuk notis dalam Pandu Tulis). */
+  function acuanBelum() { try { return rancangAcuanSemua().filter(r => r.ubah).length; } catch (e) { return 0; } }
+  function terapAcuan(rancang, pilih) {
+    const d = dokumen(); if (!d) return; Teks.flushEditor(); const now = sekarang(); const T = tanda();
+    const sandaran = { masa: now, susunan: (d.susunan || []).slice(), seksyen: {}, tanda: JSON.parse(JSON.stringify(T)), baru: [], subAcuan: !!P.t.subAcuan };
+    let nF = 0, nBaru = 0, nNama = 0, nPadam = 0, nKekal = 0;
+    rancang.forEach(r => {
+      if (!pilih.has(r.f.k) || !r.ubah) return; nF++;
+      r.ids.forEach(id => { if (!(id in sandaran.seksyen)) sandaran.seksyen[id] = JSON.parse(JSON.stringify(d.seksyen[id])); delete T[id]; });
+      if (r.l1) Teks.tulisSeksyen(A.id, r.main, { tajuk: r.l1 }, { senyap: true, segera: true });
+      const susunF = [r.main];
+      r.sasar.forEach(S => {
+        let id = S.id;
+        if (!id) { id = idBaru('s'); d.seksyen[id] = { tajuk: S.tajuk, teks: '', cipta: now, masa: now, patah: 0, aras: S.aras, sumber: { jenis: 'templat', acuan: true } }; sandaran.baru.push(id); nBaru++; }
+        else if (tanpaNo((seksyen(id) || {}).tajuk) !== S.tajuk) nNama++;
+        Teks.tulisSeksyen(A.id, id, { tajuk: S.tajuk, aras: S.aras, padam: false }, { senyap: true, segera: true }); susunF.push(id);
+      });
+      r.kekal.forEach(id => { susunF.push(id); nKekal++; T[id] = `Subtajuk "${(seksyen(id) || {}).tajuk || 'Tanpa tajuk'}" tiada dalam artikel contoh. Pindahkan isinya ke bawah subtajuk artikel contoh yang sesuai, kemudian padam subtajuk ini.`; });
+      r.padam.forEach(id => { Teks.tulisSeksyen(A.id, id, { padam: true }, { senyap: true, segera: true }); nPadam++; });
+      const s0 = (d.susunan || []).slice(); const dalam = new Set(r.ids.concat(susunF)); const i0 = s0.indexOf(r.main);
+      const lain = s0.filter(id => !dalam.has(id)); const pos = s0.slice(0, i0).filter(id => !dalam.has(id)).length; lain.splice(pos, 0, ...susunF); d.susunan = lain.concat(r.padam);
+    });
+    P.t.subAcuan = true; P.t.subAcuanTolak = '';
+    d.masa = sekarang(); Teks.simpanLokal(A.id, d); const patch = { seksyen: {}, susunan: d.susunan, masa: d.masa }; Object.keys(sandaran.seksyen).concat(sandaran.baru).forEach(id => { if (d.seksyen[id]) patch.seksyen[id] = d.seksyen[id]; }); Teks.simpanAwan(A.id, patch);
+    R.lsSet(LS_SAND(), sandaran); simpanT(true); P.cache = {}; Teks.renderSemua(); X.render();
+    toast(nF ? `Tajuk ${nF} folder kini mengikut artikel contoh: ${nBaru} subtajuk dicipta${nNama ? ', ' + nNama + ' dinamakan semula' : ''}${nPadam ? ', ' + nPadam + ' subtajuk kosong dibuang' : ''}${nKekal ? '; ' + nKekal + ' subtajuk berisi dikekalkan dan ditanda merah' : ''}. Teks ASAL tidak diubah.` : 'Tiada folder diubah.', false, nF ? { label: 'Batal', fn: () => batalSub() } : null);
+  }
+  async function modalAcuan() {
+    const ac = X.acuan(); if (!ac) { toast('Tiada artikel contoh dipilih. Pilih acuan artikel contoh dalam Tetapan Pandu Tulis dahulu.', true); return; }
+    if (!P.t.sedia) { toast('Sediakan folder dahulu; subtajuk artikel contoh dicipta bersama-sama folder.', true); return; }
+    const rancang = rancangAcuanSemua(); if (!rancang.length) { toast(`Subtajuk asal ${ac.pendek} belum direkodkan dalam aplikasi, maka tiada tajuk untuk disalin lagi.`, true); return; } const li = (t, a, nota) => `<li${a > 2 ? ' class="df-a3"' : ''}>${esc(t || 'Tanpa tajuk')}${nota ? ' <small>(' + nota + ')</small>' : ''}</li>`;
+    if (!rancang.some(r => r.ubah)) { if (!P.t.subAcuan) { P.t.subAcuan = true; simpanT(true); X.render(); } toast(`Tajuk dan subtajuk semua folder sudah mengikut ${ac.pendek}.`); return; }
+    const baris = rancang.map(r => { const kini = (seksyen(r.main) || {}).tajuk || X.tajukF(r.f);
+      const selepas = r.sasar.map(S => li(S.tajuk, S.aras, S.id ? (adaIsi(S.id) ? 'isi dikekalkan' : '') : 'baharu, kosong')).concat(r.kekal.map(id => li((seksyen(id) || {}).tajuk, 2, 'tiada dalam artikel contoh; berisi, dikekalkan dan ditanda'))).join('');
+      return `<div class="df-sub-r${r.ubah ? '' : ' tetap'}"><label class="df-sub-h"><input type="checkbox" id="dfac_${esc(r.f.k)}"${r.ubah ? ' checked' : ' disabled'}> <b>${esc(r.l1 || kini)}</b>${r.l1 ? ' <small>(kini: ' + esc(kini) + ')</small>' : ''}</label>
+        <div class="df-sub-c"><div><span class="lbl">Kini</span>${r.lama.length ? `<ul>${r.lama.map(x => li(x.tajuk, x.aras, x.isi ? '' : 'kosong')).join('')}</ul>` : '<p class="help">Tiada subtajuk</p>'}</div><div><span class="lbl">Selepas (mengikut artikel contoh)</span>${selepas ? `<ul>${selepas}</ul>` : `<p class="help">${r.ubah ? 'Tiada subtajuk, seperti artikel contoh' : 'Tidak diubah'}</p>`}</div></div>
+        ${r.padam.length ? `<p class="help">${r.padam.length} subtajuk kosong yang tiada dalam artikel contoh dibuang.</p>` : ''}${r.ubah ? '' : '<p class="help">Sudah mengikut artikel contoh.</p>'}</div>`; }).join('');
+    const ok = await R.richModal('Ikut tajuk dan subtajuk artikel contoh', `<p>Tajuk bahagian dan semua subtajuk disalin tepat daripada <b>${esc(ac.pendek)}</b>${en() ? '' : ' (dalam terjemahan Bahasa Melayu kerana manuskrip ini berbahasa Melayu)'}, mengikut urutan artikel itu. Subtajuk yang belum ada dicipta kosong untuk diisi kemudian. <b>Teks ASAL dan RAM tidak diubah atau dipadam</b>: perenggan sedia ada kekal di tempatnya, dan subtajuk berisi yang tiada dalam artikel contoh dikekalkan di hujung folder serta ditanda <span class="df-merah">merah</span>.</p>${baris}<p class="help">Subtajuk yang menyebut pemboleh ubah kajian artikel contoh perlu ditukar kepada pemboleh ubah kajian Prof Dr ketika menulis isinya. Subtajuk yang belum berisi tidak dimasukkan ke dalam Draf Akhir. Boleh dibatalkan selepas diterapkan (butang Batal pada notis, atau "Batalkan sub-menu" dalam folder Draf Akhir).</p>`, 'Terapkan', 'Batal');
+    if (!ok) return; const nilai = R.richModal.values || {}; terapAcuan(rancang, new Set(rancang.filter(r => r.ubah && nilai['dfac_' + r.f.k] !== false).map(r => r.f.k)));
+  }
   /* Agen (pilihan): segmentasi dan tajuk daripada model, satu panggilan, perenggan dipendekkan. Hasilnya melalui pratonton yang sama. */
   async function agenSub() {
     if (P.busy) return; const t = await R.Isi.tetapan(); if (!t.key) { toast('Kunci API Anthropic belum ditetapkan. Buka menu tiga titik, Tetapan.', true, { label: 'Tetapan', fn: () => R.showTetapan() }); return; }
-    const fs = X.tulis().filter(f => X.sidFolder(f) && !TANPA_SUB.has(f.p) && f.p !== 'kesimpulan'); const data = fs.map(f => { const B = blokFolder(f); const per = B.blok.map((b, i) => ({ i, b })).filter(x => blokTeks(x.b) && !kapsyen(x.b)); return { f, B, per }; }).filter(x => x.per.length >= 3);
+    const fs = X.tulis().filter(f => X.sidFolder(f) && !TANPA_SUB.has(f.p) && f.p !== 'kesimpulan' && !kunciAcuan(f)); const data = fs.map(f => { const B = blokFolder(f); const per = B.blok.map((b, i) => ({ i, b })).filter(x => blokTeks(x.b) && !kapsyen(x.b)); return { f, B, per }; }).filter(x => x.per.length >= 3);
     if (!data.length) { toast('Tiada folder yang cukup panjang untuk dipecahkan kepada sub-menu', true); return; }
     const E = en(); const pendek = s => { const w = s.split(/\s+/); return w.length > 90 ? w.slice(0, 90).join(' ') + ' ...' : s; };
     const tugas = `BAHASA MANUSKRIP: ${E ? 'English' : 'Bahasa Melayu Malaysia'} (SEMUA tajuk mesti dalam bahasa ini).\nKONSTRUK KAJIAN: ${(P.t.pemboleh || []).filter(v => v.nama).map(v => v.nama + (v.alias ? ' (' + v.alias + ')' : '')).join('; ') || '-'}\n${X.teksTeras ? X.teksTeras() : ''}\n\n` + data.map(x => `FOLDER ${x.f.k} (${X.tajukF(x.f)}):\n` + x.per.map((p, q) => `[${q + 1}] ${pendek(p.b.teks)}`).join('\n')).join('\n\n') +
@@ -335,6 +398,7 @@ export function initDraf(X) {
     S.forEach(x => {
       if (x.ruj) return; const peranan = x.p; const kata = x.per.reduce((s, p) => s + patah(p.t), 0); x.kata = kata;
       if (x.kosong && x.luar) tambah('amaran', 'struktur', `Seksyen "${x.tajuk || 'Tanpa tajuk'}" bukan sebahagian daripada mana-mana folder Pandu Tulis dan tiada isi; tajuknya tidak dimasukkan ke dalam draf. Padam seksyen itu daripada senarai Seksyen jika tidak diperlukan, atau tulis isinya.`, { sid: x.id });
+      else if (x.kosong && kunciAcuan(x.f)) tambah('info', 'struktur', `Subtajuk "${x.tajuk || 'Tanpa tajuk'}" (mengikut artikel contoh) belum berisi; tajuknya dimasukkan ke dalam draf selepas isinya ditulis.`, { sid: x.id });
       else if (x.kosong) tambah('amaran', 'struktur', `Sub-menu "${x.tajuk || 'Tanpa tajuk'}" tiada isi; tajuknya tidak dimasukkan ke dalam draf. Tulis isinya, atau tekan "Susun sub-menu mengikut isi" untuk membuang sub-menu kosong daripada senarai seksyen.`, { sid: x.id, betul: 'submenu' });
       else if (!kata && !x.ob.objek.length && !(x.aras === 1 && adaSubIsi(x))) tambah('kritikal', 'struktur', `Seksyen "${x.tajuk || 'Tanpa tajuk'}" kosong.`, { sid: x.id });
       if (!x.abs && x.aras === 1 && x.f && X.sidFolder(x.f) === x.id) { const betulT = x.f.t[E ? 1 : 0]; const D = X.D; const p0 = D.perananTajuk(x.tajuk); if (p0 && x.f.t.indexOf(x.tajuk.replace(/^\s*[\d.]+\s*/, '').trim()) < 0 && bahasaTajuk(x.tajuk) !== (E ? 'en' : 'ms')) tambah('kritikal', 'bahasa', `Tajuk "${x.tajuk}" bukan dalam ${X.namaBahasa()}; sepatutnya "${betulT}".`, { sid: x.id, betul: 'tajuk', nilai: betulT }); }
@@ -583,7 +647,11 @@ export function initDraf(X) {
       <article class="df-draf" lang="${M.E ? 'en' : 'ms'}">${htmlDraf(M)}</article>`;
   }
   async function klik(a, b) {
-    if (a === 'dfsub') { await modalSub(rancangSemua(), false); return true; }
+    if (a === 'dfacuan') { await modalAcuan(); return true; }
+    if (a === 'dfacuantolak') { const ac = X.acuan(); P.t.subAcuanTolak = ac ? ac.id : '-'; simpanT(true); X.render(); return true; }
+    if (a === 'dfsub') {
+      if (P.t.subAcuan && X.acuan()) { const ok = await R.confirmBox('Tukar kepada sub-menu mengikut isi?', 'Subtajuk artikel ini sedang mengikut artikel contoh. Jika diteruskan, mod itu dimatikan dan sub-menu disusun semula mengikut isi; subtajuk artikel contoh yang masih kosong akan dibuang. Pratonton dipaparkan dahulu.', 'Teruskan', false); if (!ok) return true; P.t.subAcuan = false; simpanT(true); }
+      await modalSub(rancangSemua(), false); return true; }
     if (a === 'dfsubagen') { await agenSub(); return true; }
     if (a === 'dfsubbatal') { batalSub(); return true; }
     if (a === 'dfbatal') { batalBetul(); return true; }
@@ -616,5 +684,5 @@ export function initDraf(X) {
   /* ASAL berubah semasa folder Draf Akhir terbuka: draf dan senarai semakan dihimpun semula secara automatik */
   let tSegar = null;
   function onTulis() { if (P.buka !== KUNCI) return; clearTimeout(tSegar); tSegar = setTimeout(() => { if (P.buka !== KUNCI || P.busy) return; const el = $('#pdFolder'); if (!el || el.querySelector('.df-ed')) return; const y = window.scrollY; const kD = x => ((x.querySelector('summary b') || x.querySelector('summary') || {}).textContent || '').trim(); const buka = new Map(Array.from(el.querySelectorAll('details')).map(x => [kD(x), x.open])); P.cache.draf = null; render(el); el.querySelectorAll('details').forEach(x => { const k = kD(x); if (buka.has(k)) x.open = buka.get(k); }); const kad = document.querySelector('.pd-kad.df-kad'); if (kad) kad.outerHTML = htmlKad(); window.scrollTo(0, y); }, 1500); }
-  return { KUNCI, onTulis, htmlKad, render, klik, ubahCek, tandaSeksyen, rancangSemua, rancangFolder, terapSub, batalSub, susun, htmlDraf, betulSemua, betul, pecahAyat, bahasaAyat, sisipSitasi };
+  return { KUNCI, onTulis, htmlKad, render, klik, ubahCek, tandaSeksyen, modalAcuan, acuanBelum, rancangSemua, rancangFolder, terapSub, batalSub, susun, htmlDraf, betulSemua, betul, pecahAyat, bahasaAyat, sisipSitasi };
 }
