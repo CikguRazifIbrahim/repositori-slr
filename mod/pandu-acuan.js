@@ -56,7 +56,7 @@ export const POLA = {
  "soalan": {
   "nama": "Soalan kajian",
   "pola": [
-   "Yang manakah [jenis, ciri atau instrumen] [topik] yang dilaporkan dalam [konteks]?",
+   "Apakah [jenis, ciri atau instrumen] [topik] yang dilaporkan dalam [konteks]?",
    "Bagaimanakah [A] berkait dengan [B] dalam kalangan [populasi]?",
    "Kajian ini menjawab [bilangan] soalan berikut:"
   ]
