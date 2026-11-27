@@ -1,7 +1,7 @@
 /* Pandu Tulis: TAJUK DAN SUBTAJUK ASAL artikel contoh (v1.53.0).
    Bagi setiap acuan terbina (pandu-acuan.js), fail ini menyimpan tajuk bahagian dan semua subtajuk SEPERTI YANG DICETAK dalam artikel
    contoh itu, mengikut urutan asalnya, supaya folder dan subseksyen manuskrip pemilik boleh disalin tepat daripadanya tanpa pemilik
-   perlu menamakan subtajuk sendiri. Sumber: teks penuh setiap artikel dalam PubMed Central (PMCID dicatat pada setiap entri).
+   perlu menamakan subtajuk sendiri. Sumber: teks penuh setiap artikel dalam PubMed Central (PMCID dicatat pada setiap entri) atau laman penerbit.
    Yang disalin hanyalah tajuk dan subtajuk (bukan ayat artikel); nombor tajuk dibuang kerana aplikasi menomborkan sendiri.
 
    Bentuk: TAJUK[id acuan][kunci bahagian] = { t: [Bahasa Melayu, asal], sub: [[aras, asal, Bahasa Melayu], ...] }
@@ -53,6 +53,23 @@ export const TAJUK = {
       [2, 'Implications for practice', 'Implikasi kepada amalan'],
       [2, 'Limitations and future research', 'Batasan dan kajian lanjutan']] },
     kesimpulan: { t: ['Kesimpulan', 'Conclusion'], sub: [] }
+  },
+  /* McLeod dan Dulsky (2021), teks penuh Frontiers in Education (JATS XML) */
+  'kual-mcleod-2021': {
+    nota: 'Bahagian pembuka artikel contoh tidak bertajuk, maka folder Pendahuluan mengekalkan tajuk umum.',
+    pendahuluan: { sub: [] },
+    literatur: { t: ['Ulasan Literatur', 'Review of the Literature'], sub: [
+      [2, 'What Is Crisis Leadership?', 'Apakah Kepimpinan Krisis?'],
+      [2, 'Crisis Leadership in Schools', 'Kepimpinan Krisis di Sekolah'],
+      [2, 'Crisis Leadership in Schools During the Pandemic', 'Kepimpinan Krisis di Sekolah Semasa Pandemik']] },
+    kaedah: { t: ['Kaedah', 'Methods'], sub: [] },
+    dapatan: { t: ['Dapatan', 'Findings'], sub: [
+      [2, 'Vision and Values', 'Visi dan Nilai'],
+      [2, 'Communication and Family Community Engagement', 'Komunikasi dan Penglibatan Keluarga serta Komuniti'],
+      [2, 'Staff Care, Instructional Leadership, and Organizational Capacity-Building', 'Penjagaan Staf, Kepimpinan Instruksional dan Pembinaan Kapasiti Organisasi'],
+      [2, 'Equity-Oriented Leadership', 'Kepimpinan Berorientasikan Ekuiti'],
+      [2, 'Silver Linings and Future Opportunities', 'Hikmah dan Peluang Masa Depan']] },
+    perbincangan: { t: ['Perbincangan dan Implikasi', 'Discussion and Implications'], sub: [] }
   },
   /* Tzafilkou et al. (2022), PMC9107949 */
   'instr-tzafilkou-2022': {
